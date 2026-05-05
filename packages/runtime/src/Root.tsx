@@ -22,6 +22,37 @@ const register = (id: string, project: Project) => (
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <Composition
+      id="Project"
+      component={OpenEffectsComposition}
+      durationInFrames={1}
+      fps={30}
+      width={1920}
+      height={1080}
+      defaultProps={{
+        project: {
+          id: "",
+          name: "Project",
+          width: 1920,
+          height: 1080,
+          fps: 30 as const,
+          scenes: [],
+        },
+      }}
+      calculateMetadata={async ({ props }) => {
+        const total = props.project.scenes.reduce(
+          (acc: number, s: { durationFrames: number }) =>
+            acc + s.durationFrames,
+          0,
+        );
+        return {
+          durationInFrames: Math.max(1, total),
+          fps: props.project.fps,
+          width: props.project.width,
+          height: props.project.height,
+        };
+      }}
+    />
     {register("singleScene", singleSceneFixture)}
     {register("twoScenes", twoScenesFixture)}
     {register("unsafeHtml", unsafeHtmlFixture)}
