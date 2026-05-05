@@ -1,21 +1,33 @@
 import { bundle } from "@remotion/bundler";
 import path from "node:path";
 
-let bundleUrl: string | null = null;
-let inFlight: Promise<string> | null = null;
+type BundleCacheStore = {
+  bundleUrl: string | null;
+  inFlight: Promise<string> | null;
+};
+
+const globalForBundle = globalThis as unknown as {
+  __openEffectsBundleCache__?: BundleCacheStore;
+};
+
+const store: BundleCacheStore = globalForBundle.__openEffectsBundleCache__ ?? {
+  bundleUrl: null,
+  inFlight: null,
+};
+globalForBundle.__openEffectsBundleCache__ = store;
 
 export async function getBundleUrl(): Promise<string> {
-  if (bundleUrl) return bundleUrl;
-  if (inFlight) return inFlight;
-  inFlight = (async () => {
+  if (store.bundleUrl) return store.bundleUrl;
+  if (store.inFlight) return store.inFlight;
+  store.inFlight = (async () => {
     const entry = path.resolve(
       process.cwd(),
-      "../../packages/runtime/src/Root.tsx",
+      "../../packages/runtime/src/remotion-entry.tsx",
     );
     const result = await bundle({ entryPoint: entry });
-    bundleUrl = result;
-    inFlight = null;
+    store.bundleUrl = result;
+    store.inFlight = null;
     return result;
   })();
-  return inFlight;
+  return store.inFlight;
 }

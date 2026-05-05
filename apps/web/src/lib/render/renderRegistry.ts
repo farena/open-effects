@@ -12,8 +12,24 @@ export type RenderJob = {
 };
 
 type Listener = (job: RenderJob) => void;
-const jobs = new Map<string, RenderJob>();
-const subs = new Map<string, Set<Listener>>();
+
+type RegistryStore = {
+  jobs: Map<string, RenderJob>;
+  subs: Map<string, Set<Listener>>;
+};
+
+const globalForRegistry = globalThis as unknown as {
+  __openEffectsRenderRegistry__?: RegistryStore;
+};
+
+const store: RegistryStore =
+  globalForRegistry.__openEffectsRenderRegistry__ ?? {
+    jobs: new Map(),
+    subs: new Map(),
+  };
+globalForRegistry.__openEffectsRenderRegistry__ = store;
+
+const { jobs, subs } = store;
 
 export const renderRegistry = {
   create(projectId: string): RenderJob {

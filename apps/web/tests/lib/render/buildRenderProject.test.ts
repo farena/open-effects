@@ -94,16 +94,32 @@ describe("buildRenderProject", () => {
     expect(result.project.id).toBe("proj-1");
   });
 
-  it("rewrites audio assetPath to file://<absolute-path>", async () => {
+  it("rewrites raw audio assetPath to dev-server HTTP URL when EQ is bypassed", async () => {
     const fixture = makeFixtureProject();
     toProjectJsonMock.mockResolvedValueOnce(fixture);
     resolveAssetMock.mockReturnValue("/abs/public/assets/track.mp3");
+    // processEq returns the SAME path → bypass branch
     processEqMock.mockResolvedValue("/abs/public/assets/track.mp3");
 
     const result = await buildRenderProject("proj-1");
 
     const track = result.project.scenes[0].audioTracks[0];
-    expect(track.assetPath).toBe("file:///abs/public/assets/track.mp3");
+    expect(track.assetPath).toBe("http://localhost:3000/assets/track.mp3");
+  });
+
+  it("rewrites EQ-processed audio assetPath to the eq-asset proxy route", async () => {
+    const fixture = makeFixtureProject();
+    toProjectJsonMock.mockResolvedValueOnce(fixture);
+    resolveAssetMock.mockReturnValue("/abs/public/assets/track.mp3");
+    // processEq returns a DIFFERENT path → EQ branch
+    processEqMock.mockResolvedValue("/abs/cache/audio/eq-key-123.mp3");
+
+    const result = await buildRenderProject("proj-1");
+
+    const track = result.project.scenes[0].audioTracks[0];
+    expect(track.assetPath).toBe(
+      "http://localhost:3000/api/render/eq-asset/eq-key-123.mp3",
+    );
   });
 
   it("totalDurationFrames equals the sum of scene.durationFrames", async () => {
