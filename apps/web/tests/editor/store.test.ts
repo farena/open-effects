@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useEditorStore } from "@/editor/store";
-import type { Project } from "@open-effects/shared-types";
+import type {
+  Project,
+  SavedComponentPayload,
+} from "@open-effects/shared-types";
 
 const makeProject = (): Project => ({
   id: "proj-1",
@@ -11,7 +14,9 @@ const makeProject = (): Project => ({
   scenes: [],
 });
 
-function resetStore(partial?: Partial<Parameters<typeof useEditorStore.setState>[0]>) {
+function resetStore(
+  partial?: Partial<Parameters<typeof useEditorStore.setState>[0]>,
+) {
   useEditorStore.setState({
     project: makeProject(),
     selectedSceneId: null,
@@ -99,7 +104,9 @@ describe("useEditorStore", () => {
     addScene();
     const sceneId = useEditorStore.getState().project.scenes[0].id;
     useEditorStore.getState().setSceneDuration(sceneId, 120);
-    expect(useEditorStore.getState().project.scenes[0].durationFrames).toBe(120);
+    expect(useEditorStore.getState().project.scenes[0].durationFrames).toBe(
+      120,
+    );
   });
 
   it("setSceneDuration clamps layer endFrame to new duration", () => {
@@ -119,7 +126,8 @@ describe("useEditorStore", () => {
     const { addScene, addLayer } = useEditorStore.getState();
     addScene();
     const sceneId = useEditorStore.getState().project.scenes[0].id;
-    const initialLength = useEditorStore.getState().project.scenes[0].layers.length;
+    const initialLength =
+      useEditorStore.getState().project.scenes[0].layers.length;
     addLayer(sceneId);
     const layers = useEditorStore.getState().project.scenes[0].layers;
     expect(layers).toHaveLength(initialLength + 1);
@@ -198,5 +206,123 @@ describe("useEditorStore", () => {
       .getState()
       .project.scenes[0].layers.find((l) => l.id === layer.id);
     expect(updated?.html).toBe("<p>hello</p>");
+  });
+
+  // ── insertSavedComponent ──────────────────────────────────────────────────
+  it("insertSavedComponent appends layers with re-based frames and correct orders", () => {
+    const { addScene } = useEditorStore.getState();
+    addScene();
+    const scene = useEditorStore.getState().project.scenes[0];
+
+    // Replace default layers with 2 seeded layers (orders 0, 1)
+    useEditorStore.setState((s) => ({
+      project: {
+        ...s.project,
+        scenes: s.project.scenes.map((sc) =>
+          sc.id === scene.id
+            ? {
+                ...sc,
+                layers: [
+                  { ...sc.layers[0], order: 0 },
+                  { ...sc.layers[0], id: "seed-layer-2", order: 1 },
+                ],
+              }
+            : sc,
+        ),
+      },
+      selectedSceneId: scene.id,
+      currentFrame: 50,
+    }));
+
+    const payload: SavedComponentPayload = {
+      layers: [
+        {
+          id: "orig-1",
+          name: "Layer A",
+          order: 0,
+          startFrame: 0,
+          endFrame: 30,
+          html: "",
+          css: "",
+          visible: true,
+          keyframes: [],
+        },
+        {
+          id: "orig-2",
+          name: "Layer B",
+          order: 1,
+          startFrame: 7,
+          endFrame: 55,
+          html: "",
+          css: "",
+          visible: true,
+          keyframes: [],
+        },
+      ],
+    };
+
+    useEditorStore.getState().insertSavedComponent(payload);
+
+    const layers = useEditorStore.getState().project.scenes[0].layers;
+    expect(layers).toHaveLength(4);
+
+    const newLayerA = layers[2];
+    const newLayerB = layers[3];
+
+    expect(newLayerA.order).toBe(2);
+    expect(newLayerB.order).toBe(3);
+
+    expect(newLayerA.startFrame).toBe(50);
+    expect(newLayerA.endFrame).toBe(80);
+
+    expect(newLayerB.startFrame).toBe(57);
+    expect(newLayerB.endFrame).toBe(105);
+  });
+
+  it("insertSavedComponent with explicit sceneId targets that scene", () => {
+    const { addScene } = useEditorStore.getState();
+    addScene();
+    addScene();
+    const scenes = useEditorStore.getState().project.scenes;
+    const targetScene = scenes[1];
+
+    useEditorStore.setState({ selectedSceneId: scenes[0].id, currentFrame: 0 });
+
+    // Clear layers from target scene for a clean count
+    useEditorStore.setState((s) => ({
+      project: {
+        ...s.project,
+        scenes: s.project.scenes.map((sc) =>
+          sc.id === targetScene.id ? { ...sc, layers: [] } : sc,
+        ),
+      },
+    }));
+
+    const payload: SavedComponentPayload = {
+      layers: [
+        {
+          id: "orig-1",
+          name: "Layer A",
+          order: 0,
+          startFrame: 0,
+          endFrame: 10,
+          html: "",
+          css: "",
+          visible: true,
+          keyframes: [],
+        },
+      ],
+    };
+
+    useEditorStore.getState().insertSavedComponent(payload, targetScene.id);
+
+    const scene0Layers = useEditorStore.getState().project.scenes[0].layers;
+    const scene1Layers = useEditorStore.getState().project.scenes[1].layers;
+
+    // First scene should be unchanged (still has default layers, target was scene1)
+    expect(scene1Layers).toHaveLength(1);
+    // Verify first scene was not modified
+    expect(scene0Layers.length).toBeGreaterThan(0);
+    expect(scene0Layers.find((l) => l.name === "Layer A")).toBeUndefined();
   });
 });

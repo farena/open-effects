@@ -5,6 +5,7 @@ import type { EditorState, EditorActions } from "./store.types";
 import { defaultScene, defaultLayer } from "./defaults";
 import { ANIMATABLE_KEYS } from "@open-effects/runtime";
 import { newId } from "@/lib/ids";
+import { instantiatePayload } from "@/lib/components/instantiatePayload";
 
 type StoreState = EditorState & EditorActions;
 
@@ -247,6 +248,24 @@ export const useEditorStore = create<StoreState>()(
           l.visible = !l.visible;
         }),
       ),
+
+    insertSavedComponent: (payload, sceneId) =>
+      set((s) => {
+        const targetSceneId =
+          sceneId ?? s.selectedSceneId ?? s.project.scenes[0]?.id;
+        if (!targetSceneId) return;
+        const sc = s.project.scenes.find((x) => x.id === targetSceneId);
+        if (!sc) return;
+        const existingMaxOrder = sc.layers.reduce(
+          (m, l) => Math.max(m, l.order),
+          -1,
+        );
+        const newLayers = instantiatePayload(payload, {
+          currentFrame: s.currentFrame,
+          existingMaxOrder,
+        });
+        sc.layers.push(...newLayers);
+      }),
 
     setSaveStatus: (status) =>
       set((s) => {

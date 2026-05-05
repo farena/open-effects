@@ -1,5 +1,9 @@
 import type { Project } from "@open-effects/shared-types";
-import type { Easing, Eq } from "@open-effects/shared-types";
+import type {
+  Easing,
+  Eq,
+  SavedComponentPayload,
+} from "@open-effects/shared-types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -40,6 +44,10 @@ export interface EditorActions {
     endFrame: number,
   ) => void;
   toggleLayerVisible: (layerId: string) => void;
+  insertSavedComponent: (
+    payload: SavedComponentPayload,
+    sceneId?: string,
+  ) => void;
   setSaveStatus: (s: SaveStatus) => void;
   markSaved: () => void;
   addKeyframe: (
