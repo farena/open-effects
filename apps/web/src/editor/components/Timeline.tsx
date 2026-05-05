@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
+  Music,
 } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -30,6 +31,11 @@ import {
 } from "@/editor/selectors";
 import { PROPERTIES } from "@open-effects/runtime";
 import type { Layer, Scene } from "@open-effects/shared-types";
+import { AudioStrip } from "./AudioStrip";
+import {
+  probeAudioDuration,
+  secondsToFrames,
+} from "@/editor/lib/probeAudioDuration";
 
 const DEFAULT_PX_PER_FRAME = 4;
 const MIN_PX_PER_FRAME = 0.35;
@@ -716,6 +722,8 @@ export function Timeline() {
   const animatedSceneProps = useEditorStore(selectAnimatedSceneProperties);
   const addLayer = useEditorStore((s) => s.addLayer);
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
+  const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
+  const removeAudioTrack = useEditorStore((s) => s.removeAudioTrack);
 
   const [expandedByScene, setExpandedByScene] = useState<
     Record<string, boolean>
@@ -830,8 +838,9 @@ export function Timeline() {
   const trackRowCount = useMemo(() => {
     let n = 0;
     for (const sc of sorted) {
-      n += 1;
+      n += 1; // scene bar row
       if (expandedByScene[sc.id] !== false) n += sc.layers.length;
+      n += 1; // audio lane row (always visible)
     }
     return n;
   }, [sorted, expandedByScene]);
@@ -1118,6 +1127,17 @@ export function Timeline() {
                           </div>
                         );
                       })}
+                    {/* Audio lane label row — always shown per scene */}
+                    <div
+                      className="flex items-center gap-1 border-b border-[#2d2d2d] px-2 text-[11px] text-[#8a8a8a]"
+                      style={{ height: ROW_H }}
+                    >
+                      <span className="flex size-6 shrink-0 items-center justify-center">
+                        <Music className="size-3.5 opacity-60" />
+                      </span>
+                      <span className="w-5 shrink-0" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate">Audio</span>
+                    </div>
                   </Fragment>
                 );
               })}
@@ -1192,6 +1212,43 @@ export function Timeline() {
                               onSelect={() => selectLayer(layer.id)}
                             />
                           ))}
+                      {/* Audio lane drop zone */}
+                      <div
+                        className="relative border-b border-[#2d2d2d] bg-[#181c20]"
+                        style={{ height: ROW_H, width: timelineWidthPx }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={async (e) => {
+                          e.preventDefault();
+                          const raw = e.dataTransfer.getData(
+                            "application/x-asset",
+                          );
+                          if (!raw) return;
+                          const { id, path } = JSON.parse(raw) as {
+                            id: string;
+                            path: string;
+                          };
+                          const seconds = await probeAudioDuration(path);
+                          const fps = useEditorStore.getState().project.fps;
+                          addAudioTrack(scene.id, {
+                            id,
+                            path,
+                            durationFrames: secondsToFrames(seconds, fps),
+                          });
+                        }}
+                      >
+                        {(scene.audioTracks ?? []).map((t) => (
+                          <AudioStrip
+                            key={t.id}
+                            track={t}
+                            totalFrames={total}
+                            timelineWidthPx={timelineWidthPx}
+                            pxPerFrame={pxPerFrame}
+                            probedDurationFrames={t.trimEnd}
+                            sceneOffsetFrames={off}
+                            onDelete={() => removeAudioTrack(t.id)}
+                          />
+                        ))}
+                      </div>
                     </Fragment>
                   );
                 })}
