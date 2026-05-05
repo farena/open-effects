@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -17,6 +18,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Scene } from "@open-effects/shared-types";
 import { useEditorStore } from "@/editor/store";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface SortableSceneItemProps {
   scene: Scene;
@@ -35,6 +37,7 @@ function SortableSceneItem({
 }: SortableSceneItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: scene.id });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -77,13 +80,23 @@ function SortableSceneItem({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onDelete();
+          setConfirmOpen(true);
         }}
         className="invisible group-hover:visible ml-1 shrink-0 rounded px-1 text-muted-foreground hover:text-destructive"
         aria-label="Delete scene"
       >
         ×
       </button>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete Scene ${index + 1}?`}
+        description="The scene and all its layers will be removed. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={onDelete}
+      />
     </div>
   );
 }
@@ -109,12 +122,6 @@ export function ScenesPanel() {
     const newIndex = ids.indexOf(over.id as string);
     const reordered = arrayMove(ids, oldIndex, newIndex);
     reorderScenes(reordered);
-  }
-
-  function handleDelete(sceneId: string) {
-    if (window.confirm("Delete this scene?")) {
-      deleteScene(sceneId);
-    }
   }
 
   return (
@@ -151,7 +158,7 @@ export function ScenesPanel() {
                   index={index}
                   isSelected={selectedSceneId === scene.id}
                   onSelect={() => selectScene(scene.id)}
-                  onDelete={() => handleDelete(scene.id)}
+                  onDelete={() => deleteScene(scene.id)}
                 />
               ))}
             </SortableContext>

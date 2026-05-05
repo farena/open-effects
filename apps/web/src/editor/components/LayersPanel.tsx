@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -18,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { Layer } from "@open-effects/shared-types";
 import { useEditorStore } from "@/editor/store";
 import { selectActiveScene } from "@/editor/selectors";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface SortableLayerItemProps {
   layer: Layer;
@@ -34,6 +36,7 @@ function SortableLayerItem({
 }: SortableLayerItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: layer.id });
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -72,13 +75,23 @@ function SortableLayerItem({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onDelete();
+          setConfirmOpen(true);
         }}
         className="invisible group-hover:visible ml-1 shrink-0 rounded px-1 text-muted-foreground hover:text-destructive"
         aria-label="Delete layer"
       >
         ×
       </button>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Delete layer “${layer.name}”?`}
+        description="The layer and its keyframes will be removed. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={onDelete}
+      />
     </div>
   );
 }
@@ -115,12 +128,6 @@ export function LayersPanel() {
     reorderLayers(activeScene.id, reordered);
   }
 
-  function handleDelete(layerId: string) {
-    if (window.confirm("Delete this layer?")) {
-      deleteLayer(layerId);
-    }
-  }
-
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -154,7 +161,7 @@ export function LayersPanel() {
                   layer={layer}
                   isSelected={selectedLayerId === layer.id}
                   onSelect={() => selectLayer(layer.id)}
-                  onDelete={() => handleDelete(layer.id)}
+                  onDelete={() => deleteLayer(layer.id)}
                 />
               ))}
             </SortableContext>
