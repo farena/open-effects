@@ -40,6 +40,10 @@ export const selectLocalFrameInActiveLayer = (s: EditorState): number => {
 export const selectActiveScene = (s: EditorState) =>
   s.project.scenes.find((sc) => sc.id === s.selectedSceneId) ?? null;
 
+export const selectAudioTracksForScene =
+  (sceneId: string) => (s: EditorState) =>
+    s.project.scenes.find((sc) => sc.id === sceneId)?.audioTracks ?? [];
+
 export const selectActiveLayer = (s: EditorState) => {
   for (const sc of s.project.scenes) {
     const l = sc.layers.find((x) => x.id === s.selectedLayerId);
