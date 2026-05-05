@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { scopeCss } from "@/lib/scopeCss";
 describe("scopeCss", () => {
   it("prefixes simple selectors", () => {
@@ -18,6 +18,8 @@ describe("scopeCss", () => {
     expect(scopeCss("", "[data-layer-id=\"L1\"]")).toBe("");
   });
   it("handles invalid CSS gracefully", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(() => scopeCss("not css {{{ ", "[data-layer-id=\"L1\"]")).not.toThrow();
+    warn.mockRestore();
   });
 });

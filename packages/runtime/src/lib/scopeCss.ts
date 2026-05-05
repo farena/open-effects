@@ -15,7 +15,8 @@ export function scopeCss(css: string, prefix: string): string {
       })
     ]).process(css, { from: undefined });
     return result.css;
-  } catch {
-    return ""; // fail-safe: return empty rather than crash composition
+  } catch (err) {
+    console.warn("[scopeCss] failed to scope CSS, dropping rule set:", err);
+    return "";
   }
 }
