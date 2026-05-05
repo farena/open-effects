@@ -886,26 +886,26 @@ Stage 4 (`04-keyframe-animation.md`) will:
 
 ## Final task checklist (execution order)
 
-- [ ] T1 — Install deps + shadcn primitives
-- [ ] T2 — IDs + default factories
-- [ ] T3 — `toProjectJson` (TDD)
-- [ ] T4 — `persistProjectJson` (TDD)
-- [ ] T5 — `POST /api/projects` (TDD)
-- [ ] T6 — `GET/PATCH/DELETE /api/projects/[id]` (TDD)
-- [ ] T7 — Zustand store + reducers (TDD)
-- [ ] T8 — Selectors (TDD)
-- [ ] T9 — `useAutosave` hook
-- [ ] T10 — Lazy Monaco wrapper
-- [ ] T11 — 3-panel layout shell + Editor root + page route
-- [ ] T12 — NewProjectDialog
-- [ ] T13 — Scenes + Layers panels with DnD
-- [ ] T14 — PreviewPane with `<Player>`
-- [ ] T15 — Inspector tabs (Props/HTML/CSS)
-- [ ] T16 — Topbar with save status
-- [ ] T17 — Timeline (read-only strip)
-- [ ] T18 — Delete from projects list
-- [ ] T19 — Toaster
-- [ ] T20 — Reload smoke test
-- [ ] T21 — Stage closure
+- [x] T1 — Install deps + shadcn primitives
+- [x] T2 — IDs + default factories
+- [x] T3 — `toProjectJson` (TDD)
+- [x] T4 — `persistProjectJson` (TDD)
+- [x] T5 — `POST /api/projects` (TDD)
+- [x] T6 — `GET/PATCH/DELETE /api/projects/[id]` (TDD)
+- [x] T7 — Zustand store + reducers (TDD)
+- [x] T8 — Selectors (TDD)
+- [x] T9 — `useAutosave` hook
+- [x] T10 — Lazy Monaco wrapper
+- [x] T11 — 3-panel layout shell + Editor root + page route
+- [x] T12 — NewProjectDialog
+- [x] T13 — Scenes + Layers panels with DnD
+- [x] T14 — PreviewPane with `<Player>`
+- [x] T15 — Inspector tabs (Props/HTML/CSS)
+- [x] T16 — Topbar with save status
+- [x] T17 — Timeline (read-only strip)
+- [x] T18 — Delete from projects list
+- [x] T19 — Toaster
+- [x] T20 — Reload smoke test (automated round-trip; manual reload deferred to user QA)
+- [x] T21 — Stage closure
 
 **Total tasks:** 21 · **Estimate:** 3 weeks · **Critical risks:** Monaco/Player SSR (mitigated by `dynamic`), autosave race (mitigated by debounce + single user), DnD edge cases (covered by manual tests in T13).
