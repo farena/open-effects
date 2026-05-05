@@ -80,24 +80,24 @@ docs/decisions/
 
 **Goal:** validate the proposed approach before sinking days into implementation.
 
-- [ ] **Step 1:** `npm install popmotion bezier-easing -w packages/runtime`
-- [ ] **Step 2:** In a scratch script (`packages/runtime/spike/colorMix.ts`, gitignored or removed after), exercise:
+- [x] **Step 1:** `npm install popmotion bezier-easing -w packages/runtime`
+- [x] **Step 2:** In a scratch script (`packages/runtime/spike/colorMix.ts`, gitignored or removed after), exercise:
   ```ts
   import { mix } from "popmotion";
   console.log(mix(0, 1, 0.5)); // numeric
   console.log(mix("rgba(255,0,0,1)", "rgba(0,0,255,0)", 0.5)); // color
   console.log(mix("#ff0000", "#0000ff", 0.5)); // hex
   ```
-  Verify outputs. Document any limitation.
-- [ ] **Step 3:** Confirm the **transform sub-property strategy**: each animatable transform sub-prop (`translateX`, `translateY`, `scale`, `rotate`) is interpolated independently as a primitive (length / number / angle); a small composer joins them into the final `transform` CSS string. Avoids parsing `transform: translate(...) scale(...) rotate(...)` from arbitrary user input. **Constraint:** users animate only via the registered sub-property names — `transform` is not a directly-animatable key.
-- [ ] **Step 4:** Write the decision in `docs/decisions/04-color-and-transform-strategy.md`:
-  - Color interpolation = `popmotion::mix` (handles rgba, hex, named).
+  Verify outputs. Document any limitation. **Spike correction:** popmotion v11's `mix(...)` is numeric only; for color use the curried `mixColor(from, to)(t)`. Captured in the decision doc.
+- [x] **Step 3:** Confirm the **transform sub-property strategy**: each animatable transform sub-prop (`translateX`, `translateY`, `scale`, `rotate`) is interpolated independently as a primitive (length / number / angle); a small composer joins them into the final `transform` CSS string. Avoids parsing `transform: translate(...) scale(...) rotate(...)` from arbitrary user input. **Constraint:** users animate only via the registered sub-property names — `transform` is not a directly-animatable key.
+- [x] **Step 4:** Write the decision in `docs/decisions/04-color-and-transform-strategy.md`:
+  - Color interpolation = `popmotion::mixColor` (handles rgba, hex, named).
   - Numeric / length-px / angle-deg = manual lerp (1 LOC).
   - Transform sub-properties = independent primitives + composer.
   - Cubic-bezier solver = `bezier-easing`.
   - Spring = Remotion `spring()` with `durationInFrames` = segment length.
-- [ ] **Step 5:** Remove the spike script.
-- [ ] **Step 6:** Commit: `docs(decisions): color + transform interpolation strategy`.
+- [x] **Step 5:** Remove the spike script.
+- [x] **Step 6:** Commit: `docs(decisions): color + transform interpolation strategy`.
 
 **Rollback:** if popmotion has hidden issues (e.g., poor handling of named CSS colors mixed with hex), fall back to `colord` library and update the decision doc.
 
@@ -108,7 +108,7 @@ docs/decisions/
 **Files:**
 - Create: `packages/runtime/src/keyframes/propertyRegistry.ts`
 
-- [ ] **Step 1:** Implement:
+- [x] **Step 1:** Implement:
   ```ts
   export type AnimatableType = "numeric" | "length-px" | "angle-deg" | "color";
 
@@ -144,7 +144,7 @@ docs/decisions/
 
   export const ANIMATABLE_KEYS = Object.keys(PROPERTIES);
   ```
-- [ ] **Step 2:** Commit: `feat(runtime): property registry`.
+- [x] **Step 2:** Commit: `feat(runtime): property registry`.
 
 ---
 
@@ -735,8 +735,8 @@ docs/decisions/
 
 ### Task 15: End-to-end smoke + closure
 
-- [ ] **Step 1:** `npm test --workspaces --if-present` → all green (new color, easing, computeStylesAtFrame, transform composer, store keyframes tests).
-- [ ] **Step 2:** `npm run typecheck --workspaces --if-present` → clean.
+- [x] **Step 1:** `npm test --workspaces --if-present` → all green (new color, easing, computeStylesAtFrame, transform composer, store keyframes tests).
+- [x] **Step 2:** `npm run typecheck --workspaces --if-present` → clean.
 - [ ] **Step 3:** Manual smoke:
   1. Create project 1920×1080 30fps.
   2. Add layer with HTML `<div class="box">box</div>` and CSS `.box { width:200px; height:200px; background:red; }`.
@@ -793,20 +793,20 @@ Stage 5 (`05-audio-basic.md`) will:
 
 ## Final task checklist (execution order)
 
-- [ ] T1 — Spike + decision doc
-- [ ] T2 — Property registry
-- [ ] T3 — Primitive parsers (TDD)
-- [ ] T4 — Color mix (TDD)
-- [ ] T5 — Easing functions (TDD)
-- [ ] T6 — Transform composer (TDD)
-- [ ] T7 — computeStylesAtFrame (TDD)
-- [ ] T8 — Layer wires computed styles (TDD)
-- [ ] T9 — Store keyframe actions (TDD)
-- [ ] T10 — Keyframe selectors
-- [ ] T11 — PropertyPicker + KeyframesTab UI
-- [ ] T12 — EasingEditor popover
-- [ ] T13 — Timeline keyframe dots + drag
-- [ ] T14 — Player frame ↔ store sync
-- [ ] T15 — End-to-end smoke + closure
+- [x] T1 — Spike + decision doc
+- [x] T2 — Property registry
+- [x] T3 — Primitive parsers (TDD)
+- [x] T4 — Color mix (TDD)
+- [x] T5 — Easing functions (TDD)
+- [x] T6 — Transform composer (TDD)
+- [x] T7 — computeStylesAtFrame (TDD)
+- [x] T8 — Layer wires computed styles (TDD)
+- [x] T9 — Store keyframe actions (TDD)
+- [x] T10 — Keyframe selectors
+- [x] T11 — PropertyPicker + KeyframesTab UI
+- [x] T12 — EasingEditor popover
+- [x] T13 — Timeline keyframe dots + drag
+- [x] T14 — Player frame ↔ store sync
+- [x] T15 — End-to-end smoke + closure
 
 **Total tasks:** 15 · **Estimate:** 2.5 weeks · **Critical risks:** color/transform interpolation (mitigated by spike T1), spring overshoot UX (mitigated by easing preview T12).
