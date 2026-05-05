@@ -4,9 +4,9 @@
 
 **Goal:** Build a visual video editor over Remotion ("open-effects") for the internal marketing team — replacing the current hand-coded flow (`kmpus-promo`, `kmpus-promo-modules`) with a UI that supports multi-project/multi-scene composition, arbitrary HTML+CSS layers animated by CSS-property keyframes, audio with fades and static EQ, MariaDB persistence, and local MP4 rendering.
 
-**Architecture:** Monorepo (npm/pnpm workspaces). `apps/web` is a Next.js 15 (App Router) full-stack app providing UI, REST API, and the render endpoint. `packages/runtime` is a standalone Remotion package exporting a universal `OpenEffectsComposition` that reads a `projectJson` via `inputProps` — the same composition is consumed by `<Player>` for live preview and by `@remotion/renderer` for MP4 output. `packages/shared-types` holds Zod schemas shared between editor and runtime, making the JSON shape the single source of truth.
+**Architecture:** Monorepo (npm workspaces). `apps/web` is a Next.js 15 (App Router) full-stack app providing UI, REST API, and the render endpoint. `packages/runtime` is a standalone Remotion package exporting a universal `OpenEffectsComposition` that reads a `projectJson` via `inputProps` — the same composition is consumed by `<Player>` for live preview and by `@remotion/renderer` for MP4 output. `packages/shared-types` holds Zod schemas shared between editor and runtime, making the JSON shape the single source of truth.
 
-**Tech Stack:** Next.js 15 (App Router) · MariaDB · Prisma (provider `mysql`) · Tailwind CSS · shadcn/ui · Remotion v4 (`@remotion/player`, `@remotion/renderer`, `@remotion/bundler`, `@remotion/media`) · Monaco Editor · Zustand + Immer · DOMPurify · FFmpeg (audio EQ pre-processing) · Docker Compose (MariaDB).
+**Tech Stack:** Next.js 15 (App Router) · MariaDB (existing instance on dev machine) · Prisma (provider `mysql`) · Tailwind CSS · shadcn/ui · Remotion v4 (`@remotion/player`, `@remotion/renderer`, `@remotion/bundler`, `@remotion/media`) · Monaco Editor · Zustand + Immer · DOMPurify · FFmpeg (audio EQ pre-processing).
 
 ---
 
@@ -34,15 +34,15 @@ Each stage is **independently demoable and tested** — do not move forward to s
 
 **Objective.** Bootstrap the monorepo, wire up MariaDB, expose the empty UI shell.
 
-**Deliverable.** A new dev clones the repo, runs `docker compose up -d && pnpm install && pnpm db:migrate && pnpm dev`, and within 10 minutes sees `http://localhost:3000` showing the landing page and `/projects` showing an empty list with a (disabled) "New project" button.
+**Deliverable.** A new dev clones the repo, fills `.env` with credentials for the existing MariaDB instance, runs `npm install && npm run db:migrate && npm run dev`, and within 10 minutes sees `http://localhost:3000` showing the landing page and `/projects` showing an empty list with a (disabled) "New project" button.
 
 **Acceptance criteria**
 1. Monorepo structure exists: `apps/web/`, `packages/runtime/`, `packages/shared-types/`, root `package.json` with workspaces.
-2. `docker-compose.yml` provisions a MariaDB service (named volume, exposed port, declared in `.env.example`).
+2. `.env.example` documents the credentials needed to connect to the existing MariaDB instance (no Docker Compose — DB is preprovisioned on the dev machine).
 3. `apps/web/prisma/schema.prisma` declares all v1 models (`Project`, `Scene`, `Layer`, `Keyframe`, `AudioTrack`, `VolumeKeyframe`, `Asset`, `SavedComponent`) with `provider = "mysql"`. Initial migration committed and applies cleanly.
 4. Next.js 15 (App Router) scaffolded with Tailwind, shadcn/ui base, and TypeScript strict mode.
 5. Routes exist: `/` (landing) and `/projects` (empty list). Both return 200.
-6. `README.md` documents prerequisites (Node version, pnpm, Docker, FFmpeg installed locally), setup steps, and common scripts.
+6. `README.md` documents prerequisites (Node version, npm, an accessible MariaDB instance, FFmpeg installed locally), setup steps, and common scripts.
 
 **Tests required to close stage**
 - Unit: Prisma client connects (smoke test: `prisma.$connect()` resolves).
@@ -59,7 +59,7 @@ Each stage is **independently demoable and tested** — do not move forward to s
 
 **Objective.** Build the universal Remotion composition that reads a `projectJson` and renders it. This is the engine both `<Player>` and `renderMedia` will consume from Stage 3 onward.
 
-**Deliverable.** `pnpm --filter runtime studio` opens Remotion Studio with a hardcoded `projectJson` fixture rendering one scene with one HTML+CSS layer (static, no animation yet). Editing the fixture in code and reloading Studio reflects the change. Width/height/fps come from the JSON.
+**Deliverable.** `npm run studio -w packages/runtime` opens Remotion Studio with a hardcoded `projectJson` fixture rendering one scene with one HTML+CSS layer (static, no animation yet). Editing the fixture in code and reloading Studio reflects the change. Width/height/fps come from the JSON.
 
 **Acceptance criteria**
 1. `packages/runtime` is independently buildable (`remotion.config.ts`, `tsconfig.json`, own `package.json`).
@@ -316,7 +316,7 @@ Each stage is **independently demoable and tested** — do not move forward to s
 
 ## Project conventions
 
-- **Package manager:** pnpm (faster, disk-efficient with workspaces). Lock to a specific version in `package.json` `packageManager` field.
+- **Package manager:** npm with workspaces (`apps/*`, `packages/*`). Lock to a specific version in `package.json` `packageManager` field.
 - **Node version:** pinned in `.nvmrc` (Node 20 LTS or newer).
 - **TypeScript:** strict mode everywhere; no `any` without justification comment.
 - **Naming:** kebab-case for file names, PascalCase for React components, camelCase for variables/functions.
