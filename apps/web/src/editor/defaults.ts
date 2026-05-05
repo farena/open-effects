@@ -16,8 +16,11 @@ export const defaultLayer = (order: number, endFrame: number): Layer => ({
 export const defaultScene = (order: number, durationFrames = 90): Scene => ({
   id: newId(),
   order,
+  name: `Scene ${order + 1}`,
+  background: "#000000",
   durationFrames,
   transitionIn: null,
+  keyframes: [],
   layers: [defaultLayer(0, durationFrames)],
   audioTracks: [],
 });

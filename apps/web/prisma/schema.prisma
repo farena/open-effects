@@ -24,7 +24,10 @@ model Scene {
   project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId      String
   order          Int
+  name           String       @default("Scene")
+  background     String       @default("#000000")
   durationFrames Int
+  keyframes      Json         @default("[]")
   transitionIn   Json?
   layers         Layer[]
   audioTracks    AudioTrack[]

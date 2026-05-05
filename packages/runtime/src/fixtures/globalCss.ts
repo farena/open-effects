@@ -10,7 +10,11 @@ export const globalCssFixture: Project = {
     {
       id: "s1",
       order: 0,
+      name: "Scene 1",
+      background: "#000000",
       durationFrames: 60,
+      transitionIn: null,
+      keyframes: [],
       layers: [
         {
           id: "L1",

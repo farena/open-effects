@@ -24,6 +24,9 @@ export interface EditorActions {
   deleteScene: (sceneId: string) => void;
   reorderScenes: (orderedIds: string[]) => void;
   setSceneDuration: (sceneId: string, durationFrames: number) => void;
+  updateSceneName: (sceneId: string, name: string) => void;
+  updateSceneBackground: (sceneId: string, background: string) => void;
+  adjustSceneBoundaryAt: (sceneId: string, deltaFrames: number) => void;
   addLayer: (sceneId: string) => void;
   deleteLayer: (layerId: string) => void;
   reorderLayers: (sceneId: string, orderedIds: string[]) => void;
@@ -60,6 +63,36 @@ export interface EditorActions {
   ) => void;
   updateKeyframeEasing: (
     layerId: string,
+    property: string,
+    frame: number,
+    easingOut: Easing,
+  ) => void;
+  addSceneKeyframe: (
+    sceneId: string,
+    property: string,
+    frame: number,
+    value: string,
+    easingOut?: Easing,
+  ) => void;
+  deleteSceneKeyframe: (
+    sceneId: string,
+    property: string,
+    frame: number,
+  ) => void;
+  moveSceneKeyframe: (
+    sceneId: string,
+    property: string,
+    fromFrame: number,
+    toFrame: number,
+  ) => void;
+  updateSceneKeyframeValue: (
+    sceneId: string,
+    property: string,
+    frame: number,
+    value: string,
+  ) => void;
+  updateSceneKeyframeEasing: (
+    sceneId: string,
     property: string,
     frame: number,
     easingOut: Easing,

@@ -34,7 +34,10 @@ export async function toProjectJson(projectId: string): Promise<Project> {
     scenes: p.scenes.map((s) => ({
       id: s.id,
       order: s.order,
+      name: s.name,
+      background: s.background,
       durationFrames: s.durationFrames,
+      keyframes: (s.keyframes as Project["scenes"][number]["keyframes"]) ?? [],
       transitionIn:
         (s.transitionIn as Project["scenes"][number]["transitionIn"]) ?? null,
       layers: s.layers.map((l) => ({

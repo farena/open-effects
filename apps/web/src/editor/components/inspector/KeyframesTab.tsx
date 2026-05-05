@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import {
   selectActiveLayer,
+  selectActiveScene,
   selectAnimatedProperties,
-  selectKeyframesForProperty,
+  selectAnimatedSceneProperties,
+  selectLocalFrameInActiveLayer,
+  selectLocalFrameInActiveScene,
 } from "@/editor/selectors";
 import { PROPERTIES } from "@open-effects/runtime";
-import type { Keyframe } from "@open-effects/shared-types";
+import type { Easing, Keyframe } from "@open-effects/shared-types";
 import { PropertyPicker } from "./PropertyPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +22,15 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { EasingEditor } from "./EasingEditor";
+import { colorToHex, hexToRgba } from "./colorCss";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+type KeyframeTarget =
+  | { kind: "layer"; id: string }
+  | { kind: "scene"; id: string };
 
 /** Pick a starting value for a new keyframe using the "closest prior keyframe" heuristic. */
 function resolveInitialValue(
@@ -36,59 +44,63 @@ function resolveInitialValue(
 
   const sorted = [...keyframes].sort((a, b) => a.frame - b.frame);
 
-  // Closest keyframe at or before currentFrame
   const prior = [...sorted].reverse().find((k) => k.frame <= currentFrame);
   if (prior) return prior.value;
 
-  // Fall back to closest keyframe after currentFrame
   const next = sorted.find((k) => k.frame > currentFrame);
   if (next) return next.value;
 
   return PROPERTIES[property]?.defaultValue ?? "0";
 }
 
-/** Format an easing type to a human-readable label for the placeholder button. */
 function easingLabel(kf: Keyframe): string {
-  const t = kf.easingOut.type;
-  return t;
+  return kf.easingOut.type;
 }
 
-/** Convert rgba/rgb string to a hex color for <input type="color">. Returns #000000 on failure. */
-function colorToHex(value: string): string {
-  const m = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
-  if (!m) return "#000000";
-  const r = parseInt(m[1], 10);
-  const g = parseInt(m[2], 10);
-  const b = parseInt(m[3], 10);
-  return "#" + [r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("");
-}
-
-/** Convert a hex color string to rgba with full opacity. */
-function hexToRgba(hex: string): string {
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},1)`;
+function maxKeyframeFrameForTarget(target: KeyframeTarget): number {
+  const s = useEditorStore.getState();
+  if (target.kind === "layer") {
+    for (const sc of s.project.scenes) {
+      const layer = sc.layers.find((l) => l.id === target.id);
+      if (layer) {
+        return Math.max(0, layer.endFrame - layer.startFrame - 1);
+      }
+    }
+    return 0;
+  }
+  const sc = s.project.scenes.find((x) => x.id === target.id);
+  return sc ? Math.max(0, sc.durationFrames - 1) : 0;
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component: a single keyframe row
+// Keyframe row
 // ---------------------------------------------------------------------------
 
 interface KeyframeRowProps {
-  layerId: string;
+  target: KeyframeTarget;
   property: string;
   keyframe: Keyframe;
 }
 
-function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
+function KeyframeRow({ target, property, keyframe }: KeyframeRowProps) {
   const moveKeyframe = useEditorStore((s) => s.moveKeyframe);
+  const moveSceneKeyframe = useEditorStore((s) => s.moveSceneKeyframe);
   const updateKeyframeValue = useEditorStore((s) => s.updateKeyframeValue);
+  const updateSceneKeyframeValue = useEditorStore(
+    (s) => s.updateSceneKeyframeValue,
+  );
   const updateKeyframeEasing = useEditorStore((s) => s.updateKeyframeEasing);
+  const updateSceneKeyframeEasing = useEditorStore(
+    (s) => s.updateSceneKeyframeEasing,
+  );
   const deleteKeyframe = useEditorStore((s) => s.deleteKeyframe);
+  const deleteSceneKeyframe = useEditorStore((s) => s.deleteSceneKeyframe);
 
   const [frameInput, setFrameInput] = useState(String(keyframe.frame));
+
+  useEffect(() => {
+    setFrameInput(String(keyframe.frame));
+  }, [keyframe.frame]);
 
   const meta = PROPERTIES[property];
   const isColor = meta?.type === "color";
@@ -99,61 +111,73 @@ function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
         ? "deg"
         : null;
 
-  // Sync frameInput when keyframe.frame changes externally (e.g. move rejected)
-  if (
-    frameInput !== String(keyframe.frame) &&
-    document.activeElement?.id !==
-      `frame-${keyframe.id ?? keyframe.frame}-${property}`
-  ) {
-    // Only reset when the field is not focused
-  }
+  const frameId = `frame-${target.kind}-${target.id}-${keyframe.id ?? keyframe.frame}-${property}`;
 
   function handleFrameBlur() {
     const parsed = parseInt(frameInput, 10);
-    if (isNaN(parsed) || parsed < 0) {
+    const maxF = maxKeyframeFrameForTarget(target);
+    if (isNaN(parsed) || parsed < 0 || parsed > maxF) {
       setFrameInput(String(keyframe.frame));
       return;
     }
     if (parsed !== keyframe.frame) {
-      moveKeyframe(layerId, property, keyframe.frame, parsed);
-      // Store may reject (collision); re-read will happen on next render via store
+      if (target.kind === "layer") {
+        moveKeyframe(target.id, property, keyframe.frame, parsed);
+      } else {
+        moveSceneKeyframe(target.id, property, keyframe.frame, parsed);
+      }
     }
-    // Reset to current store value to pick up any collision snap-back
-    setFrameInput(String(keyframe.frame));
   }
 
   function handleValueBlur(newValue: string) {
-    if (newValue !== keyframe.value) {
-      updateKeyframeValue(layerId, property, keyframe.frame, newValue);
+    if (newValue === keyframe.value) return;
+    if (target.kind === "layer") {
+      updateKeyframeValue(target.id, property, keyframe.frame, newValue);
+    } else {
+      updateSceneKeyframeValue(target.id, property, keyframe.frame, newValue);
+    }
+  }
+
+  function handleDelete() {
+    if (target.kind === "layer") {
+      deleteKeyframe(target.id, property, keyframe.frame);
+    } else {
+      deleteSceneKeyframe(target.id, property, keyframe.frame);
+    }
+  }
+
+  function handleEasingSave(next: Easing) {
+    if (target.kind === "layer") {
+      updateKeyframeEasing(target.id, property, keyframe.frame, next);
+    } else {
+      updateSceneKeyframeEasing(target.id, property, keyframe.frame, next);
     }
   }
 
   return (
     <div className="flex items-center gap-2 py-1">
-      {/* Frame number */}
-      <div className="flex flex-col gap-0.5 w-16 shrink-0">
+      <div className="flex w-16 shrink-0 flex-col gap-0.5">
         <Label className="text-xs text-muted-foreground">Frame</Label>
         <Input
-          id={`frame-${keyframe.id ?? keyframe.frame}-${property}`}
+          id={frameId}
           type="number"
           min={0}
-          className="h-7 text-xs px-1.5"
+          max={maxKeyframeFrameForTarget(target)}
+          className="h-7 px-1.5 text-xs"
           value={frameInput}
           onChange={(e) => setFrameInput(e.target.value)}
           onBlur={handleFrameBlur}
         />
       </div>
 
-      {/* Value */}
-      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <Label className="text-xs text-muted-foreground">Value</Label>
         {isColor ? (
           <input
             type="color"
-            className="h-7 w-full rounded-md border border-input bg-background cursor-pointer"
+            className="h-7 w-full cursor-pointer rounded-md border border-input bg-background"
             value={colorToHex(keyframe.value)}
             onChange={(e) => {
-              // onChange fires on every pick; blur fires on close — update on change
               handleValueBlur(hexToRgba(e.target.value));
             }}
           />
@@ -161,13 +185,13 @@ function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
           <div className="flex items-center gap-1">
             <Input
               type="text"
-              className="h-7 text-xs px-1.5"
+              className="h-7 px-1.5 text-xs"
               defaultValue={keyframe.value}
               key={`${keyframe.frame}-${keyframe.value}`}
               onBlur={(e) => handleValueBlur(e.target.value)}
             />
             {suffix && (
-              <span className="text-xs text-muted-foreground shrink-0">
+              <span className="shrink-0 text-xs text-muted-foreground">
                 {suffix}
               </span>
             )}
@@ -175,15 +199,14 @@ function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
         )}
       </div>
 
-      {/* Easing button — opens EasingEditor popover */}
-      <div className="flex flex-col gap-0.5 shrink-0">
+      <div className="flex shrink-0 flex-col gap-0.5">
         <Label className="text-xs text-muted-foreground">Easing</Label>
         <Popover>
           <PopoverTrigger asChild>
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-xs px-2"
+              className="h-7 px-2 text-xs"
               data-testid="easing-button"
             >
               {easingLabel(keyframe)}
@@ -192,21 +215,18 @@ function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
           <PopoverContent className="w-80">
             <EasingEditor
               easing={keyframe.easingOut}
-              onSave={(next) =>
-                updateKeyframeEasing(layerId, property, keyframe.frame, next)
-              }
+              onSave={handleEasingSave}
             />
           </PopoverContent>
         </Popover>
       </div>
 
-      {/* Delete */}
-      <div className="flex flex-col gap-0.5 shrink-0 mt-4">
+      <div className="mt-4 flex shrink-0 flex-col gap-0.5">
         <Button
           size="icon"
           variant="ghost"
           className="h-7 w-7"
-          onClick={() => deleteKeyframe(layerId, property, keyframe.frame)}
+          onClick={handleDelete}
           aria-label="Delete keyframe"
         >
           <span className="text-sm leading-none">x</span>
@@ -217,37 +237,43 @@ function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component: animated property block
+// Animated property block
 // ---------------------------------------------------------------------------
 
 interface AnimatedPropertyBlockProps {
-  layerId: string;
+  target: KeyframeTarget;
   property: string;
-  currentFrame: number;
+  currentFrameLocal: number;
+  keyframes: Keyframe[];
 }
 
 function AnimatedPropertyBlock({
-  layerId,
+  target,
   property,
-  currentFrame,
+  currentFrameLocal,
+  keyframes,
 }: AnimatedPropertyBlockProps) {
-  const keyframes = useEditorStore(selectKeyframesForProperty(property));
   const addKeyframe = useEditorStore((s) => s.addKeyframe);
+  const addSceneKeyframe = useEditorStore((s) => s.addSceneKeyframe);
 
   const meta = PROPERTIES[property];
   if (!meta) return null;
 
   function handleAddKeyframeHere() {
-    const value = resolveInitialValue(keyframes, property, currentFrame);
-    addKeyframe(layerId, property, currentFrame, value);
+    const value = resolveInitialValue(keyframes, property, currentFrameLocal);
+    if (target.kind === "layer") {
+      addKeyframe(target.id, property, currentFrameLocal, value);
+    } else {
+      addSceneKeyframe(target.id, property, currentFrameLocal, value);
+    }
   }
 
   return (
     <details
       open
-      className="border border-border rounded-md overflow-hidden mb-3"
+      className="mb-3 overflow-hidden rounded-md border border-border"
     >
-      <summary className="px-3 py-2 text-sm font-medium cursor-pointer select-none bg-muted/40 hover:bg-muted/70 flex items-center justify-between">
+      <summary className="flex cursor-pointer select-none items-center justify-between bg-muted/40 px-3 py-2 text-sm font-medium hover:bg-muted/70">
         <span>{meta.label}</span>
         <span className="text-xs text-muted-foreground">
           {keyframes.length} kf
@@ -255,14 +281,14 @@ function AnimatedPropertyBlock({
       </summary>
       <div className="px-3 pb-2">
         {keyframes.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">
+          <p className="py-2 text-xs text-muted-foreground">
             No keyframes yet.
           </p>
         ) : (
           keyframes.map((kf) => (
             <KeyframeRow
               key={`${kf.frame}-${kf.property}`}
-              layerId={layerId}
+              target={target}
               property={property}
               keyframe={kf}
             />
@@ -271,10 +297,10 @@ function AnimatedPropertyBlock({
         <Button
           size="sm"
           variant="ghost"
-          className="mt-1 h-7 text-xs w-full justify-start"
+          className="mt-1 h-7 w-full justify-start text-xs"
           onClick={handleAddKeyframeHere}
         >
-          + keyframe at frame {currentFrame}
+          + keyframe at frame {currentFrameLocal}
         </Button>
       </div>
     </details>
@@ -287,75 +313,161 @@ function AnimatedPropertyBlock({
 
 export function KeyframesTab() {
   const layer = useEditorStore(selectActiveLayer);
-  const animatedProperties = useEditorStore(selectAnimatedProperties);
-  const currentFrame = useEditorStore((s) => s.currentFrame);
+  const scene = useEditorStore(selectActiveScene);
+  const animatedLayer = useEditorStore(selectAnimatedProperties);
+  const animatedScene = useEditorStore(selectAnimatedSceneProperties);
+  const localLayerFrame = useEditorStore(selectLocalFrameInActiveLayer);
+  const localSceneFrame = useEditorStore(selectLocalFrameInActiveScene);
+  const globalFrame = useEditorStore((s) => s.currentFrame);
   const addKeyframe = useEditorStore((s) => s.addKeyframe);
+  const addSceneKeyframe = useEditorStore((s) => s.addSceneKeyframe);
 
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
 
-  if (!layer) {
+  if (layer) {
+    const activeLayer = layer;
+    const target: KeyframeTarget = { kind: "layer", id: activeLayer.id };
+    const animatedProperties = animatedLayer;
+
+    function handleAddKeyframe() {
+      if (!selectedProperty) return;
+      const kfs = activeLayer.keyframes.filter(
+        (k) => k.property === selectedProperty,
+      );
+      const value = resolveInitialValue(kfs, selectedProperty, localLayerFrame);
+      addKeyframe(activeLayer.id, selectedProperty, localLayerFrame, value);
+    }
+
     return (
-      <div className="p-4 text-sm text-muted-foreground">
-        Select a layer to manage keyframes.
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b px-2 py-1">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            Keyframes · layer
+          </span>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            Global {globalFrame} · local {localLayerFrame}
+          </span>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <div className="flex items-center gap-2">
+            <PropertyPicker
+              value={selectedProperty}
+              onChange={setSelectedProperty}
+              excludedKeys={animatedProperties}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!selectedProperty}
+              onClick={handleAddKeyframe}
+              className="shrink-0"
+            >
+              + Add keyframe
+            </Button>
+          </div>
+
+          {animatedProperties.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No animated properties yet. Pick a property above and add a
+              keyframe.
+            </p>
+          ) : (
+            <div className="flex flex-col">
+              {animatedProperties.map((prop) => (
+                <AnimatedPropertyBlock
+                  key={prop}
+                  target={target}
+                  property={prop}
+                  currentFrameLocal={localLayerFrame}
+                  keyframes={activeLayer.keyframes.filter(
+                    (k) => k.property === prop,
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
-  function handleAddKeyframe() {
-    if (!selectedProperty || !layer) return;
+  if (scene) {
+    const activeScene = scene;
+    const target: KeyframeTarget = { kind: "scene", id: activeScene.id };
+    const animatedProperties = animatedScene;
 
-    const kfs = layer.keyframes.filter((k) => k.property === selectedProperty);
-    const value = resolveInitialValue(kfs, selectedProperty, currentFrame);
-    addKeyframe(layer.id, selectedProperty, currentFrame, value);
+    function handleAddKeyframe() {
+      if (!selectedProperty) return;
+      const kfs = activeScene.keyframes.filter(
+        (k) => k.property === selectedProperty,
+      );
+      const value = resolveInitialValue(kfs, selectedProperty, localSceneFrame);
+      addSceneKeyframe(
+        activeScene.id,
+        selectedProperty,
+        localSceneFrame,
+        value,
+      );
+    }
+
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b px-2 py-1">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            Keyframes · scene
+          </span>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            Global {globalFrame} · local {localSceneFrame}
+          </span>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <div className="flex items-center gap-2">
+            <PropertyPicker
+              value={selectedProperty}
+              onChange={setSelectedProperty}
+              excludedKeys={animatedProperties}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!selectedProperty}
+              onClick={handleAddKeyframe}
+              className="shrink-0"
+            >
+              + Add keyframe
+            </Button>
+          </div>
+
+          {animatedProperties.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No scene keyframes yet. Use opacity or transform to transition
+              between scenes.
+            </p>
+          ) : (
+            <div className="flex flex-col">
+              {animatedProperties.map((prop) => (
+                <AnimatedPropertyBlock
+                  key={prop}
+                  target={target}
+                  property={prop}
+                  currentFrameLocal={localSceneFrame}
+                  keyframes={activeScene.keyframes.filter(
+                    (k) => k.property === prop,
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-2 py-1">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
-          Keyframes
-        </span>
-        <span className="text-xs tabular-nums text-muted-foreground">
-          Frame {currentFrame}
-        </span>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <div className="flex items-center gap-2">
-          <PropertyPicker
-            value={selectedProperty}
-            onChange={setSelectedProperty}
-            excludedKeys={animatedProperties}
-          />
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!selectedProperty}
-            onClick={handleAddKeyframe}
-            className="shrink-0"
-          >
-            + Add keyframe
-          </Button>
-        </div>
-
-        {animatedProperties.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No animated properties yet. Pick a property above and add a
-            keyframe.
-          </p>
-        ) : (
-          <div className="flex flex-col">
-            {animatedProperties.map((prop) => (
-              <AnimatedPropertyBlock
-                key={prop}
-                layerId={layer.id}
-                property={prop}
-                currentFrame={currentFrame}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="p-4 text-sm text-muted-foreground">
+      Select a scene or layer to manage keyframes.
     </div>
   );
 }

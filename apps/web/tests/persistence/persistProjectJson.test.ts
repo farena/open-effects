@@ -27,17 +27,14 @@ describe("persistProjectJson", () => {
   }
 
   // Helper: build a minimal valid Project object for a given DB project id
-  function buildProject(
-    projectId: string,
-    scenes: Project["scenes"] = [],
-  ): Project {
+  function buildProject(projectId: string, scenesInput: unknown = []): Project {
     return ProjectSchema.parse({
       id: projectId,
       name: "Test Project",
       width: 1920,
       height: 1080,
       fps: 30,
-      scenes,
+      scenes: scenesInput,
     });
   }
 

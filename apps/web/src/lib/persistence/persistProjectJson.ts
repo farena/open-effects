@@ -31,7 +31,10 @@ export async function persistProjectJson(
             id: scene.id,
             projectId,
             order: scene.order,
+            name: scene.name,
+            background: scene.background,
             durationFrames: scene.durationFrames,
+            keyframes: scene.keyframes as unknown as Prisma.InputJsonValue,
             // transitionIn is Json? with no @default — must write Prisma.JsonNull for null
             // to avoid leaving the column in an undefined state after DELETE+INSERT.
             transitionIn: scene.transitionIn ?? Prisma.JsonNull,

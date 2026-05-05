@@ -30,13 +30,18 @@ interface SortableSceneItemProps {
 
 function SortableSceneItem({
   scene,
-  index,
   isSelected,
   onSelect,
   onDelete,
 }: SortableSceneItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: scene.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: scene.id });
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const style: React.CSSProperties = {
@@ -70,7 +75,7 @@ function SortableSceneItem({
         >
           ⠿
         </span>
-        <span className="truncate">Scene {index + 1}</span>
+        <span className="truncate min-w-0">{scene.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">
           {scene.durationFrames}f
         </span>
@@ -91,7 +96,7 @@ function SortableSceneItem({
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={`Delete Scene ${index + 1}?`}
+        title={`Delete ${scene.name}?`}
         description="The scene and all its layers will be removed. This cannot be undone."
         confirmLabel="Delete"
         destructive
@@ -131,13 +136,16 @@ export function ScenesPanel() {
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Scenes
         </span>
-        <button
-          onClick={addScene}
-          className="rounded px-1.5 py-0.5 text-sm hover:bg-muted"
-          aria-label="Add scene"
-        >
-          +
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={addScene}
+            className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted"
+            aria-label="Add scene"
+          >
+            Add scene
+          </button>
+        </div>
       </div>
 
       {/* List */}

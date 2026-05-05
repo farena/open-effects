@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import type { Layer } from "@open-effects/shared-types";
+import type { Layer, Scene } from "@open-effects/shared-types";
 import type { EditorState, EditorActions } from "./store.types";
 import { defaultScene, defaultLayer } from "./defaults";
 import { ANIMATABLE_KEYS } from "@open-effects/runtime";
@@ -20,6 +20,15 @@ function mutateLayer(
       return;
     }
   }
+}
+
+function mutateScene(
+  state: EditorState,
+  sceneId: string,
+  mut: (sc: Scene) => void,
+): void {
+  const sc = state.project.scenes.find((x) => x.id === sceneId);
+  if (sc) mut(sc);
 }
 
 export const useEditorStore = create<StoreState>()(
@@ -54,6 +63,14 @@ export const useEditorStore = create<StoreState>()(
     selectLayer: (id) =>
       set((s) => {
         s.selectedLayerId = id;
+        if (id) {
+          for (const sc of s.project.scenes) {
+            if (sc.layers.some((l) => l.id === id)) {
+              s.selectedSceneId = sc.id;
+              break;
+            }
+          }
+        }
       }),
 
     setCurrentFrame: (f) =>
@@ -102,7 +119,53 @@ export const useEditorStore = create<StoreState>()(
         sc.durationFrames = durationFrames;
         sc.layers.forEach((l) => {
           if (l.endFrame > durationFrames) l.endFrame = durationFrames;
+          if (l.startFrame > durationFrames - 1) {
+            l.startFrame = Math.max(0, durationFrames - 1);
+          }
+          if (l.endFrame <= l.startFrame) {
+            l.endFrame = Math.min(durationFrames, l.startFrame + 1);
+          }
         });
+      }),
+
+    updateSceneName: (sceneId, name) =>
+      set((s) =>
+        mutateScene(s, sceneId, (sc) => {
+          const t = name.trim();
+          if (t.length > 0) sc.name = t;
+        }),
+      ),
+
+    updateSceneBackground: (sceneId, background) =>
+      set((s) =>
+        mutateScene(s, sceneId, (sc) => {
+          sc.background = background;
+        }),
+      ),
+
+    adjustSceneBoundaryAt: (sceneId, deltaFrames) =>
+      set((s) => {
+        const ordered = [...s.project.scenes].sort((a, b) => a.order - b.order);
+        const i = ordered.findIndex((x) => x.id === sceneId);
+        if (i <= 0) return;
+        const prev = ordered[i - 1]!;
+        const curr = ordered[i]!;
+        const newPrev = prev.durationFrames + deltaFrames;
+        const newCurr = curr.durationFrames - deltaFrames;
+        if (newPrev < 1 || newCurr < 1) return;
+        prev.durationFrames = newPrev;
+        curr.durationFrames = newCurr;
+        for (const sc of [prev, curr]) {
+          sc.layers.forEach((l) => {
+            if (l.endFrame > sc.durationFrames) l.endFrame = sc.durationFrames;
+            if (l.startFrame > sc.durationFrames - 1) {
+              l.startFrame = Math.max(0, sc.durationFrames - 1);
+            }
+            if (l.endFrame <= l.startFrame) {
+              l.endFrame = Math.min(sc.durationFrames, l.startFrame + 1);
+            }
+          });
+        }
       }),
 
     addLayer: (sceneId) =>
@@ -242,6 +305,78 @@ export const useEditorStore = create<StoreState>()(
       set((s) =>
         mutateLayer(s, layerId, (l) => {
           const kf = l.keyframes.find(
+            (k) => k.property === property && k.frame === frame,
+          );
+          if (kf) kf.easingOut = easingOut;
+        }),
+      ),
+
+    addSceneKeyframe: (sceneId, property, frame, value, easingOut) =>
+      set((s) => {
+        if (!ANIMATABLE_KEYS.includes(property)) {
+          console.warn(`Unknown animatable property: ${property}`);
+          return;
+        }
+        mutateScene(s, sceneId, (sc) => {
+          const hi = Math.max(0, sc.durationFrames - 1);
+          const f = Math.max(0, Math.min(hi, frame));
+          const existing = sc.keyframes.find(
+            (k) => k.property === property && k.frame === f,
+          );
+          if (existing) {
+            existing.value = value;
+            if (easingOut) existing.easingOut = easingOut;
+            return;
+          }
+          sc.keyframes.push({
+            id: newId(),
+            frame: f,
+            property,
+            value,
+            easingOut: easingOut ?? { type: "linear" },
+          });
+        });
+      }),
+
+    deleteSceneKeyframe: (sceneId, property, frame) =>
+      set((s) =>
+        mutateScene(s, sceneId, (sc) => {
+          sc.keyframes = sc.keyframes.filter(
+            (k) => !(k.property === property && k.frame === frame),
+          );
+        }),
+      ),
+
+    moveSceneKeyframe: (sceneId, property, fromFrame, toFrame) =>
+      set((s) =>
+        mutateScene(s, sceneId, (sc) => {
+          const hi = Math.max(0, sc.durationFrames - 1);
+          const tf = Math.max(0, Math.min(hi, toFrame));
+          const collision = sc.keyframes.find(
+            (k) => k.property === property && k.frame === tf,
+          );
+          if (collision) return;
+          const kf = sc.keyframes.find(
+            (k) => k.property === property && k.frame === fromFrame,
+          );
+          if (kf) kf.frame = tf;
+        }),
+      ),
+
+    updateSceneKeyframeValue: (sceneId, property, frame, value) =>
+      set((s) =>
+        mutateScene(s, sceneId, (sc) => {
+          const kf = sc.keyframes.find(
+            (k) => k.property === property && k.frame === frame,
+          );
+          if (kf) kf.value = value;
+        }),
+      ),
+
+    updateSceneKeyframeEasing: (sceneId, property, frame, easingOut) =>
+      set((s) =>
+        mutateScene(s, sceneId, (sc) => {
+          const kf = sc.keyframes.find(
             (k) => k.property === property && k.frame === frame,
           );
           if (kf) kf.easingOut = easingOut;

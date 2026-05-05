@@ -10,7 +10,11 @@ export const twoScenesFixture: Project = {
     {
       id: "s1",
       order: 0,
+      name: "Scene 1",
+      background: "#000000",
       durationFrames: 60,
+      transitionIn: null,
+      keyframes: [],
       layers: [
         {
           id: "L1",
@@ -29,7 +33,11 @@ export const twoScenesFixture: Project = {
     {
       id: "s2",
       order: 1,
+      name: "Scene 2",
+      background: "#000000",
       durationFrames: 60,
+      transitionIn: null,
+      keyframes: [],
       layers: [
         {
           id: "L2",

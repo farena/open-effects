@@ -34,7 +34,11 @@ const makeScene = (
 ) => ({
   id,
   order: 0,
+  name: `Scene ${id}`,
+  background: "#000000",
   durationFrames,
+  transitionIn: null,
+  keyframes: [] as EditorState["project"]["scenes"][number]["keyframes"],
   layers,
   audioTracks: [],
 });

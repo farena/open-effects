@@ -15,7 +15,11 @@ const makeProject = (): Project => ({
     {
       id: SCENE_ID,
       order: 0,
+      name: "Scene 1",
+      background: "#000000",
       durationFrames: 90,
+      transitionIn: null,
+      keyframes: [],
       audioTracks: [],
       layers: [
         {
