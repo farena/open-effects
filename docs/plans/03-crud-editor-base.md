@@ -1,10 +1,18 @@
 # Stage 3 — CRUD + Editor base (no animation) Implementation Plan
 
-> **For agentic workers:** REQUIRED SKILL: `write-plan` for planning and `implementator`/`reviewer` for execution. Read `00-master-plan.md`, `01-foundation-stack.md`, and `02-runtime-engine.md` first. Stage 3 consumes the runtime engine built in Stage 2 — do NOT modify `packages/runtime/*` here. Animation arrives in Stage 4.
+> **For agentic workers:** REQUIRED SKILL: `write-plan` for planning and `implementator`/`reviewer` for execution. Read `00-master-plan.md`, `01-foundation-stack.md`, and `02-runtime-engine.md` first. Stage 3 consumes the runtime engine built in Stage 2 — do NOT modify `packages/runtime/*` here. Animation arrives in Stage 4. Before implementing any UI region (T11, T13–T17), open [`docs/screenshots/editor-layout.png`](../screenshots/editor-layout.png) — it is the single source of truth for editor layout.
 
 **Goal:** Make the editor usable for static composition end-to-end. User creates a project, opens it, adds/removes/reorders scenes and layers, edits HTML and CSS in Monaco, sees the change live in `<Player>`, autosaves to MariaDB, reloads the page, and finds everything intact.
 
 **Architecture:** REST endpoints under `/api/projects` perform DB operations using a hydrate/persist pair (`toProjectJson(db)` ↔ `persistProjectJson(db, json)`) so the wire format matches `@open-effects/shared-types::Project` exactly. The editor page is a Next.js Server Component that fetches the initial project and hands it to a Client `<Editor>` which hydrates a Zustand store. All UI changes mutate the store; autosave debounces 1s and sends `PATCH /api/projects/:id` with the full `Project` JSON. `<Player>` reads `inputProps={{ project }}` from the store.
+
+**Layout reference:** The editor's visual layout MUST follow the wireframe in [`docs/screenshots/editor-layout.png`](../screenshots/editor-layout.png). Subagents implementing UI tasks (T11, T13–T17) should open that file to verify region placement. The wireframe defines four primary regions:
+- **ASSETS** — top-left column. In Stage 3 this hosts the Scenes/Layers panels (Sidebar). Stage 5 will repurpose/extend it for media assets.
+- **PREVIEW** — top-center, the largest region. Hosts `<Player>`.
+- **PROPERTIES** — full-height right column. Hosts the Inspector (Props/HTML/CSS tabs).
+- **TIMELINE** — bottom strip spanning ASSETS + PREVIEW columns (NOT under PROPERTIES).
+
+A Topbar sits above all four regions (not drawn in the wireframe but required for save status / project name). PROPERTIES extends the full body height (rows 2 + 3 in the grid); TIMELINE only spans the left two columns.
 
 **Tech Stack:** Next.js Server + Client Components · Zustand 4 + Immer · `@remotion/player` · `@monaco-editor/react` (loaded with `ssr: false`) · `@dnd-kit/core` + `@dnd-kit/sortable` · shadcn/ui `dialog`, `input`, `tabs`, `select`, `slider`, `tooltip` · Vitest (unit + integration) · zod (request validation, schema reused from `shared-types`).
 
@@ -595,7 +603,7 @@ apps/web/
     } catch { notFound(); }
   }
   ```
-- [ ] **Step 2:** Implement `Editor.tsx` as the Client root:
+- [ ] **Step 2:** Implement `Editor.tsx` as the Client root. The layout MUST match [`docs/screenshots/editor-layout.png`](../../screenshots/editor-layout.png): PROPERTIES (Inspector) is full body height on the right; TIMELINE only spans the ASSETS (Sidebar) + PREVIEW columns at the bottom. Use `grid-template-areas` so the regions match the wireframe exactly:
   ```tsx
   "use client";
   import { useEffect } from "react";
@@ -612,20 +620,33 @@ apps/web/
     const setProject = useEditorStore((s) => s.setProject);
     useEffect(() => { setProject(initialProject); }, [initialProject, setProject]);
     useAutosave();
+    // Grid mirrors docs/screenshots/editor-layout.png:
+    //   row 1 — topbar (full width)
+    //   row 2 — assets | preview | properties
+    //   row 3 — timeline (cols 1-2) | properties (continues)
     return (
-      <div className="grid h-screen grid-rows-[auto_1fr_300px]">
-        <Topbar />
-        <div className="grid grid-cols-[260px_1fr_340px] overflow-hidden">
-          <Sidebar />
-          <PreviewPane />
-          <Inspector />
-        </div>
-        <Timeline />
+      <div
+        className="grid h-screen overflow-hidden"
+        style={{
+          gridTemplateColumns: "260px 1fr 340px",
+          gridTemplateRows: "auto 1fr 300px",
+          gridTemplateAreas: `
+            "topbar     topbar     topbar"
+            "assets     preview    properties"
+            "timeline   timeline   properties"
+          `,
+        }}
+      >
+        <div style={{ gridArea: "topbar" }}><Topbar /></div>
+        <div style={{ gridArea: "assets" }} className="overflow-hidden"><Sidebar /></div>
+        <div style={{ gridArea: "preview" }} className="overflow-hidden"><PreviewPane /></div>
+        <div style={{ gridArea: "properties" }} className="overflow-hidden border-l"><Inspector /></div>
+        <div style={{ gridArea: "timeline" }} className="overflow-hidden border-t"><Timeline /></div>
       </div>
     );
   }
   ```
-- [ ] **Step 3:** Stub `Topbar`, `Sidebar`, `PreviewPane`, `Inspector`, `Timeline` as `<div>` placeholders for now.
+- [ ] **Step 3:** Stub `Topbar`, `Sidebar`, `PreviewPane`, `Inspector`, `Timeline` as `<div>` placeholders for now. Each placeholder should fill its grid cell (e.g. `h-full w-full`) and show its region label so the layout can be visually compared against the wireframe before content is wired up.
 - [ ] **Step 4:** Visual check: navigate to `/projects/<id>` (after Task 12 lets you create one). Initially: 404 — fine for now, will resolve in next tasks.
 - [ ] **Step 5:** Commit: `feat(editor): 3-panel layout shell + Editor root`.
 
