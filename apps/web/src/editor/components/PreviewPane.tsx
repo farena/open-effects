@@ -20,6 +20,7 @@ export function PreviewPane() {
   const project = useEditorStore((s) => s.project);
   const totalFrames = useEditorStore(selectTotalDuration);
   const setCurrentFrame = useEditorStore((s) => s.setCurrentFrame);
+  const currentFrame = useEditorStore((s) => s.currentFrame);
   const playerRef = useRef<PlayerRef>(null);
 
   // Remotion's Player computes the scrubber position as
@@ -43,6 +44,20 @@ export function PreviewPane() {
       player.removeEventListener("frameupdate", handler);
     };
   }, [setCurrentFrame, project.id, hasContent]);
+
+  // Propagate store → Player when currentFrame is changed from a non-Player
+  // source (e.g., Timeline click, Inspector input). Pattern A: check the
+  // player's current frame first to avoid a feedback loop when the Player
+  // itself is the source of the update via the frameupdate listener above.
+  useEffect(() => {
+    if (!hasContent) return;
+    const player = playerRef.current;
+    if (!player) return;
+    const playerFrame = player.getCurrentFrame();
+    if (Math.abs(playerFrame - currentFrame) > 0) {
+      player.seekTo(currentFrame);
+    }
+  }, [currentFrame, hasContent]);
 
   if (!project.id) return null;
 
