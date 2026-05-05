@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScenesPanel } from "./ScenesPanel";
 import { LayersPanel } from "./LayersPanel";
 import { AssetsPanel } from "./AssetsPanel";
+import { ComponentsPanel } from "./ComponentsPanel";
 
 export function Sidebar() {
   return (
@@ -19,6 +20,9 @@ export function Sidebar() {
           <TabsTrigger value="assets" className="flex-1">
             Assets
           </TabsTrigger>
+          <TabsTrigger value="components" className="flex-1">
+            Components
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="scenes" className="flex-1 overflow-hidden mt-0">
           <ScenesPanel />
@@ -28,6 +32,9 @@ export function Sidebar() {
         </TabsContent>
         <TabsContent value="assets" className="flex-1 overflow-hidden mt-0">
           <AssetsPanel />
+        </TabsContent>
+        <TabsContent value="components" className="flex-1 overflow-hidden mt-0">
+          <ComponentsPanel />
         </TabsContent>
       </Tabs>
     </div>
