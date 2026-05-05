@@ -97,4 +97,11 @@ export interface EditorActions {
     frame: number,
     easingOut: Easing,
   ) => void;
+  addAudioTrack: (
+    sceneId: string,
+    asset: { id: string; path: string; durationFrames: number },
+  ) => void;
+  removeAudioTrack: (trackId: string) => void;
+  moveAudioTrack: (trackId: string, startFrame: number) => void;
+  trimAudioTrack: (trackId: string, trimStart: number, trimEnd: number) => void;
 }

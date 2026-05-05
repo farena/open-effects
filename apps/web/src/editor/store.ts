@@ -31,6 +31,20 @@ function mutateScene(
   if (sc) mut(sc);
 }
 
+function mutateAudioTrack(
+  state: EditorState,
+  trackId: string,
+  mut: (t: NonNullable<Scene["audioTracks"][number]>) => void,
+): void {
+  for (const sc of state.project.scenes) {
+    const t = sc.audioTracks.find((x) => x.id === trackId);
+    if (t) {
+      mut(t);
+      return;
+    }
+  }
+}
+
 export const useEditorStore = create<StoreState>()(
   immer((set) => ({
     project: {
@@ -382,5 +396,47 @@ export const useEditorStore = create<StoreState>()(
           if (kf) kf.easingOut = easingOut;
         }),
       ),
+
+    addAudioTrack: (sceneId, asset) =>
+      set((s) => {
+        const sc = s.project.scenes.find((x) => x.id === sceneId);
+        if (!sc) return;
+        sc.audioTracks.push({
+          id: newId(),
+          assetId: asset.id,
+          assetPath: asset.path,
+          startFrame: s.currentFrame,
+          trimStart: 0,
+          trimEnd: asset.durationFrames,
+          eq: null,
+          volumeKeyframes: [],
+        });
+      }),
+
+    removeAudioTrack: (trackId) =>
+      set((s) => {
+        for (const sc of s.project.scenes) {
+          sc.audioTracks = sc.audioTracks.filter((t) => t.id !== trackId);
+        }
+      }),
+
+    moveAudioTrack: (trackId, startFrame) =>
+      set((s) => {
+        mutateAudioTrack(s, trackId, (t) => {
+          t.startFrame = Math.max(0, startFrame);
+        });
+      }),
+
+    trimAudioTrack: (trackId, trimStart, trimEnd) =>
+      set((s) => {
+        if (trimEnd <= trimStart) {
+          console.warn("Invalid trim");
+          return;
+        }
+        mutateAudioTrack(s, trackId, (t) => {
+          t.trimStart = trimStart;
+          t.trimEnd = trimEnd;
+        });
+      }),
   })),
 );
