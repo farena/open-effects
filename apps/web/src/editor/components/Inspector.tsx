@@ -11,6 +11,7 @@ import {
 import { PropsTab } from "./inspector/PropsTab";
 import { HtmlTab } from "./inspector/HtmlTab";
 import { CssTab } from "./inspector/CssTab";
+import { KeyframesTab } from "./inspector/KeyframesTab";
 
 export function Inspector() {
   const layer = useEditorStore(selectActiveLayer);
@@ -31,6 +32,7 @@ export function Inspector() {
         <TabsTrigger value="props">Props</TabsTrigger>
         <TabsTrigger value="html">HTML</TabsTrigger>
         <TabsTrigger value="css">CSS</TabsTrigger>
+        <TabsTrigger value="keyframes">Keyframes</TabsTrigger>
       </TabsList>
 
       <TabsContent value="props" className="flex-1 overflow-y-auto mt-0">
@@ -43,6 +45,10 @@ export function Inspector() {
 
       <TabsContent value="css" className="flex-1 min-h-0 flex flex-col mt-0">
         <CssTab />
+      </TabsContent>
+
+      <TabsContent value="keyframes" className="flex-1 overflow-y-auto mt-0">
+        <KeyframesTab />
       </TabsContent>
     </Tabs>
   );
