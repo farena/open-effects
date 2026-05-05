@@ -18,6 +18,7 @@ dist/
 # Generated assets
 apps/web/public/assets/*
 apps/web/public/renders/*
+apps/web/src/generated/
 
 # Test coverage
 coverage/

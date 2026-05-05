@@ -1,0 +1,104 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  width     Int
+  height    Int
+  fps       Int      @default(30)
+  scenes    Scene[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Scene {
+  id             String       @id @default(cuid())
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId      String
+  order          Int
+  durationFrames Int
+  transitionIn   Json?
+  layers         Layer[]
+  audioTracks    AudioTrack[]
+  @@index([projectId])
+}
+
+model Layer {
+  id         String     @id @default(cuid())
+  scene      Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  sceneId    String
+  order      Int
+  name       String
+  html       String     @db.Text
+  css        String     @db.Text
+  startFrame Int        @default(0)
+  endFrame   Int
+  keyframes  Keyframe[]
+  @@index([sceneId])
+}
+
+model Keyframe {
+  id        String @id @default(cuid())
+  layer     Layer  @relation(fields: [layerId], references: [id], onDelete: Cascade)
+  layerId   String
+  frame     Int
+  property  String
+  value     String @db.Text
+  easingOut Json
+  @@index([layerId, property, frame])
+}
+
+model AudioTrack {
+  id              String           @id @default(cuid())
+  scene           Scene            @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  sceneId         String
+  asset           Asset            @relation(fields: [assetId], references: [id])
+  assetId         String
+  startFrame      Int
+  trimStart       Int              @default(0)
+  trimEnd         Int
+  eq              Json?
+  volumeKeyframes VolumeKeyframe[]
+  @@index([sceneId])
+}
+
+model VolumeKeyframe {
+  id           String     @id @default(cuid())
+  audioTrack   AudioTrack @relation(fields: [audioTrackId], references: [id], onDelete: Cascade)
+  audioTrackId String
+  frame        Int
+  value        Float
+  easingOut    Json
+  @@index([audioTrackId, frame])
+}
+
+model Asset {
+  id          String       @id @default(cuid())
+  type        String       // "image" | "audio" | "video" | "font"
+  filename    String
+  path        String
+  mimeType    String
+  size        Int
+  sha256      String       @unique
+  createdAt   DateTime     @default(now())
+  audioTracks AudioTrack[]
+  @@index([type])
+}
+
+model SavedComponent {
+  id        String   @id @default(cuid())
+  name      String
+  category  String?
+  preview   String?
+  payload   Json
+  createdAt DateTime @default(now())
+  @@index([category])
+}
