@@ -840,23 +840,23 @@ Future-proofing notes baked in:
 
 ## Final task checklist (execution order)
 
-- [ ] T1 — Install Remotion + Vitest in runtime
-- [ ] T2 — Easing schema (TDD)
-- [ ] T3 — Keyframe + VolumeKeyframe schemas (TDD)
-- [ ] T4 — Layer schema (TDD)
-- [ ] T5 — Asset + AudioTrack schemas (TDD)
-- [ ] T6 — Scene + Transition schemas (TDD)
-- [ ] T7 — Project schema (TDD)
-- [ ] T8 — shared-types index barrel
-- [ ] T9 — sanitizeHtml (TDD)
-- [ ] T10 — scopeCss (TDD)
-- [ ] T11 — offset utils (TDD)
-- [ ] T12 — `<Layer>` component (TDD)
-- [ ] T13 — `<SceneRenderer>` + `<OpenEffectsComposition>` (TDD)
-- [ ] T14 — Fixtures (4 files)
-- [ ] T15 — `Root.tsx` for Studio
-- [ ] T16 — runtime index barrel
+- [x] T1 — Install Remotion + Vitest in runtime
+- [x] T2 — Easing schema (TDD)
+- [x] T3 — Keyframe + VolumeKeyframe schemas (TDD)
+- [x] T4 — Layer schema (TDD)
+- [x] T5 — Asset + AudioTrack schemas (TDD)
+- [x] T6 — Scene + Transition schemas (TDD)
+- [x] T7 — Project schema (TDD)
+- [x] T8 — shared-types index barrel
+- [x] T9 — sanitizeHtml (TDD)
+- [x] T10 — scopeCss (TDD)
+- [x] T11 — offset utils (TDD)
+- [x] T12 — `<Layer>` component (TDD)
+- [x] T13 — `<SceneRenderer>` + `<OpenEffectsComposition>` (TDD)
+- [x] T14 — Fixtures (4 files)
+- [x] T15 — `Root.tsx` for Studio
+- [x] T16 — runtime index barrel
 - [ ] T17 — Manual Studio smoke (4 fixtures)
-- [ ] T18 — Stage closure
+- [ ] T18 — Stage closure (root tests + typecheck verified; closure commit pending user)
 
 **Total tasks:** 18 · **Estimate:** 1.5 weeks · **Critical risks:** scoped CSS edge cases (mitigated by tests in T10) and DOMPurify config strictness (T9 covers the obvious vectors; revisit if a fixture in real use trips on an unexpected sanitization).
