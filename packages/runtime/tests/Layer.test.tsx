@@ -1,4 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("remotion", async (orig) => {
+  const actual = await orig<typeof import("remotion")>();
+  return {
+    ...actual,
+    useCurrentFrame: () => 15,
+    useVideoConfig: () => ({ fps: 30, durationInFrames: 30, width: 1920, height: 1080 }),
+  };
+});
+
 import { render } from "@testing-library/react";
 import { Layer } from "@/components/Layer";
 import type { Layer as LayerT } from "@open-effects/shared-types";
@@ -31,5 +41,17 @@ describe("<Layer>", () => {
     const { container } = render(<Layer layer={baseLayer} />);
     const wrapper = container.querySelector('[data-layer-id="L1"]') as HTMLElement;
     expect(wrapper.style.contain).toBe("strict");
+  });
+  it("merges computed inline style from keyframes", () => {
+    const layer: LayerT = {
+      ...baseLayer,
+      keyframes: [
+        { frame: 0,  property: "opacity", value: "0", easingOut: { type: "linear" } },
+        { frame: 30, property: "opacity", value: "1", easingOut: { type: "linear" } },
+      ],
+    };
+    const { container } = render(<Layer layer={layer} />);
+    const wrapper = container.querySelector('[data-layer-id="L1"]') as HTMLElement;
+    expect(parseFloat(wrapper.style.opacity)).toBeCloseTo(0.5, 1);
   });
 });

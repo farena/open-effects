@@ -7,7 +7,8 @@ vi.mock("remotion", async (orig) => {
     ...actual,
     Sequence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     AbsoluteFill: ({ children, style }: any) => <div style={style}>{children}</div>,
-    useCurrentFrame: () => 0
+    useCurrentFrame: () => 0,
+    useVideoConfig: () => ({ fps: 30, durationInFrames: 30, width: 1920, height: 1080 }),
   };
 });
 
