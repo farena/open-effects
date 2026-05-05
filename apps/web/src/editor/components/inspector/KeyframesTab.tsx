@@ -28,7 +28,7 @@ import { EasingEditor } from "./EasingEditor";
 function resolveInitialValue(
   keyframes: Keyframe[],
   property: string,
-  currentFrame: number
+  currentFrame: number,
 ): string {
   if (keyframes.length === 0) {
     return PROPERTIES[property]?.defaultValue ?? "0";
@@ -55,19 +55,12 @@ function easingLabel(kf: Keyframe): string {
 
 /** Convert rgba/rgb string to a hex color for <input type="color">. Returns #000000 on failure. */
 function colorToHex(value: string): string {
-  const m = value.match(
-    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/
-  );
+  const m = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
   if (!m) return "#000000";
   const r = parseInt(m[1], 10);
   const g = parseInt(m[2], 10);
   const b = parseInt(m[3], 10);
-  return (
-    "#" +
-    [r, g, b]
-      .map((n) => n.toString(16).padStart(2, "0"))
-      .join("")
-  );
+  return "#" + [r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("");
 }
 
 /** Convert a hex color string to rgba with full opacity. */
@@ -103,11 +96,15 @@ function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
     meta?.type === "length-px"
       ? "px"
       : meta?.type === "angle-deg"
-      ? "deg"
-      : null;
+        ? "deg"
+        : null;
 
   // Sync frameInput when keyframe.frame changes externally (e.g. move rejected)
-  if (frameInput !== String(keyframe.frame) && document.activeElement?.id !== `frame-${keyframe.id ?? keyframe.frame}-${property}`) {
+  if (
+    frameInput !== String(keyframe.frame) &&
+    document.activeElement?.id !==
+      `frame-${keyframe.id ?? keyframe.frame}-${property}`
+  ) {
     // Only reset when the field is not focused
   }
 
@@ -246,14 +243,21 @@ function AnimatedPropertyBlock({
   }
 
   return (
-    <details open className="border border-border rounded-md overflow-hidden mb-3">
+    <details
+      open
+      className="border border-border rounded-md overflow-hidden mb-3"
+    >
       <summary className="px-3 py-2 text-sm font-medium cursor-pointer select-none bg-muted/40 hover:bg-muted/70 flex items-center justify-between">
         <span>{meta.label}</span>
-        <span className="text-xs text-muted-foreground">{keyframes.length} kf</span>
+        <span className="text-xs text-muted-foreground">
+          {keyframes.length} kf
+        </span>
       </summary>
       <div className="px-3 pb-2">
         {keyframes.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2">No keyframes yet.</p>
+          <p className="text-xs text-muted-foreground py-2">
+            No keyframes yet.
+          </p>
         ) : (
           keyframes.map((kf) => (
             <KeyframeRow
@@ -291,7 +295,9 @@ export function KeyframesTab() {
 
   if (!layer) {
     return (
-      <div className="p-4 text-sm text-muted-foreground">Select a layer to manage keyframes.</div>
+      <div className="p-4 text-sm text-muted-foreground">
+        Select a layer to manage keyframes.
+      </div>
     );
   }
 
@@ -304,41 +310,52 @@ export function KeyframesTab() {
   }
 
   return (
-    <div className="p-4 flex flex-col gap-4 h-full overflow-y-auto">
-      {/* Header: property picker + add button */}
-      <div className="flex items-end gap-2">
-        <PropertyPicker
-          value={selectedProperty}
-          onChange={setSelectedProperty}
-          excludedKeys={animatedProperties}
-        />
-        <Button
-          size="sm"
-          disabled={!selectedProperty}
-          onClick={handleAddKeyframe}
-          className="shrink-0"
-        >
-          + Add keyframe
-        </Button>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-2 py-1">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          Keyframes
+        </span>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          Frame {currentFrame}
+        </span>
       </div>
 
-      {/* Animated properties list */}
-      {animatedProperties.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No animated properties yet. Pick a property above and add a keyframe.
-        </p>
-      ) : (
-        <div className="flex flex-col">
-          {animatedProperties.map((prop) => (
-            <AnimatedPropertyBlock
-              key={prop}
-              layerId={layer.id}
-              property={prop}
-              currentFrame={currentFrame}
-            />
-          ))}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="flex items-center gap-2">
+          <PropertyPicker
+            value={selectedProperty}
+            onChange={setSelectedProperty}
+            excludedKeys={animatedProperties}
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!selectedProperty}
+            onClick={handleAddKeyframe}
+            className="shrink-0"
+          >
+            + Add keyframe
+          </Button>
         </div>
-      )}
+
+        {animatedProperties.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No animated properties yet. Pick a property above and add a
+            keyframe.
+          </p>
+        ) : (
+          <div className="flex flex-col">
+            {animatedProperties.map((prop) => (
+              <AnimatedPropertyBlock
+                key={prop}
+                layerId={layer.id}
+                property={prop}
+                currentFrame={currentFrame}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

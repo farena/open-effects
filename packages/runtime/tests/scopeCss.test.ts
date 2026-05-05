@@ -22,4 +22,19 @@ describe("scopeCss", () => {
     expect(() => scopeCss("not css {{{ ", "[data-layer-id=\"L1\"]")).not.toThrow();
     warn.mockRestore();
   });
+  it("flattens SCSS-style nested rules before prefixing", () => {
+    const out = scopeCss(
+      ".card { color: red; .title { font-size: 20px; } }",
+      "[data-layer-id=\"L1\"]",
+    );
+    expect(out).toContain('[data-layer-id="L1"] .card');
+    expect(out).toContain('[data-layer-id="L1"] .card .title');
+  });
+  it("resolves the parent selector & in nested rules", () => {
+    const out = scopeCss(
+      ".card { &:hover { color: red; } }",
+      "[data-layer-id=\"L1\"]",
+    );
+    expect(out).toContain('[data-layer-id="L1"] .card:hover');
+  });
 });

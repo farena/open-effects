@@ -2,12 +2,7 @@
 
 import { useEditorStore } from "@/editor/store";
 import { selectActiveLayer } from "@/editor/selectors";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PropsTab } from "./inspector/PropsTab";
 import { HtmlTab } from "./inspector/HtmlTab";
 import { CssTab } from "./inspector/CssTab";
@@ -35,19 +30,22 @@ export function Inspector() {
         <TabsTrigger value="keyframes">Keyframes</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="props" className="flex-1 overflow-y-auto mt-0">
+      <TabsContent value="props" className="mt-0 flex min-h-0 flex-1 flex-col">
         <PropsTab />
       </TabsContent>
 
-      <TabsContent value="html" className="flex-1 min-h-0 flex flex-col mt-0">
+      <TabsContent value="html" className="mt-0 flex min-h-0 flex-1 flex-col">
         <HtmlTab />
       </TabsContent>
 
-      <TabsContent value="css" className="flex-1 min-h-0 flex flex-col mt-0">
+      <TabsContent value="css" className="mt-0 flex min-h-0 flex-1 flex-col">
         <CssTab />
       </TabsContent>
 
-      <TabsContent value="keyframes" className="flex-1 overflow-y-auto mt-0">
+      <TabsContent
+        value="keyframes"
+        className="mt-0 flex min-h-0 flex-1 flex-col"
+      >
         <KeyframesTab />
       </TabsContent>
     </Tabs>

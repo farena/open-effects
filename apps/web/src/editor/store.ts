@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import type { Layer } from "@open-effects/shared-types";
-import type { Easing } from "@open-effects/shared-types";
 import type { EditorState, EditorActions } from "./store.types";
 import { defaultScene, defaultLayer } from "./defaults";
 import { ANIMATABLE_KEYS } from "@open-effects/runtime";

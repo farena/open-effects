@@ -6,15 +6,15 @@ import { useEditorStore } from "@/editor/store";
 import { selectTotalDuration } from "@/editor/selectors";
 import { OpenEffectsComposition } from "@open-effects/runtime";
 
-const Player = dynamic(
-  () => import("@remotion/player").then((m) => m.Player),
-  { ssr: false },
-);
+const Player = dynamic(() => import("@remotion/player").then((m) => m.Player), {
+  ssr: false,
+});
 
 // Cast required because Remotion's LooseComponentType expects Record<string, unknown>
 // while OpenEffectsComposition is typed with its specific props.
-const RemotionComp =
-  OpenEffectsComposition as ComponentType<Record<string, unknown>>;
+const RemotionComp = OpenEffectsComposition as ComponentType<
+  Record<string, unknown>
+>;
 
 export function PreviewPane() {
   const project = useEditorStore((s) => s.project);
@@ -67,7 +67,7 @@ export function PreviewPane() {
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-black/90 p-4">
-      <div className="aspect-video w-full max-w-3xl">
+      <div className="aspect-video w-full" style={{ maxHeight: "100%" }}>
         {hasContent ? (
           <Player
             ref={playerRef}

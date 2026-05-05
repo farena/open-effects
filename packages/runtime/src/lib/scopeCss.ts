@@ -1,10 +1,12 @@
 import postcss from "postcss";
+import nested from "postcss-nested";
 import prefixer from "postcss-prefix-selector";
 
 export function scopeCss(css: string, prefix: string): string {
   if (!css.trim()) return "";
   try {
     const result = postcss([
+      nested(),
       prefixer({
         prefix,
         transform(prefix, selector, prefixedSelector) {

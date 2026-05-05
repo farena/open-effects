@@ -35,42 +35,49 @@ export function PropsTab() {
   }
 
   return (
-    <div className="p-4 flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="layer-name">Name</Label>
-        <Input
-          id="layer-name"
-          value={layer.name}
-          onChange={handleNameChange}
-          placeholder="Layer name"
-        />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-2 py-1">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          Props
+        </span>
       </div>
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="layer-name">Name</Label>
+          <Input
+            id="layer-name"
+            value={layer.name}
+            onChange={handleNameChange}
+            placeholder="Layer name"
+          />
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="layer-start-frame">Start Frame</Label>
-        <Input
-          id="layer-start-frame"
-          type="number"
-          min={0}
-          value={layer.startFrame}
-          onChange={handleStartFrameChange}
-        />
-      </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="layer-start-frame">Start Frame</Label>
+          <Input
+            id="layer-start-frame"
+            type="number"
+            min={0}
+            value={layer.startFrame}
+            onChange={handleStartFrameChange}
+          />
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="layer-end-frame">End Frame</Label>
-        <Input
-          id="layer-end-frame"
-          type="number"
-          min={0}
-          max={maxFrame === Infinity ? undefined : maxFrame}
-          value={layer.endFrame}
-          onChange={handleEndFrameChange}
-        />
-      </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="layer-end-frame">End Frame</Label>
+          <Input
+            id="layer-end-frame"
+            type="number"
+            min={0}
+            max={maxFrame === Infinity ? undefined : maxFrame}
+            value={layer.endFrame}
+            onChange={handleEndFrameChange}
+          />
+        </div>
 
-      <div className="text-sm text-muted-foreground">
-        Order: {layer.order}
+        <div className="text-sm text-muted-foreground">
+          Order: {layer.order}
+        </div>
       </div>
     </div>
   );
