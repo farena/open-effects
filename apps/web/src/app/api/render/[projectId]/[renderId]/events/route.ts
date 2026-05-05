@@ -11,6 +11,7 @@ export async function GET(
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
+      // eslint-disable-next-line prefer-const
       let unsub: (() => void) | undefined;
       const send = (job: RenderJob) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(job)}\n\n`));
