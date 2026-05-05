@@ -15,6 +15,3 @@ export const SceneSchema = z.object({
   layers: z.array(LayerSchema).default([]),
   audioTracks: z.array(AudioTrackSchema).default([])
 });
-
-export type Scene = z.infer<typeof SceneSchema>;
-export type Transition = z.infer<typeof TransitionSchema>;

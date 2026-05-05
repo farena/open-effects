@@ -33,7 +33,3 @@ export const AudioTrackSchema = z.object({
   message: "trimEnd must be > trimStart",
   path: ["trimEnd"]
 });
-
-export type Asset = z.infer<typeof AssetSchema>;
-export type AudioTrack = z.infer<typeof AudioTrackSchema>;
-export type Eq = z.infer<typeof EqSchema>;

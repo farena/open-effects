@@ -9,5 +9,3 @@ export const ProjectSchema = z.object({
   fps: z.union([z.literal(24), z.literal(30), z.literal(60)]),
   scenes: z.array(SceneSchema).default([])
 });
-
-export type Project = z.infer<typeof ProjectSchema>;

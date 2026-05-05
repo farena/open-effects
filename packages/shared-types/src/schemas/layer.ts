@@ -14,5 +14,3 @@ export const LayerSchema = z.object({
   message: "endFrame must be >= startFrame",
   path: ["endFrame"]
 });
-
-export type Layer = z.infer<typeof LayerSchema>;

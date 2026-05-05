@@ -11,4 +11,3 @@ export const EasingSchema = z.discriminatedUnion("type", [
     mass: z.number().positive()
   }) })
 ]);
-export type Easing = z.infer<typeof EasingSchema>;

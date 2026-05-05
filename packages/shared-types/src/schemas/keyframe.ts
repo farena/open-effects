@@ -15,6 +15,3 @@ export const VolumeKeyframeSchema = z.object({
   value: z.number().min(0).max(1),
   easingOut: EasingSchema
 });
-
-export type Keyframe = z.infer<typeof KeyframeSchema>;
-export type VolumeKeyframe = z.infer<typeof VolumeKeyframeSchema>;
