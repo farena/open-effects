@@ -154,6 +154,19 @@ describe("PATCH /api/projects/:id", () => {
     const res = await PATCH(req, { params: Promise.resolve({ id }) });
     expect(res.status).toBe(400);
   });
+
+  it("returns 404 when patching a non-existent project", async () => {
+    const id = "missing-project-id";
+    const req = new Request(`http://localhost/api/projects/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ id, name: "Ghost", width: 1920, height: 1080, fps: 30, scenes: [] }),
+      headers: { "Content-Type": "application/json" }
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id }) });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
+  });
 });
 
 describe("DELETE /api/projects/:id", () => {
@@ -177,5 +190,15 @@ describe("DELETE /api/projects/:id", () => {
       params: Promise.resolve({ id })
     });
     expect(getRes.status).toBe(404);
+  });
+
+  it("returns 404 when deleting a non-existent project", async () => {
+    const id = "missing-project-id";
+    const res = await DELETE(new Request(`http://localhost/api/projects/${id}`, { method: "DELETE" }), {
+      params: Promise.resolve({ id })
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body).toHaveProperty("error");
   });
 });
