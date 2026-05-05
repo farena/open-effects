@@ -373,3 +373,125 @@ describe("SceneSchema", () => {
     }
   });
 });
+
+import { ProjectSchema } from "@/schemas/project";
+
+describe("ProjectSchema", () => {
+  const validScene = {
+    id: "s1",
+    order: 0,
+    durationFrames: 30
+  };
+
+  it("(a) accepts a valid project with 0 scenes", () => {
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "My Project",
+        width: 1920,
+        height: 1080,
+        fps: 30
+      }).success
+    ).toBe(true);
+  });
+
+  it("(b) accepts a valid project with 2 scenes", () => {
+    const scene2 = { id: "s2", order: 1, durationFrames: 60 };
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "My Project",
+        width: 1920,
+        height: 1080,
+        fps: 24,
+        scenes: [validScene, scene2]
+      }).success
+    ).toBe(true);
+  });
+
+  it("(c) rejects width = -1", () => {
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "My Project",
+        width: -1,
+        height: 1080,
+        fps: 30
+      }).success
+    ).toBe(false);
+  });
+
+  it("(d) rejects height = 0", () => {
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "My Project",
+        width: 1920,
+        height: 0,
+        fps: 30
+      }).success
+    ).toBe(false);
+  });
+
+  it("(e) rejects fps = 25", () => {
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "My Project",
+        width: 1920,
+        height: 1080,
+        fps: 25
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects fps = 0", () => {
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "My Project",
+        width: 1920,
+        height: 1080,
+        fps: 0
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects fps = 100", () => {
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "My Project",
+        width: 1920,
+        height: 1080,
+        fps: 100
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects empty name", () => {
+    expect(
+      ProjectSchema.safeParse({
+        id: "p1",
+        name: "",
+        width: 1920,
+        height: 1080,
+        fps: 30
+      }).success
+    ).toBe(false);
+  });
+
+  it("scenes defaults to [] when omitted", () => {
+    const result = ProjectSchema.safeParse({
+      id: "p1",
+      name: "My Project",
+      width: 1920,
+      height: 1080,
+      fps: 60
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.scenes).toEqual([]);
+    }
+  });
+});
