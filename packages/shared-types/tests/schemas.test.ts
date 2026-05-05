@@ -152,3 +152,112 @@ describe("LayerSchema", () => {
     ).toBe(true);
   });
 });
+
+import { AssetSchema, AudioTrackSchema } from "@/schemas/audio";
+
+describe("AssetSchema", () => {
+  it("accepts a valid asset", () => {
+    expect(
+      AssetSchema.safeParse({
+        id: "a1",
+        type: "image",
+        filename: "photo.png",
+        path: "/assets/photo.png",
+        mimeType: "image/png",
+        size: 1024
+      }).success
+    ).toBe(true);
+  });
+
+  it("rejects type='banana'", () => {
+    expect(
+      AssetSchema.safeParse({
+        id: "a1",
+        type: "banana",
+        filename: "photo.png",
+        path: "/assets/photo.png",
+        mimeType: "image/png",
+        size: 1024
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects size <= 0", () => {
+    expect(
+      AssetSchema.safeParse({
+        id: "a1",
+        type: "image",
+        filename: "photo.png",
+        path: "/assets/photo.png",
+        mimeType: "image/png",
+        size: 0
+      }).success
+    ).toBe(false);
+
+    expect(
+      AssetSchema.safeParse({
+        id: "a1",
+        type: "image",
+        filename: "photo.png",
+        path: "/assets/photo.png",
+        mimeType: "image/png",
+        size: -5
+      }).success
+    ).toBe(false);
+  });
+});
+
+describe("AudioTrackSchema", () => {
+  it("accepts a valid track with volumeKeyframes defaulting to []", () => {
+    const result = AudioTrackSchema.safeParse({
+      id: "t1",
+      assetId: "a1",
+      assetPath: "/assets/track.mp3",
+      startFrame: 0,
+      trimStart: 0,
+      trimEnd: 30
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.volumeKeyframes).toEqual([]);
+    }
+  });
+
+  it("accepts a valid track with optional eq", () => {
+    expect(
+      AudioTrackSchema.safeParse({
+        id: "t1",
+        assetId: "a1",
+        assetPath: "/assets/track.mp3",
+        startFrame: 0,
+        trimStart: 0,
+        trimEnd: 30,
+        eq: { low: 0, mid: 0, high: 0, presence: 0 }
+      }).success
+    ).toBe(true);
+  });
+
+  it("rejects trimEnd <= trimStart", () => {
+    expect(
+      AudioTrackSchema.safeParse({
+        id: "t1",
+        assetId: "a1",
+        assetPath: "/assets/track.mp3",
+        startFrame: 0,
+        trimStart: 10,
+        trimEnd: 10
+      }).success
+    ).toBe(false);
+
+    expect(
+      AudioTrackSchema.safeParse({
+        id: "t1",
+        assetId: "a1",
+        assetPath: "/assets/track.mp3",
+        startFrame: 0,
+        trimStart: 10,
+        trimEnd: 5
+      }).success
+    ).toBe(false);
+  });
+});
