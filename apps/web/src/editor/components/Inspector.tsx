@@ -1,17 +1,27 @@
 "use client";
 
 import { useEditorStore } from "@/editor/store";
-import { selectActiveLayer, selectActiveScene } from "@/editor/selectors";
+import {
+  selectActiveLayer,
+  selectActiveScene,
+  selectActiveAudioTrack,
+} from "@/editor/selectors";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PropsTab } from "./inspector/PropsTab";
 import { HtmlTab } from "./inspector/HtmlTab";
 import { CssTab } from "./inspector/CssTab";
 import { KeyframesTab } from "./inspector/KeyframesTab";
 import { SceneTab } from "./inspector/SceneTab";
+import { AudioFxTab } from "./inspector/AudioFxTab";
 
 export function Inspector() {
+  const audioTrack = useEditorStore(selectActiveAudioTrack);
   const layer = useEditorStore(selectActiveLayer);
   const scene = useEditorStore(selectActiveScene);
+
+  if (audioTrack) {
+    return <AudioFxTab />;
+  }
 
   if (layer) {
     return (
@@ -83,7 +93,7 @@ export function Inspector() {
 
   return (
     <div className="p-4 text-sm text-muted-foreground">
-      Select a scene or layer.
+      Select a scene, layer, or audio track.
     </div>
   );
 }
