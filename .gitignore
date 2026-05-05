@@ -14,6 +14,7 @@ dist/
 
 # Cache
 .cache/
+*.tsbuildinfo
 
 # Generated assets
 apps/web/public/assets/*
