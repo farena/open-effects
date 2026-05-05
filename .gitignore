@@ -20,6 +20,7 @@ dist/
 # Generated assets
 apps/web/public/assets/*
 apps/web/public/renders/*
+apps/web/public/components/*
 apps/web/src/generated/
 
 # Test coverage
