@@ -1,3 +1,3 @@
 export default function Home() {
-  return <main>open-effects</main>;
+  return <main className="p-8 text-2xl">open-effects</main>;
 }
