@@ -140,8 +140,11 @@ export function EasingEditor({ easing, onSave }: EasingEditorProps) {
     if (draft.type !== "cubic-bezier") return;
     const num = parseFloat(raw);
     if (isNaN(num)) return;
+    // BezierEasing throws if x1 (index 0) or x2 (index 2) are outside [0, 1].
+    const clamped =
+      index === 0 || index === 2 ? Math.min(1, Math.max(0, num)) : num;
     const params = [...draft.params] as [number, number, number, number];
-    params[index] = num;
+    params[index] = clamped;
     setDraft({ type: "cubic-bezier", params });
   }
 
@@ -189,6 +192,8 @@ export function EasingEditor({ easing, onSave }: EasingEditorProps) {
                 <Input
                   type="number"
                   step={0.01}
+                  min={i === 0 || i === 2 ? 0 : undefined}
+                  max={i === 0 || i === 2 ? 1 : undefined}
                   className="h-7 text-xs px-1 text-center"
                   value={draft.params[i as 0 | 1 | 2 | 3]}
                   onChange={(e) =>
