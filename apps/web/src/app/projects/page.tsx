@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { NewProjectDialog } from "./_components/NewProjectDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export default async function ProjectsPage() {
     <main className="container mx-auto p-8">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Projects</h1>
-        <Button disabled title="New project (Stage 3)">+ New project</Button>
+        <NewProjectDialog />
       </header>
       {projects.length === 0 ? (
         <Card className="mt-8 p-12 text-center text-muted-foreground">
