@@ -7,16 +7,28 @@ describe("EasingSchema", () => {
     expect(EasingSchema.safeParse({ type: "linear" }).success).toBe(true);
   });
   it("accepts cubic-bezier with 4 params", () => {
-    expect(EasingSchema.safeParse({ type: "cubic-bezier", params: [0.25, 0.1, 0.25, 1] }).success).toBe(true);
+    expect(
+      EasingSchema.safeParse({
+        type: "cubic-bezier",
+        params: [0.25, 0.1, 0.25, 1],
+      }).success,
+    ).toBe(true);
   });
   it("accepts spring with damping/stiffness/mass", () => {
-    expect(EasingSchema.safeParse({ type: "spring", params: { damping: 10, stiffness: 100, mass: 1 } }).success).toBe(true);
+    expect(
+      EasingSchema.safeParse({
+        type: "spring",
+        params: { damping: 10, stiffness: 100, mass: 1 },
+      }).success,
+    ).toBe(true);
   });
   it("rejects unknown type", () => {
     expect(EasingSchema.safeParse({ type: "magic" }).success).toBe(false);
   });
   it("rejects cubic-bezier with wrong arity", () => {
-    expect(EasingSchema.safeParse({ type: "cubic-bezier", params: [0, 1] }).success).toBe(false);
+    expect(
+      EasingSchema.safeParse({ type: "cubic-bezier", params: [0, 1] }).success,
+    ).toBe(false);
   });
 });
 
@@ -27,8 +39,8 @@ describe("KeyframeSchema", () => {
         frame: 0,
         property: "opacity",
         value: "1",
-        easingOut: { type: "linear" }
-      }).success
+        easingOut: { type: "linear" },
+      }).success,
     ).toBe(true);
   });
   it("(b) rejects negative frame", () => {
@@ -37,8 +49,8 @@ describe("KeyframeSchema", () => {
         frame: -1,
         property: "opacity",
         value: "1",
-        easingOut: { type: "linear" }
-      }).success
+        easingOut: { type: "linear" },
+      }).success,
     ).toBe(false);
   });
   it("(c) rejects empty property", () => {
@@ -47,8 +59,8 @@ describe("KeyframeSchema", () => {
         frame: 0,
         property: "",
         value: "1",
-        easingOut: { type: "linear" }
-      }).success
+        easingOut: { type: "linear" },
+      }).success,
     ).toBe(false);
   });
   it("(d) rejects bad easingOut", () => {
@@ -57,8 +69,8 @@ describe("KeyframeSchema", () => {
         frame: 0,
         property: "opacity",
         value: "1",
-        easingOut: { type: "unknown-easing" }
-      }).success
+        easingOut: { type: "unknown-easing" },
+      }).success,
     ).toBe(false);
   });
 });
@@ -69,8 +81,8 @@ describe("VolumeKeyframeSchema", () => {
       VolumeKeyframeSchema.safeParse({
         frame: 10,
         value: 0.5,
-        easingOut: { type: "linear" }
-      }).success
+        easingOut: { type: "linear" },
+      }).success,
     ).toBe(true);
   });
   it("(b) rejects value > 1", () => {
@@ -78,8 +90,8 @@ describe("VolumeKeyframeSchema", () => {
       VolumeKeyframeSchema.safeParse({
         frame: 0,
         value: 1.1,
-        easingOut: { type: "linear" }
-      }).success
+        easingOut: { type: "linear" },
+      }).success,
     ).toBe(false);
   });
   it("(c) rejects value < 0", () => {
@@ -87,8 +99,8 @@ describe("VolumeKeyframeSchema", () => {
       VolumeKeyframeSchema.safeParse({
         frame: 0,
         value: -0.1,
-        easingOut: { type: "linear" }
-      }).success
+        easingOut: { type: "linear" },
+      }).success,
     ).toBe(false);
   });
 });
@@ -104,8 +116,8 @@ describe("LayerSchema", () => {
         css: ".title { color: red; }",
         startFrame: 0,
         endFrame: 30,
-        keyframes: []
-      }).success
+        keyframes: [],
+      }).success,
     ).toBe(true);
   });
 
@@ -119,8 +131,8 @@ describe("LayerSchema", () => {
         css: "",
         startFrame: 10,
         endFrame: 5,
-        keyframes: []
-      }).success
+        keyframes: [],
+      }).success,
     ).toBe(false);
   });
 
@@ -133,8 +145,8 @@ describe("LayerSchema", () => {
         css: "",
         startFrame: 0,
         endFrame: 30,
-        keyframes: []
-      }).success
+        keyframes: [],
+      }).success,
     ).toBe(false);
 
     // empty string IS valid
@@ -147,8 +159,8 @@ describe("LayerSchema", () => {
         css: "",
         startFrame: 0,
         endFrame: 30,
-        keyframes: []
-      }).success
+        keyframes: [],
+      }).success,
     ).toBe(true);
   });
 });
@@ -164,8 +176,8 @@ describe("AssetSchema", () => {
         filename: "photo.png",
         path: "/assets/photo.png",
         mimeType: "image/png",
-        size: 1024
-      }).success
+        size: 1024,
+      }).success,
     ).toBe(true);
   });
 
@@ -177,8 +189,8 @@ describe("AssetSchema", () => {
         filename: "photo.png",
         path: "/assets/photo.png",
         mimeType: "image/png",
-        size: 1024
-      }).success
+        size: 1024,
+      }).success,
     ).toBe(false);
   });
 
@@ -190,8 +202,8 @@ describe("AssetSchema", () => {
         filename: "photo.png",
         path: "/assets/photo.png",
         mimeType: "image/png",
-        size: 0
-      }).success
+        size: 0,
+      }).success,
     ).toBe(false);
 
     expect(
@@ -201,8 +213,8 @@ describe("AssetSchema", () => {
         filename: "photo.png",
         path: "/assets/photo.png",
         mimeType: "image/png",
-        size: -5
-      }).success
+        size: -5,
+      }).success,
     ).toBe(false);
   });
 });
@@ -215,7 +227,7 @@ describe("AudioTrackSchema", () => {
       assetPath: "/assets/track.mp3",
       startFrame: 0,
       trimStart: 0,
-      trimEnd: 30
+      trimEnd: 30,
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -232,8 +244,8 @@ describe("AudioTrackSchema", () => {
         startFrame: 0,
         trimStart: 0,
         trimEnd: 30,
-        eq: { low: 0, mid: 0, high: 0, presence: 0 }
-      }).success
+        eq: { low: 0, mid: 0, high: 0, presence: 0 },
+      }).success,
     ).toBe(true);
   });
 
@@ -245,8 +257,8 @@ describe("AudioTrackSchema", () => {
         assetPath: "/assets/track.mp3",
         startFrame: 0,
         trimStart: 10,
-        trimEnd: 10
-      }).success
+        trimEnd: 10,
+      }).success,
     ).toBe(false);
 
     expect(
@@ -256,8 +268,8 @@ describe("AudioTrackSchema", () => {
         assetPath: "/assets/track.mp3",
         startFrame: 0,
         trimStart: 10,
-        trimEnd: 5
-      }).success
+        trimEnd: 5,
+      }).success,
     ).toBe(false);
   });
 });
@@ -273,7 +285,7 @@ describe("SceneSchema", () => {
     css: "",
     startFrame: 0,
     endFrame: 30,
-    keyframes: []
+    keyframes: [],
   };
 
   const validAudioTrack = {
@@ -282,7 +294,7 @@ describe("SceneSchema", () => {
     assetPath: "/assets/track.mp3",
     startFrame: 0,
     trimStart: 0,
-    trimEnd: 30
+    trimEnd: 30,
   };
 
   it("(a) accepts valid minimal scene (no transitionIn, no layers/audio)", () => {
@@ -290,8 +302,8 @@ describe("SceneSchema", () => {
       SceneSchema.safeParse({
         id: "s1",
         order: 0,
-        durationFrames: 30
-      }).success
+        durationFrames: 30,
+      }).success,
     ).toBe(true);
   });
 
@@ -302,8 +314,8 @@ describe("SceneSchema", () => {
         order: 0,
         durationFrames: 30,
         layers: [validLayer],
-        audioTracks: [validAudioTrack]
-      }).success
+        audioTracks: [validAudioTrack],
+      }).success,
     ).toBe(true);
   });
 
@@ -312,8 +324,8 @@ describe("SceneSchema", () => {
       SceneSchema.safeParse({
         id: "s1",
         order: 0,
-        durationFrames: 0
-      }).success
+        durationFrames: 0,
+      }).success,
     ).toBe(false);
   });
 
@@ -322,8 +334,8 @@ describe("SceneSchema", () => {
       SceneSchema.safeParse({
         id: "s1",
         order: 0,
-        durationFrames: -1
-      }).success
+        durationFrames: -1,
+      }).success,
     ).toBe(false);
   });
 
@@ -333,8 +345,8 @@ describe("SceneSchema", () => {
         id: "s1",
         order: 0,
         durationFrames: 30,
-        transitionIn: { type: "fade" }
-      }).success
+        transitionIn: { type: "fade" },
+      }).success,
     ).toBe(true);
   });
 
@@ -344,8 +356,8 @@ describe("SceneSchema", () => {
         id: "s1",
         order: 0,
         durationFrames: 30,
-        transitionIn: { type: "spin" }
-      }).success
+        transitionIn: { type: "spin" },
+      }).success,
     ).toBe(false);
   });
 
@@ -355,8 +367,8 @@ describe("SceneSchema", () => {
         id: "s1",
         order: 0,
         durationFrames: 30,
-        transitionIn: null
-      }).success
+        transitionIn: null,
+      }).success,
     ).toBe(true);
   });
 
@@ -365,7 +377,7 @@ describe("SceneSchema", () => {
       id: "s1",
       order: 0,
       durationFrames: 30,
-      transitionIn: { type: "slide-left" }
+      transitionIn: { type: "slide-left" },
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -374,13 +386,17 @@ describe("SceneSchema", () => {
   });
 });
 
+import {
+  SavedComponentPayloadSchema,
+  SavedComponentSchema,
+} from "@/schemas/savedComponent";
 import { ProjectSchema } from "@/schemas/project";
 
 describe("ProjectSchema", () => {
   const validScene = {
     id: "s1",
     order: 0,
-    durationFrames: 30
+    durationFrames: 30,
   };
 
   it("(a) accepts a valid project with 0 scenes", () => {
@@ -390,8 +406,8 @@ describe("ProjectSchema", () => {
         name: "My Project",
         width: 1920,
         height: 1080,
-        fps: 30
-      }).success
+        fps: 30,
+      }).success,
     ).toBe(true);
   });
 
@@ -404,8 +420,8 @@ describe("ProjectSchema", () => {
         width: 1920,
         height: 1080,
         fps: 24,
-        scenes: [validScene, scene2]
-      }).success
+        scenes: [validScene, scene2],
+      }).success,
     ).toBe(true);
   });
 
@@ -416,8 +432,8 @@ describe("ProjectSchema", () => {
         name: "My Project",
         width: -1,
         height: 1080,
-        fps: 30
-      }).success
+        fps: 30,
+      }).success,
     ).toBe(false);
   });
 
@@ -428,8 +444,8 @@ describe("ProjectSchema", () => {
         name: "My Project",
         width: 1920,
         height: 0,
-        fps: 30
-      }).success
+        fps: 30,
+      }).success,
     ).toBe(false);
   });
 
@@ -440,8 +456,8 @@ describe("ProjectSchema", () => {
         name: "My Project",
         width: 1920,
         height: 1080,
-        fps: 25
-      }).success
+        fps: 25,
+      }).success,
     ).toBe(false);
   });
 
@@ -452,8 +468,8 @@ describe("ProjectSchema", () => {
         name: "My Project",
         width: 1920,
         height: 1080,
-        fps: 0
-      }).success
+        fps: 0,
+      }).success,
     ).toBe(false);
   });
 
@@ -464,8 +480,8 @@ describe("ProjectSchema", () => {
         name: "My Project",
         width: 1920,
         height: 1080,
-        fps: 100
-      }).success
+        fps: 100,
+      }).success,
     ).toBe(false);
   });
 
@@ -476,8 +492,8 @@ describe("ProjectSchema", () => {
         name: "",
         width: 1920,
         height: 1080,
-        fps: 30
-      }).success
+        fps: 30,
+      }).success,
     ).toBe(false);
   });
 
@@ -487,11 +503,132 @@ describe("ProjectSchema", () => {
       name: "My Project",
       width: 1920,
       height: 1080,
-      fps: 60
+      fps: 60,
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.scenes).toEqual([]);
     }
+  });
+});
+
+describe("SavedComponentPayloadSchema", () => {
+  const validLayerA = {
+    id: "L1",
+    order: 0,
+    name: "Title",
+    html: "<div>hello</div>",
+    css: "",
+    startFrame: 0,
+    endFrame: 30,
+    keyframes: [],
+  };
+  const validLayerB = {
+    id: "L2",
+    order: 1,
+    name: "Subtitle",
+    html: "<p>world</p>",
+    css: ".x { color: blue; }",
+    startFrame: 5,
+    endFrame: 30,
+    keyframes: [],
+  };
+
+  it("accepts a payload with two valid layers", () => {
+    expect(
+      SavedComponentPayloadSchema.safeParse({
+        layers: [validLayerA, validLayerB],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an empty layers array (min 1)", () => {
+    expect(SavedComponentPayloadSchema.safeParse({ layers: [] }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects a payload containing an invalid layer (missing name)", () => {
+    const invalidLayer = {
+      id: "L3",
+      order: 0,
+      html: "<div>bad</div>",
+      css: "",
+      startFrame: 0,
+      endFrame: 30,
+      keyframes: [],
+    };
+    expect(
+      SavedComponentPayloadSchema.safeParse({ layers: [invalidLayer] }).success,
+    ).toBe(false);
+  });
+});
+
+describe("SavedComponentSchema", () => {
+  const validLayer = {
+    id: "L1",
+    order: 0,
+    name: "Title",
+    html: "<div>hello</div>",
+    css: "",
+    startFrame: 0,
+    endFrame: 30,
+    keyframes: [],
+  };
+  const validPayload = { layers: [validLayer] };
+
+  it("accepts a minimal SavedComponent (id, name, payload)", () => {
+    expect(
+      SavedComponentSchema.safeParse({
+        id: "x",
+        name: "Hero",
+        payload: validPayload,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an empty name", () => {
+    expect(
+      SavedComponentSchema.safeParse({
+        id: "x",
+        name: "",
+        payload: validPayload,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a full SavedComponent with category, preview, and createdAt", () => {
+    expect(
+      SavedComponentSchema.safeParse({
+        id: "x",
+        name: "Hero",
+        category: "intros",
+        preview: "/p.png",
+        payload: validPayload,
+        createdAt: new Date(),
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts category = null", () => {
+    expect(
+      SavedComponentSchema.safeParse({
+        id: "x",
+        name: "Hero",
+        category: null,
+        payload: validPayload,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts preview = null", () => {
+    expect(
+      SavedComponentSchema.safeParse({
+        id: "x",
+        name: "Hero",
+        preview: null,
+        payload: validPayload,
+      }).success,
+    ).toBe(true);
   });
 });
