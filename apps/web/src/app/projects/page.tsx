@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { NewProjectDialog } from "./_components/NewProjectDialog";
+import { DeleteProjectButton } from "./_components/DeleteProjectButton";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,12 @@ export default async function ProjectsPage() {
       ) : (
         <ul className="mt-8 grid grid-cols-3 gap-4">
           {projects.map((p) => (
-            <li key={p.id}><Card className="p-4">{p.name}</Card></li>
+            <li key={p.id}>
+              <Card className="p-4 flex items-center justify-between gap-2">
+                <span className="truncate font-medium">{p.name}</span>
+                <DeleteProjectButton projectId={p.id} projectName={p.name} />
+              </Card>
+            </li>
           ))}
         </ul>
       )}
