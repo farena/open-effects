@@ -57,6 +57,7 @@ export const useEditorStore = create<StoreState>()(
     },
     selectedSceneId: null,
     selectedLayerId: null,
+    selectedAudioTrackId: null,
     currentFrame: 0,
     isPlaying: false,
     saveStatus: "idle",
@@ -77,6 +78,7 @@ export const useEditorStore = create<StoreState>()(
     selectLayer: (id) =>
       set((s) => {
         s.selectedLayerId = id;
+        if (id !== null) s.selectedAudioTrackId = null;
         if (id) {
           for (const sc of s.project.scenes) {
             if (sc.layers.some((l) => l.id === id)) {
@@ -438,5 +440,71 @@ export const useEditorStore = create<StoreState>()(
           t.trimEnd = trimEnd;
         });
       }),
+
+    selectAudioTrack: (id) =>
+      set((s) => {
+        s.selectedAudioTrackId = id;
+        if (id !== null) s.selectedLayerId = null;
+      }),
+
+    addVolumeKeyframe: (trackId, frame, value, easingOut) =>
+      set((s) =>
+        mutateAudioTrack(s, trackId, (t) => {
+          const clamped = Math.max(0, Math.min(1, value));
+          const existing = t.volumeKeyframes.find((k) => k.frame === frame);
+          if (existing) {
+            existing.value = clamped;
+            if (easingOut) existing.easingOut = easingOut;
+            return;
+          }
+          t.volumeKeyframes.push({
+            frame,
+            value: clamped,
+            easingOut: easingOut ?? { type: "linear" },
+          });
+        }),
+      ),
+
+    deleteVolumeKeyframe: (trackId, frame) =>
+      set((s) =>
+        mutateAudioTrack(s, trackId, (t) => {
+          t.volumeKeyframes = t.volumeKeyframes.filter(
+            (k) => k.frame !== frame,
+          );
+        }),
+      ),
+
+    moveVolumeKeyframe: (trackId, fromFrame, toFrame) =>
+      set((s) =>
+        mutateAudioTrack(s, trackId, (t) => {
+          const collision = t.volumeKeyframes.find((k) => k.frame === toFrame);
+          if (collision) return;
+          const kf = t.volumeKeyframes.find((k) => k.frame === fromFrame);
+          if (kf) kf.frame = toFrame;
+        }),
+      ),
+
+    updateVolumeKeyframeValue: (trackId, frame, value) =>
+      set((s) =>
+        mutateAudioTrack(s, trackId, (t) => {
+          const kf = t.volumeKeyframes.find((k) => k.frame === frame);
+          if (kf) kf.value = Math.max(0, Math.min(1, value));
+        }),
+      ),
+
+    updateVolumeKeyframeEasing: (trackId, frame, easingOut) =>
+      set((s) =>
+        mutateAudioTrack(s, trackId, (t) => {
+          const kf = t.volumeKeyframes.find((k) => k.frame === frame);
+          if (kf) kf.easingOut = easingOut;
+        }),
+      ),
+
+    setAudioTrackEq: (trackId, eq) =>
+      set((s) =>
+        mutateAudioTrack(s, trackId, (t) => {
+          t.eq = eq;
+        }),
+      ),
   })),
 );

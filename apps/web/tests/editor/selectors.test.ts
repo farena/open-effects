@@ -6,6 +6,8 @@ import {
   selectTotalDuration,
   selectAnimatedProperties,
   selectKeyframesForProperty,
+  selectActiveAudioTrack,
+  selectVolumeKeyframes,
 } from "@/editor/selectors";
 
 // Minimal helpers to build fake state without React or the real store.
@@ -20,6 +22,7 @@ const makeState = (partial: Partial<EditorState> = {}): EditorState => ({
   },
   selectedSceneId: null,
   selectedLayerId: null,
+  selectedAudioTrackId: null,
   currentFrame: 0,
   isPlaying: false,
   saveStatus: "idle",
@@ -53,6 +56,24 @@ const makeLayer = (id: string) => ({
   endFrame: 90,
   visible: true,
   keyframes: [],
+});
+
+const makeAudioTrack = (
+  id: string,
+  volumeKeyframes: {
+    frame: number;
+    value: number;
+    easingOut: { type: "linear" };
+  }[] = [],
+) => ({
+  id,
+  assetId: "asset-1",
+  assetPath: "/audio.mp3",
+  startFrame: 0,
+  trimStart: 0,
+  trimEnd: 100,
+  eq: null,
+  volumeKeyframes,
 });
 
 // ── selectActiveScene ─────────────────────────────────────────────────────────
@@ -360,5 +381,143 @@ describe("selectKeyframesForProperty", () => {
     expect(selectKeyframesForProperty("transform.translateX")(state)).toEqual(
       [],
     );
+  });
+});
+
+// ── selectActiveAudioTrack ────────────────────────────────────────────────────
+
+describe("selectActiveAudioTrack", () => {
+  it("returns null when selectedAudioTrackId is null", () => {
+    const track = makeAudioTrack("track-1");
+    const scene = {
+      ...makeScene("scene-1"),
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene],
+      },
+      selectedAudioTrackId: null,
+    });
+    expect(selectActiveAudioTrack(state)).toBeNull();
+  });
+
+  it("returns null when selectedAudioTrackId refers to a non-existent track", () => {
+    const track = makeAudioTrack("track-1");
+    const scene = {
+      ...makeScene("scene-1"),
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene],
+      },
+      selectedAudioTrackId: "track-999",
+    });
+    expect(selectActiveAudioTrack(state)).toBeNull();
+  });
+
+  it("returns the matching AudioTrack when id is valid", () => {
+    const track = makeAudioTrack("track-1");
+    const scene = {
+      ...makeScene("scene-1"),
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene],
+      },
+      selectedAudioTrackId: "track-1",
+    });
+    expect(selectActiveAudioTrack(state)).toEqual(track);
+  });
+
+  it("finds a track in the second scene when the first scene does not contain it", () => {
+    const track = makeAudioTrack("track-2");
+    const scene1 = {
+      ...makeScene("scene-1"),
+      audioTracks: [makeAudioTrack("track-1")],
+    };
+    const scene2 = {
+      ...makeScene("scene-2"),
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene1, scene2],
+      },
+      selectedAudioTrackId: "track-2",
+    });
+    expect(selectActiveAudioTrack(state)).toEqual(track);
+  });
+});
+
+// ── selectVolumeKeyframes ─────────────────────────────────────────────────────
+
+describe("selectVolumeKeyframes", () => {
+  it("returns empty array when no audio track is active", () => {
+    const state = makeState({ selectedAudioTrackId: null });
+    expect(selectVolumeKeyframes(state)).toEqual([]);
+  });
+
+  it("returns empty array when active track has no volume keyframes", () => {
+    const track = makeAudioTrack("track-1");
+    const scene = {
+      ...makeScene("scene-1"),
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene],
+      },
+      selectedAudioTrackId: "track-1",
+    });
+    expect(selectVolumeKeyframes(state)).toEqual([]);
+  });
+
+  it("returns the track's volumeKeyframes when a valid track is active", () => {
+    const kf = { frame: 0, value: 0.8, easingOut: { type: "linear" as const } };
+    const track = makeAudioTrack("track-1", [kf]);
+    const scene = {
+      ...makeScene("scene-1"),
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene],
+      },
+      selectedAudioTrackId: "track-1",
+    });
+    expect(selectVolumeKeyframes(state)).toEqual([kf]);
   });
 });

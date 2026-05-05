@@ -1,5 +1,5 @@
 import type { Project } from "@open-effects/shared-types";
-import type { Easing } from "@open-effects/shared-types";
+import type { Easing, Eq } from "@open-effects/shared-types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -7,6 +7,7 @@ export interface EditorState {
   project: Project;
   selectedSceneId: string | null;
   selectedLayerId: string | null;
+  selectedAudioTrackId: string | null;
   currentFrame: number;
   isPlaying: boolean;
   saveStatus: SaveStatus;
@@ -104,4 +105,28 @@ export interface EditorActions {
   removeAudioTrack: (trackId: string) => void;
   moveAudioTrack: (trackId: string, startFrame: number) => void;
   trimAudioTrack: (trackId: string, trimStart: number, trimEnd: number) => void;
+  selectAudioTrack: (id: string | null) => void;
+  addVolumeKeyframe: (
+    trackId: string,
+    frame: number,
+    value: number,
+    easingOut?: Easing,
+  ) => void;
+  deleteVolumeKeyframe: (trackId: string, frame: number) => void;
+  moveVolumeKeyframe: (
+    trackId: string,
+    fromFrame: number,
+    toFrame: number,
+  ) => void;
+  updateVolumeKeyframeValue: (
+    trackId: string,
+    frame: number,
+    value: number,
+  ) => void;
+  updateVolumeKeyframeEasing: (
+    trackId: string,
+    frame: number,
+    easingOut: Easing,
+  ) => void;
+  setAudioTrackEq: (trackId: string, eq: Eq | null) => void;
 }
