@@ -3,6 +3,7 @@
 import { useEditorStore } from "@/editor/store";
 import { Button } from "@/components/ui/button";
 import type { SaveStatus } from "@/editor/store.types";
+import { RenderModal } from "./RenderModal";
 
 /**
  * Returns a human-readable relative time string for a timestamp (ms).
@@ -28,23 +29,17 @@ function SaveIndicator({
   setSaveStatus: (s: SaveStatus) => void;
 }) {
   if (saveStatus === "idle") {
-    return (
-      <span className="text-xs text-muted-foreground">No changes</span>
-    );
+    return <span className="text-xs text-muted-foreground">No changes</span>;
   }
 
   if (saveStatus === "saving") {
-    return (
-      <span className="text-xs text-muted-foreground">Saving…</span>
-    );
+    return <span className="text-xs text-muted-foreground">Saving…</span>;
   }
 
   if (saveStatus === "saved") {
     const timeLabel = lastSavedAt ? relativeTime(lastSavedAt) : "";
     return (
-      <span className="text-xs text-muted-foreground">
-        Saved {timeLabel}
-      </span>
+      <span className="text-xs text-muted-foreground">Saved {timeLabel}</span>
     );
   }
 
@@ -76,9 +71,7 @@ export function Topbar() {
   return (
     <div className="flex h-12 items-center justify-between border-b bg-background px-4">
       {/* LEFT: project name (read-only for v1) */}
-      <span className="text-sm font-medium">
-        {project.name || "Untitled"}
-      </span>
+      <span className="text-sm font-medium">{project.name || "Untitled"}</span>
 
       {/* CENTER: save status indicator */}
       <SaveIndicator
@@ -88,9 +81,14 @@ export function Topbar() {
       />
 
       {/* RIGHT: Render button — enabled in Stage 8 */}
-      <Button variant="default" size="sm" disabled>
-        Render
-      </Button>
+      <RenderModal
+        projectId={project.id}
+        trigger={
+          <Button variant="default" size="sm">
+            Render
+          </Button>
+        }
+      />
     </div>
   );
 }
