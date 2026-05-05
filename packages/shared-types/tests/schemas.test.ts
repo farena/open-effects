@@ -261,3 +261,115 @@ describe("AudioTrackSchema", () => {
     ).toBe(false);
   });
 });
+
+import { SceneSchema } from "@/schemas/scene";
+
+describe("SceneSchema", () => {
+  const validLayer = {
+    id: "L1",
+    order: 0,
+    name: "Title",
+    html: "<div>hello</div>",
+    css: "",
+    startFrame: 0,
+    endFrame: 30,
+    keyframes: []
+  };
+
+  const validAudioTrack = {
+    id: "t1",
+    assetId: "a1",
+    assetPath: "/assets/track.mp3",
+    startFrame: 0,
+    trimStart: 0,
+    trimEnd: 30
+  };
+
+  it("(a) accepts valid minimal scene (no transitionIn, no layers/audio)", () => {
+    expect(
+      SceneSchema.safeParse({
+        id: "s1",
+        order: 0,
+        durationFrames: 30
+      }).success
+    ).toBe(true);
+  });
+
+  it("accepts valid scene with layers and audioTracks", () => {
+    expect(
+      SceneSchema.safeParse({
+        id: "s1",
+        order: 0,
+        durationFrames: 30,
+        layers: [validLayer],
+        audioTracks: [validAudioTrack]
+      }).success
+    ).toBe(true);
+  });
+
+  it("(b) rejects durationFrames = 0", () => {
+    expect(
+      SceneSchema.safeParse({
+        id: "s1",
+        order: 0,
+        durationFrames: 0
+      }).success
+    ).toBe(false);
+  });
+
+  it("(c) rejects durationFrames = -1", () => {
+    expect(
+      SceneSchema.safeParse({
+        id: "s1",
+        order: 0,
+        durationFrames: -1
+      }).success
+    ).toBe(false);
+  });
+
+  it("(d) accepts transitionIn with type 'fade'", () => {
+    expect(
+      SceneSchema.safeParse({
+        id: "s1",
+        order: 0,
+        durationFrames: 30,
+        transitionIn: { type: "fade" }
+      }).success
+    ).toBe(true);
+  });
+
+  it("(e) rejects transitionIn type 'spin'", () => {
+    expect(
+      SceneSchema.safeParse({
+        id: "s1",
+        order: 0,
+        durationFrames: 30,
+        transitionIn: { type: "spin" }
+      }).success
+    ).toBe(false);
+  });
+
+  it("accepts transitionIn = null (nullable)", () => {
+    expect(
+      SceneSchema.safeParse({
+        id: "s1",
+        order: 0,
+        durationFrames: 30,
+        transitionIn: null
+      }).success
+    ).toBe(true);
+  });
+
+  it("transitionIn durationFrames defaults to 15 when omitted", () => {
+    const result = SceneSchema.safeParse({
+      id: "s1",
+      order: 0,
+      durationFrames: 30,
+      transitionIn: { type: "slide-left" }
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.transitionIn?.durationFrames).toBe(15);
+    }
+  });
+});
