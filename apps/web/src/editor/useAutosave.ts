@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useEditorStore } from "./store";
 
 export function useAutosave() {
@@ -23,9 +24,13 @@ export function useAutosave() {
           });
           if (!res.ok) throw new Error(await res.text());
           markSaved();
+          toast.success("Saved", { duration: 1000 });
         } catch (e) {
           console.error("autosave failed", e);
           setSaveStatus("error");
+          toast.error("Autosave failed", {
+            description: e instanceof Error ? e.message : String(e),
+          });
         }
       }, 1000);
     });
