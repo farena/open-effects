@@ -47,6 +47,25 @@ const MAX_LAYER_PANEL_W = 520;
 const DEFAULT_LAYER_PANEL_W = 220;
 const ROW_H = 28;
 const RULER_H = 28;
+/** Must match keyframe rows on the right (header + lane stack with gap/py). */
+const KEYFRAME_SIDEBAR_HEADER_H = 28;
+const KEYFRAME_LANE_ROW_H = 24;
+const KEYFRAME_LANE_GAP = 4;
+const KEYFRAME_LANE_STACK_PY = 8;
+
+function keyframeSectionHeight(propCount: number): number {
+  if (propCount <= 0) return 0;
+  return (
+    KEYFRAME_SIDEBAR_HEADER_H +
+    KEYFRAME_LANE_STACK_PY +
+    propCount * KEYFRAME_LANE_ROW_H +
+    (propCount - 1) * KEYFRAME_LANE_GAP
+  );
+}
+
+function propertyDisplayLabel(property: string): string {
+  return PROPERTIES[property]?.label ?? property;
+}
 /** Scene span bar color (distinct from per-layer label colors). */
 const SCENE_TRACK_BG = "#5b21b6";
 const LABEL_COLORS = [
@@ -152,8 +171,6 @@ function PropertyLane({
     laneRect: DOMRect;
   } | null>(null);
 
-  const label = PROPERTIES[property]?.label ?? property;
-
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>, kfFrame: number) => {
       e.preventDefault();
@@ -201,41 +218,32 @@ function PropertyLane({
   );
 
   return (
-    <div className="flex h-5 w-full items-center gap-2">
-      <span
-        className="w-24 shrink-0 truncate text-right text-[10px] text-muted-foreground"
-        title={label}
-      >
-        {label}
-      </span>
-      <div
-        className="relative h-full shrink-0 rounded bg-muted/25"
-        style={{ width: timelineWidthPx }}
-      >
-        {keyframes.map((kf) => {
-          const globalFrame =
-            dragFrames[kf.frame] !== undefined
-              ? dragFrames[kf.frame]!
-              : sceneOffset + layer.startFrame + kf.frame;
-          const leftPx =
-            total > 0 ? (globalFrame / total) * timelineWidthPx : 0;
+    <div
+      className="relative shrink-0 rounded bg-muted/25"
+      style={{ width: timelineWidthPx, height: KEYFRAME_LANE_ROW_H }}
+    >
+      {keyframes.map((kf) => {
+        const globalFrame =
+          dragFrames[kf.frame] !== undefined
+            ? dragFrames[kf.frame]!
+            : sceneOffset + layer.startFrame + kf.frame;
+        const leftPx = total > 0 ? (globalFrame / total) * timelineWidthPx : 0;
 
-          return (
-            <div
-              key={kf.frame}
-              data-testid="keyframe-dot"
-              className="absolute top-1/2 z-[1] size-2.5 cursor-grab rounded-full bg-primary active:cursor-grabbing"
-              style={{
-                left: `${leftPx}px`,
-                transform: "translate(-50%, -50%)",
-              }}
-              onPointerDown={(e) => handlePointerDown(e, kf.frame)}
-              onPointerMove={(e) => handlePointerMove(e, kf.frame)}
-              onPointerUp={(e) => handlePointerUp(e, kf.frame)}
-            />
-          );
-        })}
-      </div>
+        return (
+          <div
+            key={kf.frame}
+            data-testid="keyframe-dot"
+            className="absolute top-1/2 z-[1] size-2.5 cursor-grab rounded-full bg-primary active:cursor-grabbing"
+            style={{
+              left: `${leftPx}px`,
+              transform: "translate(-50%, -50%)",
+            }}
+            onPointerDown={(e) => handlePointerDown(e, kf.frame)}
+            onPointerMove={(e) => handlePointerMove(e, kf.frame)}
+            onPointerUp={(e) => handlePointerUp(e, kf.frame)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -272,7 +280,6 @@ function ScenePropertyLane({
     laneRect: DOMRect;
   } | null>(null);
 
-  const label = PROPERTIES[property]?.label ?? property;
   const maxLocal = Math.max(0, sceneDuration - 1);
 
   const handlePointerDown = useCallback(
@@ -324,41 +331,32 @@ function ScenePropertyLane({
   );
 
   return (
-    <div className="flex h-5 w-full items-center gap-2">
-      <span
-        className="w-24 shrink-0 truncate text-right text-[10px] text-muted-foreground"
-        title={label}
-      >
-        {label}
-      </span>
-      <div
-        className="relative h-full shrink-0 rounded bg-muted/25"
-        style={{ width: timelineWidthPx }}
-      >
-        {keyframes.map((kf) => {
-          const globalFrame =
-            dragFrames[kf.frame] !== undefined
-              ? dragFrames[kf.frame]!
-              : sceneOffset + kf.frame;
-          const leftPx =
-            total > 0 ? (globalFrame / total) * timelineWidthPx : 0;
+    <div
+      className="relative shrink-0 rounded bg-muted/25"
+      style={{ width: timelineWidthPx, height: KEYFRAME_LANE_ROW_H }}
+    >
+      {keyframes.map((kf) => {
+        const globalFrame =
+          dragFrames[kf.frame] !== undefined
+            ? dragFrames[kf.frame]!
+            : sceneOffset + kf.frame;
+        const leftPx = total > 0 ? (globalFrame / total) * timelineWidthPx : 0;
 
-          return (
-            <div
-              key={kf.frame}
-              data-testid="scene-keyframe-dot"
-              className="absolute top-1/2 z-[1] size-2.5 cursor-grab rounded-full bg-violet-400 active:cursor-grabbing"
-              style={{
-                left: `${leftPx}px`,
-                transform: "translate(-50%, -50%)",
-              }}
-              onPointerDown={(e) => handlePointerDown(e, kf.frame)}
-              onPointerMove={(e) => handlePointerMove(e, kf.frame)}
-              onPointerUp={(e) => handlePointerUp(e, kf.frame)}
-            />
-          );
-        })}
-      </div>
+        return (
+          <div
+            key={kf.frame}
+            data-testid="scene-keyframe-dot"
+            className="absolute top-1/2 z-[1] size-2.5 cursor-grab rounded-full bg-violet-400 active:cursor-grabbing"
+            style={{
+              left: `${leftPx}px`,
+              transform: "translate(-50%, -50%)",
+            }}
+            onPointerDown={(e) => handlePointerDown(e, kf.frame)}
+            onPointerMove={(e) => handlePointerMove(e, kf.frame)}
+            onPointerUp={(e) => handlePointerUp(e, kf.frame)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -898,9 +896,9 @@ export function Timeline() {
     total > 0;
 
   const keyframeBlockHeight = showLayerKeyframeLanes
-    ? 28 + 8 + animatedProps.length * 24
+    ? keyframeSectionHeight(animatedProps.length)
     : showSceneKeyframeLanes
-      ? 28 + 8 + animatedSceneProps.length * 24
+      ? keyframeSectionHeight(animatedSceneProps.length)
       : 0;
 
   const playheadTracksHeight =
@@ -1142,11 +1140,60 @@ export function Timeline() {
                 );
               })}
               {(showLayerKeyframeLanes || showSceneKeyframeLanes) && (
-                <div
-                  className="shrink-0"
-                  style={{ height: keyframeBlockHeight }}
-                  aria-hidden
-                />
+                <>
+                  {showLayerKeyframeLanes && activeLayer && (
+                    <>
+                      <div
+                        className="flex shrink-0 items-center gap-1 border-t border-[#3a3a3a] bg-[#252525] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+                        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+                      >
+                        <span className="min-w-0 flex-1 truncate">
+                          Keyframes · {activeLayer.name}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-1 py-1">
+                        {animatedProps.map((prop) => (
+                          <div
+                            key={prop}
+                            className="flex shrink-0 items-center border-b border-[#2d2d2d] px-2 text-[11px] text-[#c4c4c4]"
+                            style={{ height: KEYFRAME_LANE_ROW_H }}
+                            title={propertyDisplayLabel(prop)}
+                          >
+                            <span className="min-w-0 flex-1 truncate pl-5 font-medium">
+                              {propertyDisplayLabel(prop)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {showSceneKeyframeLanes && activeScene && (
+                    <>
+                      <div
+                        className="flex shrink-0 items-center gap-1 border-t border-[#3a3a3a] bg-[#252525] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+                        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+                      >
+                        <span className="min-w-0 flex-1 truncate">
+                          Scene keyframes · {activeScene.name}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-1 py-1">
+                        {animatedSceneProps.map((prop) => (
+                          <div
+                            key={prop}
+                            className="flex shrink-0 items-center border-b border-[#2d2d2d] px-2 text-[11px] text-[#c4c4c4]"
+                            style={{ height: KEYFRAME_LANE_ROW_H }}
+                            title={propertyDisplayLabel(prop)}
+                          >
+                            <span className="min-w-0 flex-1 truncate pl-5 font-medium">
+                              {propertyDisplayLabel(prop)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1255,11 +1302,16 @@ export function Timeline() {
               </div>
 
               {showLayerKeyframeLanes && activeLayer && (
-                <div className="border-t border-[#3a3a3a] bg-[#202020] px-2 py-1">
-                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]">
-                    Keyframes · {activeLayer.name}
+                <div className="border-t border-[#3a3a3a] bg-[#202020]">
+                  <div
+                    className="flex items-center border-b border-[#2d2d2d] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+                    style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+                  >
+                    <span className="sr-only">
+                      Keyframes timeline for layer {activeLayer.name}
+                    </span>
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 py-1">
                     {animatedProps.map((prop) => (
                       <PropertyLane
                         key={prop}
@@ -1275,11 +1327,16 @@ export function Timeline() {
               )}
 
               {showSceneKeyframeLanes && activeScene && (
-                <div className="border-t border-[#3a3a3a] bg-[#202020] px-2 py-1">
-                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]">
-                    Scene keyframes · {activeScene.name}
+                <div className="border-t border-[#3a3a3a] bg-[#202020]">
+                  <div
+                    className="flex items-center border-b border-[#2d2d2d] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+                    style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+                  >
+                    <span className="sr-only">
+                      Scene keyframes timeline for {activeScene.name}
+                    </span>
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 py-1">
                     {animatedSceneProps.map((prop) => (
                       <ScenePropertyLane
                         key={prop}
