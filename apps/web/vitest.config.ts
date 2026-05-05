@@ -6,6 +6,10 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["dotenv/config"],
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
+    // Tests share a single MariaDB; serialize file execution to avoid
+    // cross-file contention (foreign-key violations from concurrent
+    // deleteMany / create on the same Project rows).
+    fileParallelism: false,
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
