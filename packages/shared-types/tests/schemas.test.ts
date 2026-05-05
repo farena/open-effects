@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { EasingSchema } from "@/schemas/easing";
 import { KeyframeSchema, VolumeKeyframeSchema } from "@/schemas/keyframe";
+import { LayerSchema } from "@/schemas/layer";
 describe("EasingSchema", () => {
   it("accepts linear", () => {
     expect(EasingSchema.safeParse({ type: "linear" }).success).toBe(true);
@@ -89,5 +90,65 @@ describe("VolumeKeyframeSchema", () => {
         easingOut: { type: "linear" }
       }).success
     ).toBe(false);
+  });
+});
+
+describe("LayerSchema", () => {
+  it("accepts a valid layer", () => {
+    expect(
+      LayerSchema.safeParse({
+        id: "L1",
+        order: 0,
+        name: "Title",
+        html: '<div class="title">hello</div>',
+        css: ".title { color: red; }",
+        startFrame: 0,
+        endFrame: 30,
+        keyframes: []
+      }).success
+    ).toBe(true);
+  });
+
+  it("rejects when endFrame < startFrame", () => {
+    expect(
+      LayerSchema.safeParse({
+        id: "L1",
+        order: 0,
+        name: "Title",
+        html: "<div>hello</div>",
+        css: "",
+        startFrame: 10,
+        endFrame: 5,
+        keyframes: []
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects when html field is missing entirely (empty string is allowed)", () => {
+    expect(
+      LayerSchema.safeParse({
+        id: "L1",
+        order: 0,
+        name: "Title",
+        css: "",
+        startFrame: 0,
+        endFrame: 30,
+        keyframes: []
+      }).success
+    ).toBe(false);
+
+    // empty string IS valid
+    expect(
+      LayerSchema.safeParse({
+        id: "L1",
+        order: 0,
+        name: "Title",
+        html: "",
+        css: "",
+        startFrame: 0,
+        endFrame: 30,
+        keyframes: []
+      }).success
+    ).toBe(true);
   });
 });
