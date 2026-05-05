@@ -5,7 +5,18 @@ vi.mock("remotion", async (orig) => {
   return {
     ...actual,
     Sequence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    Audio: ({ src }: { src: string }) => <audio src={src} />,
+    Audio: ({
+      src,
+      volume,
+    }: {
+      src: string;
+      volume?: number | ((frame: number) => number);
+    }) => (
+      <audio
+        src={src}
+        data-volume-fn={typeof volume === "function" ? "function" : "other"}
+      />
+    ),
     useCurrentFrame: () => 0,
     useVideoConfig: () => ({
       fps: 30,
@@ -48,5 +59,19 @@ describe("<AudioTrackPlayer>", () => {
     const audio = container.querySelector("audio");
     expect(audio).toBeTruthy();
     expect(audio!.getAttribute("src")).toBe("/media/audio/voice.wav");
+  });
+
+  it("passes a volume function when volumeKeyframes are provided", () => {
+    const track: AudioTrack = {
+      ...baseTrack,
+      volumeKeyframes: [
+        { frame: 0, value: 0, easingOut: { type: "linear" } },
+        { frame: 30, value: 1, easingOut: { type: "linear" } },
+      ],
+    };
+    const { container } = render(<AudioTrackPlayer track={track} />);
+    const audio = container.querySelector("audio");
+    expect(audio).toBeTruthy();
+    expect(audio!.getAttribute("data-volume-fn")).toBe("function");
   });
 });
