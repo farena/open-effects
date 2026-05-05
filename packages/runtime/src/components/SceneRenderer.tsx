@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import type { Scene } from "@open-effects/shared-types";
 import { Layer } from "./Layer";
+import { AudioTrackPlayer } from "./AudioTrackPlayer";
 import { computeStylesAtFrame } from "../keyframes/computeStylesAtFrame";
 
 export const SceneRenderer: React.FC<{ scene: Scene }> = ({ scene }) => {
@@ -23,6 +24,9 @@ export const SceneRenderer: React.FC<{ scene: Scene }> = ({ scene }) => {
     >
       {layers.map((layer) => (
         <Layer key={layer.id} layer={layer} />
+      ))}
+      {scene.audioTracks.map((t) => (
+        <AudioTrackPlayer key={t.id} track={t} />
       ))}
     </AbsoluteFill>
   );
