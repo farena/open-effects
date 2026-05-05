@@ -44,6 +44,18 @@ export const selectAudioTracksForScene =
   (sceneId: string) => (s: EditorState) =>
     s.project.scenes.find((sc) => sc.id === sceneId)?.audioTracks ?? [];
 
+export const selectActiveAudioTrack = (s: EditorState) => {
+  if (!s.selectedAudioTrackId) return null;
+  for (const sc of s.project.scenes) {
+    const t = sc.audioTracks.find((x) => x.id === s.selectedAudioTrackId);
+    if (t) return t;
+  }
+  return null;
+};
+
+export const selectVolumeKeyframes = (s: EditorState) =>
+  selectActiveAudioTrack(s)?.volumeKeyframes ?? [];
+
 export const selectActiveLayer = (s: EditorState) => {
   for (const sc of s.project.scenes) {
     const l = sc.layers.find((x) => x.id === s.selectedLayerId);
