@@ -16,14 +16,19 @@ export default async function ProjectsPage() {
       </header>
       {projects.length === 0 ? (
         <Card className="mt-8 p-12 text-center text-muted-foreground">
-          No projects yet. Stage 3 will enable creation.
+          No projects yet. Use “+ New project” to create one.
         </Card>
       ) : (
         <ul className="mt-8 grid grid-cols-3 gap-4">
           {projects.map((p) => (
             <li key={p.id}>
               <Card className="p-4 flex items-center justify-between gap-2">
-                <span className="truncate font-medium">{p.name}</span>
+                <Link
+                  href={`/projects/${p.id}`}
+                  className="truncate font-medium hover:underline"
+                >
+                  {p.name}
+                </Link>
                 <DeleteProjectButton projectId={p.id} projectName={p.name} />
               </Card>
             </li>

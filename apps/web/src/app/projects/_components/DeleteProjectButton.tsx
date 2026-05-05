@@ -62,7 +62,7 @@ export function DeleteProjectButton({ projectId, projectName }: DeleteProjectBut
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Eliminar &ldquo;{projectName}&rdquo;?</DialogTitle>
+            <DialogTitle>Delete &ldquo;{projectName}&rdquo;?</DialogTitle>
             <DialogDescription>
               This action cannot be undone. The project and all its data will be permanently deleted.
             </DialogDescription>
