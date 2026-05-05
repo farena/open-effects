@@ -249,6 +249,35 @@ describe("AudioTrackSchema", () => {
     ).toBe(true);
   });
 
+  it("accepts optional assetSha256 field", () => {
+    const withSha = AudioTrackSchema.safeParse({
+      id: "t1",
+      assetId: "a1",
+      assetPath: "/assets/track.mp3",
+      startFrame: 0,
+      trimStart: 0,
+      trimEnd: 30,
+      assetSha256: "abc123",
+    });
+    expect(withSha.success).toBe(true);
+    if (withSha.success) {
+      expect(withSha.data.assetSha256).toBe("abc123");
+    }
+
+    const withoutSha = AudioTrackSchema.safeParse({
+      id: "t1",
+      assetId: "a1",
+      assetPath: "/assets/track.mp3",
+      startFrame: 0,
+      trimStart: 0,
+      trimEnd: 30,
+    });
+    expect(withoutSha.success).toBe(true);
+    if (withoutSha.success) {
+      expect(withoutSha.data.assetSha256).toBeUndefined();
+    }
+  });
+
   it("rejects trimEnd <= trimStart", () => {
     expect(
       AudioTrackSchema.safeParse({
