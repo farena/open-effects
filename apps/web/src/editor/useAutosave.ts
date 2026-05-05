@@ -8,7 +8,12 @@ export function useAutosave() {
     let prevProject = useEditorStore.getState().project;
     const unsub = useEditorStore.subscribe((state) => {
       if (state.project === prevProject) return;
+      // Skip the empty-store → real-project transition that fires when
+      // <Editor> hydrates from the Server Component fetch. Without this,
+      // every page load would PATCH the project back unchanged.
+      const wasHydration = !prevProject.id && !!state.project.id;
       prevProject = state.project;
+      if (wasHydration) return;
       if (timer.current) clearTimeout(timer.current);
       useEditorStore.getState().setSaveStatus("idle");
       timer.current = setTimeout(async () => {
