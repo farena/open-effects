@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import { selectActiveLayer, selectActiveScene } from "@/editor/selectors";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { SaveComponentDialog } from "@/editor/components/SaveComponentDialog";
 
 export function PropsTab() {
   const layer = useEditorStore(selectActiveLayer);
   const scene = useEditorStore(selectActiveScene);
   const updateLayerName = useEditorStore((s) => s.updateLayerName);
   const updateLayerFrames = useEditorStore((s) => s.updateLayerFrames);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   if (!layer) return null;
 
@@ -78,7 +82,23 @@ export function PropsTab() {
         <div className="text-sm text-muted-foreground">
           Order: {layer.order}
         </div>
+
+        <div className="pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setSaveDialogOpen(true)}
+          >
+            Save as component…
+          </Button>
+        </div>
       </div>
+
+      <SaveComponentDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+      />
     </div>
   );
 }
