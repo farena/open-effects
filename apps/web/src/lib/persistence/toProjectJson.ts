@@ -10,17 +10,19 @@ export async function toProjectJson(projectId: string): Promise<Project> {
         include: {
           layers: {
             orderBy: { order: "asc" },
-            include: { keyframes: { orderBy: [{ property: "asc" }, { frame: "asc" }] } }
+            include: {
+              keyframes: { orderBy: [{ property: "asc" }, { frame: "asc" }] },
+            },
           },
           audioTracks: {
             include: {
               asset: true,
-              volumeKeyframes: { orderBy: { frame: "asc" } }
-            }
-          }
-        }
-      }
-    }
+              volumeKeyframes: { orderBy: { frame: "asc" } },
+            },
+          },
+        },
+      },
+    },
   });
 
   const project: Project = {
@@ -33,7 +35,8 @@ export async function toProjectJson(projectId: string): Promise<Project> {
       id: s.id,
       order: s.order,
       durationFrames: s.durationFrames,
-      transitionIn: s.transitionIn as Project["scenes"][number]["transitionIn"] ?? null,
+      transitionIn:
+        (s.transitionIn as Project["scenes"][number]["transitionIn"]) ?? null,
       layers: s.layers.map((l) => ({
         id: l.id,
         order: l.order,
@@ -42,14 +45,15 @@ export async function toProjectJson(projectId: string): Promise<Project> {
         css: l.css,
         startFrame: l.startFrame,
         endFrame: l.endFrame,
+        visible: (l as { visible?: boolean }).visible ?? true,
         keyframes: l.keyframes.map((k) => ({
           id: k.id,
           frame: k.frame,
           property: k.property,
           value: k.value,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          easingOut: k.easingOut as any
-        }))
+          easingOut: k.easingOut as any,
+        })),
       })),
       audioTracks: s.audioTracks.map((t) => ({
         id: t.id,
@@ -59,16 +63,16 @@ export async function toProjectJson(projectId: string): Promise<Project> {
         trimStart: t.trimStart,
         trimEnd: t.trimEnd,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        eq: t.eq as any ?? null,
+        eq: (t.eq as any) ?? null,
         volumeKeyframes: t.volumeKeyframes.map((k) => ({
           id: k.id,
           frame: k.frame,
           value: k.value,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          easingOut: k.easingOut as any
-        }))
-      }))
-    }))
+          easingOut: k.easingOut as any,
+        })),
+      })),
+    })),
   };
 
   return ProjectSchema.parse(project);

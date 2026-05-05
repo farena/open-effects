@@ -30,12 +30,38 @@ export interface EditorActions {
   updateLayerHtml: (layerId: string, html: string) => void;
   updateLayerCss: (layerId: string, css: string) => void;
   updateLayerName: (layerId: string, name: string) => void;
-  updateLayerFrames: (layerId: string, startFrame: number, endFrame: number) => void;
+  updateLayerFrames: (
+    layerId: string,
+    startFrame: number,
+    endFrame: number,
+  ) => void;
+  toggleLayerVisible: (layerId: string) => void;
   setSaveStatus: (s: SaveStatus) => void;
   markSaved: () => void;
-  addKeyframe: (layerId: string, property: string, frame: number, value: string, easingOut?: Easing) => void;
+  addKeyframe: (
+    layerId: string,
+    property: string,
+    frame: number,
+    value: string,
+    easingOut?: Easing,
+  ) => void;
   deleteKeyframe: (layerId: string, property: string, frame: number) => void;
-  moveKeyframe: (layerId: string, property: string, fromFrame: number, toFrame: number) => void;
-  updateKeyframeValue: (layerId: string, property: string, frame: number, value: string) => void;
-  updateKeyframeEasing: (layerId: string, property: string, frame: number, easingOut: Easing) => void;
+  moveKeyframe: (
+    layerId: string,
+    property: string,
+    fromFrame: number,
+    toFrame: number,
+  ) => void;
+  updateKeyframeValue: (
+    layerId: string,
+    property: string,
+    frame: number,
+    value: string,
+  ) => void;
+  updateKeyframeEasing: (
+    layerId: string,
+    property: string,
+    frame: number,
+    easingOut: Easing,
+  ) => void;
 }

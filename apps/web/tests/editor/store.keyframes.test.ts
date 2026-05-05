@@ -26,6 +26,7 @@ const makeProject = (): Project => ({
           css: "",
           startFrame: 0,
           endFrame: 90,
+          visible: true,
           keyframes: [],
         },
       ],
@@ -70,7 +71,9 @@ describe("keyframe store actions", () => {
 
   it("addKeyframe warns and does nothing when property is not in ANIMATABLE_KEYS", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    useEditorStore.getState().addKeyframe(LAYER_ID, "not-a-real-property", 10, "1");
+    useEditorStore
+      .getState()
+      .addKeyframe(LAYER_ID, "not-a-real-property", 10, "1");
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("not-a-real-property"),
     );
@@ -137,7 +140,9 @@ describe("keyframe store actions", () => {
   it("updateKeyframeValue mutates only the targeted keyframe", () => {
     useEditorStore.getState().addKeyframe(LAYER_ID, "opacity", 10, "0.5");
     useEditorStore.getState().addKeyframe(LAYER_ID, "opacity", 20, "0.8");
-    useEditorStore.getState().updateKeyframeValue(LAYER_ID, "opacity", 10, "0.1");
+    useEditorStore
+      .getState()
+      .updateKeyframeValue(LAYER_ID, "opacity", 10, "0.1");
     const kfs = getLayer().keyframes;
     const kf10 = kfs.find((k) => k.frame === 10)!;
     const kf20 = kfs.find((k) => k.frame === 20)!;

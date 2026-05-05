@@ -24,7 +24,14 @@ function mutateLayer(
 
 export const useEditorStore = create<StoreState>()(
   immer((set) => ({
-    project: { id: "", name: "", width: 1920, height: 1080, fps: 30, scenes: [] },
+    project: {
+      id: "",
+      name: "",
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      scenes: [],
+    },
     selectedSceneId: null,
     selectedLayerId: null,
     currentFrame: 0,
@@ -127,19 +134,38 @@ export const useEditorStore = create<StoreState>()(
       }),
 
     updateLayerHtml: (layerId, html) =>
-      set((s) => mutateLayer(s, layerId, (l) => { l.html = html; })),
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          l.html = html;
+        }),
+      ),
 
     updateLayerCss: (layerId, css) =>
-      set((s) => mutateLayer(s, layerId, (l) => { l.css = css; })),
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          l.css = css;
+        }),
+      ),
 
     updateLayerName: (layerId, name) =>
-      set((s) => mutateLayer(s, layerId, (l) => { l.name = name; })),
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          l.name = name;
+        }),
+      ),
 
     updateLayerFrames: (layerId, startFrame, endFrame) =>
       set((s) =>
         mutateLayer(s, layerId, (l) => {
           l.startFrame = startFrame;
           l.endFrame = endFrame;
+        }),
+      ),
+
+    toggleLayerVisible: (layerId) =>
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          l.visible = !l.visible;
         }),
       ),
 

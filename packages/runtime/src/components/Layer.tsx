@@ -8,22 +8,39 @@ import { computeStylesAtFrame } from "../keyframes/computeStylesAtFrame";
 export const Layer: React.FC<{ layer: LayerT }> = ({ layer }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+
+  const visibleOnTimeline =
+    layer.visible && frame >= layer.startFrame && frame < layer.endFrame;
+
   const cleanHtml = useMemo(() => sanitizeHtml(layer.html), [layer.html]);
   const scopedCss = useMemo(
     () => scopeCss(layer.css, `[data-layer-id="${layer.id}"]`),
-    [layer.css, layer.id]
+    [layer.css, layer.id],
   );
+
   const localFrame = frame - layer.startFrame;
-  const animatedStyle = useMemo(
-    () => computeStylesAtFrame(layer.keyframes, localFrame, fps),
-    [layer.keyframes, localFrame, fps]
-  );
+  const animatedStyle = useMemo(() => {
+    if (!visibleOnTimeline) {
+      return {};
+    }
+    return computeStylesAtFrame(layer.keyframes, localFrame, fps);
+  }, [visibleOnTimeline, layer.keyframes, localFrame, fps]);
+
+  if (!visibleOnTimeline) {
+    return null;
+  }
+
   return (
     <>
       {scopedCss && <style dangerouslySetInnerHTML={{ __html: scopedCss }} />}
       <div
         data-layer-id={layer.id}
-        style={{ position: "absolute", inset: 0, contain: "strict", ...animatedStyle }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          contain: "strict",
+          ...animatedStyle,
+        }}
         dangerouslySetInnerHTML={{ __html: cleanHtml }}
       />
     </>

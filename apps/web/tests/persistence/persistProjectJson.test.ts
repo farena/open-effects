@@ -21,15 +21,15 @@ describe("persistProjectJson", () => {
         name: overrides.name ?? "Test Project",
         width: 1920,
         height: 1080,
-        fps: overrides.fps ?? 30
-      }
+        fps: overrides.fps ?? 30,
+      },
     });
   }
 
   // Helper: build a minimal valid Project object for a given DB project id
   function buildProject(
     projectId: string,
-    scenes: Project["scenes"] = []
+    scenes: Project["scenes"] = [],
   ): Project {
     return ProjectSchema.parse({
       id: projectId,
@@ -37,7 +37,7 @@ describe("persistProjectJson", () => {
       width: 1920,
       height: 1080,
       fps: 30,
-      scenes
+      scenes,
     });
   }
 
@@ -59,7 +59,8 @@ describe("persistProjectJson", () => {
             css: "p{color:red}",
             startFrame: 0,
             endFrame: 120,
-            keyframes: []
+            visible: true,
+            keyframes: [],
           },
           {
             id: createId(),
@@ -69,10 +70,11 @@ describe("persistProjectJson", () => {
             css: "",
             startFrame: 0,
             endFrame: 120,
-            keyframes: []
-          }
+            visible: true,
+            keyframes: [],
+          },
         ],
-        audioTracks: []
+        audioTracks: [],
       },
       {
         id: createId(),
@@ -88,7 +90,8 @@ describe("persistProjectJson", () => {
             css: "",
             startFrame: 0,
             endFrame: 60,
-            keyframes: []
+            visible: true,
+            keyframes: [],
           },
           {
             id: createId(),
@@ -98,18 +101,19 @@ describe("persistProjectJson", () => {
             css: "",
             startFrame: 0,
             endFrame: 60,
-            keyframes: []
-          }
+            visible: true,
+            keyframes: [],
+          },
         ],
-        audioTracks: []
-      }
+        audioTracks: [],
+      },
     ]);
 
     await persistProjectJson(row.id, project);
 
     const sceneCount = await db.scene.count({ where: { projectId: row.id } });
     const layerCount = await db.layer.count({
-      where: { scene: { projectId: row.id } }
+      where: { scene: { projectId: row.id } },
     });
 
     expect(sceneCount).toBe(2);
@@ -135,7 +139,8 @@ describe("persistProjectJson", () => {
             css: "",
             startFrame: 0,
             endFrame: 120,
-            keyframes: []
+            visible: true,
+            keyframes: [],
           },
           {
             id: createId(),
@@ -145,10 +150,11 @@ describe("persistProjectJson", () => {
             css: "",
             startFrame: 0,
             endFrame: 120,
-            keyframes: []
-          }
+            visible: true,
+            keyframes: [],
+          },
         ],
-        audioTracks: []
+        audioTracks: [],
       },
       {
         id: createId(),
@@ -164,7 +170,8 @@ describe("persistProjectJson", () => {
             css: "",
             startFrame: 0,
             endFrame: 60,
-            keyframes: []
+            visible: true,
+            keyframes: [],
           },
           {
             id: createId(),
@@ -174,11 +181,12 @@ describe("persistProjectJson", () => {
             css: "",
             startFrame: 0,
             endFrame: 60,
-            keyframes: []
-          }
+            visible: true,
+            keyframes: [],
+          },
         ],
-        audioTracks: []
-      }
+        audioTracks: [],
+      },
     ]);
     await persistProjectJson(row.id, first);
 
@@ -198,20 +206,21 @@ describe("persistProjectJson", () => {
             css: "p{color:blue}",
             startFrame: 0,
             endFrame: 90,
-            keyframes: []
-          }
+            visible: true,
+            keyframes: [],
+          },
         ],
-        audioTracks: []
-      }
+        audioTracks: [],
+      },
     ]);
     await persistProjectJson(row.id, second);
 
     const sceneCount = await db.scene.count({ where: { projectId: row.id } });
     const layerCount = await db.layer.count({
-      where: { scene: { projectId: row.id } }
+      where: { scene: { projectId: row.id } },
     });
     const layers = await db.layer.findMany({
-      where: { scene: { projectId: row.id } }
+      where: { scene: { projectId: row.id } },
     });
 
     expect(sceneCount).toBe(1);
@@ -254,22 +263,23 @@ describe("persistProjectJson", () => {
               css: "h1 { font-size: 48px; color: white; }",
               startFrame: 0,
               endFrame: 240,
+              visible: true,
               keyframes: [
                 {
                   id: keyframeId0,
                   frame: 0,
                   property: "opacity",
                   value: "0",
-                  easingOut: { type: "linear" }
+                  easingOut: { type: "linear" },
                 },
                 {
                   id: keyframeId1,
                   frame: 30,
                   property: "opacity",
                   value: "1",
-                  easingOut: { type: "linear" }
-                }
-              ]
+                  easingOut: { type: "linear" },
+                },
+              ],
             },
             {
               id: layerId1,
@@ -279,7 +289,8 @@ describe("persistProjectJson", () => {
               css: ".bg { background: #000; width: 100%; height: 100%; }",
               startFrame: 0,
               endFrame: 240,
-              keyframes: []
+              visible: true,
+              keyframes: [],
             },
             {
               id: layerId2,
@@ -289,10 +300,11 @@ describe("persistProjectJson", () => {
               css: "p { color: #aaa; font-size: 24px; }",
               startFrame: 30,
               endFrame: 210,
-              keyframes: []
-            }
+              visible: true,
+              keyframes: [],
+            },
           ],
-          audioTracks: []
+          audioTracks: [],
         },
         {
           id: sceneId1,
@@ -308,7 +320,8 @@ describe("persistProjectJson", () => {
               css: "div { color: red; }",
               startFrame: 0,
               endFrame: 120,
-              keyframes: []
+              visible: true,
+              keyframes: [],
             },
             {
               id: layerId4,
@@ -318,7 +331,8 @@ describe("persistProjectJson", () => {
               css: "div { color: green; }",
               startFrame: 0,
               endFrame: 120,
-              keyframes: []
+              visible: true,
+              keyframes: [],
             },
             {
               id: layerId5,
@@ -328,12 +342,13 @@ describe("persistProjectJson", () => {
               css: "div { color: blue; }",
               startFrame: 0,
               endFrame: 120,
-              keyframes: []
-            }
+              visible: true,
+              keyframes: [],
+            },
           ],
-          audioTracks: []
-        }
-      ]
+          audioTracks: [],
+        },
+      ],
     });
 
     await persistProjectJson(row.id, project);
@@ -383,11 +398,11 @@ describe("persistProjectJson", () => {
       width: 1920,
       height: 1080,
       fps: 50, // invalid — only 24 | 30 | 60 allowed
-      scenes: []
+      scenes: [],
     };
 
     await expect(
-      persistProjectJson(row.id, badProject as unknown as Project)
+      persistProjectJson(row.id, badProject as unknown as Project),
     ).rejects.toThrow();
 
     // DB should be untouched — no scenes created

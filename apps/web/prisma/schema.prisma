@@ -41,6 +41,7 @@ model Layer {
   css        String     @db.Text
   startFrame Int        @default(0)
   endFrame   Int
+  visible    Boolean    @default(true)
   keyframes  Keyframe[]
   @@index([sceneId])
 }
