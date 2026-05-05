@@ -1,6 +1,6 @@
 # Decision 08 — Render asset URLs
 
-**Status:** Adopted (pending end-to-end smoke verification — Stage 8 Task 11).
+**Status:** Adopted.
 
 **Date:** 2026-05-05
 
@@ -12,46 +12,54 @@ composition served via `@remotion/bundler`. Compositions reference audio assets 
 so the `src` must resolve from that context.
 
 The original DB-backed audio paths are public URLs of the form `/assets/<sha>.<ext>`,
-served by Next.js from `apps/web/public/assets/`. Those are not reachable from the
-bundle's static serve context, and may include EQ-processed cache files outside `public/`
-(see Stage 6's `processEq` cache under `<repo>/.cache/audio/`).
+served by Next.js from `apps/web/public/assets/`. The pipeline must also serve
+EQ-processed audio that lives outside `public/`, in Stage 6's cache at
+`<cwd>/.cache/audio/<eq-key>.<ext>`.
 
 ## Options considered
 
-- **A. Symlink `apps/web/public/assets/` into the bundle's static dir.** Works, but
-  requires bundler post-processing and breaks when `processEq` returns a path under
-  `.cache/audio/` (outside `public/`).
-- **B. Serve audio via `http://localhost:3000/assets/...`.** Works only when the dev
-  server is running. Brittle for production headless renders. Rejected.
-- **C. Use `file://<absolute-path>` URLs.** Remotion 4's headless Chromium accepts
-  `file://` URLs for media. The render-time `buildRenderProject` already rewrites
-  `assetPath` to `file://<absoluteResolvedPath>` (covering both raw assets in
-  `public/assets/` and EQ-processed caches in `.cache/audio/`).
+- **A. Symlink/mount `public/assets/` and `.cache/audio/` into the bundle's static
+  dir.** Requires bundler-side configuration, plus a writable mount for the EQ cache.
+- **B. Serve audio via HTTP from the Next dev server.** Raw assets are already served
+  at `http://<base>/assets/...`; EQ-processed files require a small proxy route that
+  streams from `.cache/audio/`.
+- **C. Use `file://` URLs.** Initially attempted. **Rejected:** Remotion 4's
+  `renderMedia` rejects non-HTTP(S) URLs at the asset-download stage with
+  `Can only download URLs starting with http:// or https://`. Confirmed empirically.
 
 ## Decision
 
-Adopt **Option C** (`file://` URLs).
+Adopt **Option B**.
 
 `apps/web/src/lib/render/buildRenderProject.ts` rewrites every `AudioTrack.assetPath`
-to `file://<absolute>` after asset resolution and EQ processing. No bundler changes
-or HTTP fallback are required.
+based on whether `processEq` returned a bypass (raw input) or a cached EQ output:
 
-## Verification
+- **Bypass (no EQ):** `assetPath` becomes
+  `<RENDER_BASE_URL><originalPublicPath>`, e.g.
+  `http://localhost:3000/assets/<sha>.mp3`. Served by Next directly from `public/`.
+- **EQ-processed:** `assetPath` becomes
+  `<RENDER_BASE_URL>/api/render/eq-asset/<encoded-filename>`. Served by the new
+  route `apps/web/src/app/api/render/eq-asset/[filename]/route.ts`, which streams the
+  file from `<cwd>/.cache/audio/<filename>` after path-traversal validation.
 
-End-to-end smoke (Stage 8 Task 11):
-
-1. Render a project with at least one audio track that has volume keyframes and EQ.
-2. Confirm the output MP4 plays the audio with both fade and EQ tonal change audible.
-
-If the smoke surfaces silent audio or a Remotion error around asset loading, this
-document must be revised and the implementation switched to Option A (symlinks +
-serving the EQ cache from a writable static dir under the bundle's serve URL).
+`RENDER_BASE_URL` is read from `process.env.RENDER_BASE_URL` and defaults to
+`http://localhost:3000`. Override in non-default deployments.
 
 ## Consequences
 
-- Renders are not portable across machines (the path is absolute on the rendering host).
-  Acceptable: renders happen on the server that holds the assets.
-- The EQ cache directory (`.cache/audio/`) must be writable by the Node process and
-  must persist for the duration of the render. Already true.
-- Future cloud-rendering work would need to revisit this and adopt Option A or upload
-  assets into the bundle.
+- The Next server (dev or prod) must be reachable from the renderer process at
+  `RENDER_BASE_URL` for the duration of the render. In our single-process dev
+  setup this is automatic; the render is initiated by the same server it fetches from.
+- The EQ cache stays at `<cwd>/.cache/audio/` (Stage 6 unchanged); the new proxy
+  route is the only new surface area.
+- Future cloud-rendering work (workers separate from the web app) must either keep
+  `RENDER_BASE_URL` reachable across the network or migrate to Option A (uploading
+  assets into the bundle).
+
+## Security note
+
+The eq-asset route accepts only a filename (no path components, no `..`) and joins
+it strictly under `<cwd>/.cache/audio/`. This prevents traversal but does not
+authenticate the caller; the route is currently open. Acceptable for v1
+single-user dev; if the app is ever exposed publicly, gate this route behind
+session or a render-time signed token.

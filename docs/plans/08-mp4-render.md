@@ -554,16 +554,16 @@ Stage 8 contracts that Stage 9 must respect:
 
 ## Final task checklist (execution order)
 
-- [ ] T1 — `buildRenderProject` (TDD) + add `assetSha256` to AudioTrack
-- [ ] T2 — Asset resolver (TDD)
-- [ ] T3 — Bundle cache
-- [ ] T4 — Render registry + render job + outputPath
-- [ ] T5 — `POST /api/render/:projectId`
-- [ ] T6 — SSE events endpoint
-- [ ] T7 — `useRender` client hook
-- [ ] T8 — Topbar Render button + RenderModal
-- [ ] T9 — Register "Project" composition with calculateMetadata
-- [ ] T10 — Asset URL strategy decision
-- [ ] T11 — Stage closure smoke
+- [x] T1 — `buildRenderProject` (TDD) + add `assetSha256` to AudioTrack
+- [x] T2 — Asset resolver (TDD)
+- [x] T3 — Bundle cache
+- [x] T4 — Render registry + render job + outputPath
+- [x] T5 — `POST /api/render/:projectId`
+- [x] T6 — SSE events endpoint
+- [x] T7 — `useRender` client hook
+- [x] T8 — Topbar Render button + RenderModal
+- [x] T9 — Register "Project" composition with calculateMetadata
+- [x] T10 — Asset URL strategy decision
+- [x] T11 — Stage closure smoke
 
 **Total tasks:** 11 · **Estimate:** 1.5 weeks · **Critical risks:** asset URL handling in headless render (T10 verifies upfront), bundle cold-start (one-time cost, well documented).
