@@ -12,3 +12,4 @@ export type {
   PropertyMeta,
 } from "./keyframes/propertyRegistry";
 export { evalEasing } from "./keyframes/easings";
+export { evalVolumeAtFrame } from "./keyframes/evalVolumeAtFrame";
