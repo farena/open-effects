@@ -13,6 +13,12 @@ import { PropertyPicker } from "./PropertyPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { EasingEditor } from "./EasingEditor";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -86,6 +92,7 @@ interface KeyframeRowProps {
 function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
   const moveKeyframe = useEditorStore((s) => s.moveKeyframe);
   const updateKeyframeValue = useEditorStore((s) => s.updateKeyframeValue);
+  const updateKeyframeEasing = useEditorStore((s) => s.updateKeyframeEasing);
   const deleteKeyframe = useEditorStore((s) => s.deleteKeyframe);
 
   const [frameInput, setFrameInput] = useState(String(keyframe.frame));
@@ -171,21 +178,29 @@ function KeyframeRow({ layerId, property, keyframe }: KeyframeRowProps) {
         )}
       </div>
 
-      {/* Easing button — stub; T12 will wire this to a popover */}
+      {/* Easing button — opens EasingEditor popover */}
       <div className="flex flex-col gap-0.5 shrink-0">
         <Label className="text-xs text-muted-foreground">Easing</Label>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs px-2"
-          data-testid="easing-button"
-          onClick={() => {
-            // TODO: T12 — wire to EasingEditor popover
-            console.log("easing button clicked", property, keyframe.frame);
-          }}
-        >
-          {easingLabel(keyframe)}
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs px-2"
+              data-testid="easing-button"
+            >
+              {easingLabel(keyframe)}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <EasingEditor
+              easing={keyframe.easingOut}
+              onSave={(next) =>
+                updateKeyframeEasing(layerId, property, keyframe.frame, next)
+              }
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Delete */}

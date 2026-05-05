@@ -7,3 +7,4 @@ export { scopeCss } from "./lib/scopeCss";
 export { computeStylesAtFrame } from "./keyframes/computeStylesAtFrame";
 export { PROPERTIES, ANIMATABLE_KEYS } from "./keyframes/propertyRegistry";
 export type { AnimatableType, PropertyMeta } from "./keyframes/propertyRegistry";
+export { evalEasing } from "./keyframes/easings";
