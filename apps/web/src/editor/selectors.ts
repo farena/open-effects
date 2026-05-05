@@ -13,3 +13,19 @@ export const selectActiveLayer = (s: EditorState) => {
 
 export const selectTotalDuration = (s: EditorState) =>
   s.project.scenes.reduce((acc, sc) => acc + sc.durationFrames, 0);
+
+export const selectAnimatedProperties = (s: EditorState): string[] => {
+  const l = selectActiveLayer(s);
+  if (!l) return [];
+  return Array.from(new Set(l.keyframes.map((k) => k.property))).sort();
+};
+
+export const selectKeyframesForProperty =
+  (property: string) =>
+  (s: EditorState) => {
+    const l = selectActiveLayer(s);
+    if (!l) return [];
+    return l.keyframes
+      .filter((k) => k.property === property)
+      .sort((a, b) => a.frame - b.frame);
+  };

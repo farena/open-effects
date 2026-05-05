@@ -4,6 +4,8 @@ import {
   selectActiveScene,
   selectActiveLayer,
   selectTotalDuration,
+  selectAnimatedProperties,
+  selectKeyframesForProperty,
 } from "@/editor/selectors";
 
 // Minimal helpers to build fake state without React or the real store.
@@ -135,5 +137,79 @@ describe("selectTotalDuration", () => {
       },
     });
     expect(selectTotalDuration(state)).toBe(180);
+  });
+});
+
+// ── selectAnimatedProperties ──────────────────────────────────────────────────
+
+describe("selectAnimatedProperties", () => {
+  it("returns [] when no active layer", () => {
+    const state = makeState();
+    expect(selectAnimatedProperties(state)).toEqual([]);
+  });
+
+  it("returns [] when active layer has no keyframes", () => {
+    const layer = makeLayer("layer-1");
+    const scene = makeScene("scene-1", 90, [layer]);
+    const state = makeState({
+      project: { id: "p1", name: "T", width: 1920, height: 1080, fps: 30, scenes: [scene] },
+      selectedLayerId: "layer-1",
+    });
+    expect(selectAnimatedProperties(state)).toEqual([]);
+  });
+
+  it("returns unique sorted list of properties from the active layer keyframes", () => {
+    const layer = {
+      ...makeLayer("layer-1"),
+      keyframes: [
+        { frame: 0, property: "transform.translateX", value: "0px", easingOut: { type: "linear" as const } },
+        { frame: 15, property: "opacity", value: "0.5", easingOut: { type: "linear" as const } },
+        { frame: 30, property: "transform.translateX", value: "100px", easingOut: { type: "linear" as const } },
+        { frame: 30, property: "opacity", value: "1", easingOut: { type: "linear" as const } },
+      ],
+    };
+    const scene = makeScene("scene-1", 90, [layer]);
+    const state = makeState({
+      project: { id: "p1", name: "T", width: 1920, height: 1080, fps: 30, scenes: [scene] },
+      selectedLayerId: "layer-1",
+    });
+    expect(selectAnimatedProperties(state)).toEqual(["opacity", "transform.translateX"]);
+  });
+});
+
+// ── selectKeyframesForProperty ────────────────────────────────────────────────
+
+describe("selectKeyframesForProperty", () => {
+  it("returns [] when no active layer", () => {
+    const state = makeState();
+    expect(selectKeyframesForProperty("opacity")(state)).toEqual([]);
+  });
+
+  it("returns keyframes for the requested property sorted ascending by frame", () => {
+    const kf1 = { frame: 30, property: "opacity", value: "1", easingOut: { type: "linear" as const } };
+    const kf2 = { frame: 0, property: "opacity", value: "0", easingOut: { type: "linear" as const } };
+    const kf3 = { frame: 15, property: "transform.translateX", value: "50px", easingOut: { type: "linear" as const } };
+    const layer = { ...makeLayer("layer-1"), keyframes: [kf1, kf2, kf3] };
+    const scene = makeScene("scene-1", 90, [layer]);
+    const state = makeState({
+      project: { id: "p1", name: "T", width: 1920, height: 1080, fps: 30, scenes: [scene] },
+      selectedLayerId: "layer-1",
+    });
+    expect(selectKeyframesForProperty("opacity")(state)).toEqual([kf2, kf1]);
+  });
+
+  it("returns [] when the property has no keyframes on the active layer", () => {
+    const layer = {
+      ...makeLayer("layer-1"),
+      keyframes: [
+        { frame: 0, property: "opacity", value: "0", easingOut: { type: "linear" as const } },
+      ],
+    };
+    const scene = makeScene("scene-1", 90, [layer]);
+    const state = makeState({
+      project: { id: "p1", name: "T", width: 1920, height: 1080, fps: 30, scenes: [scene] },
+      selectedLayerId: "layer-1",
+    });
+    expect(selectKeyframesForProperty("transform.translateX")(state)).toEqual([]);
   });
 });
