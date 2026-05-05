@@ -62,6 +62,7 @@ export async function toProjectJson(projectId: string): Promise<Project> {
         id: t.id,
         assetId: t.assetId,
         assetPath: t.asset.path,
+        assetSha256: t.asset.sha256,
         startFrame: t.startFrame,
         trimStart: t.trimStart,
         trimEnd: t.trimEnd,

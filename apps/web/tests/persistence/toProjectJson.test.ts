@@ -7,6 +7,7 @@ import { toProjectJson } from "@/lib/persistence";
 describe("toProjectJson", () => {
   beforeEach(async () => {
     await db.project.deleteMany();
+    await db.asset.deleteMany();
   });
 
   afterAll(async () => {
@@ -34,14 +35,14 @@ describe("toProjectJson", () => {
                     html: "<div>Hello</div>",
                     css: "div { color: red; }",
                     startFrame: 0,
-                    endFrame: 300
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      }
+                    endFrame: 300,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
     });
 
     const result = await toProjectJson(created.id);
@@ -73,6 +74,55 @@ describe("toProjectJson", () => {
     expect(layer.keyframes).toHaveLength(0);
   });
 
+  it("populates assetSha256 on audio tracks from the asset's sha256", async () => {
+    const asset = await db.asset.create({
+      data: {
+        type: "audio",
+        filename: "track.mp3",
+        path: "/assets/track.mp3",
+        mimeType: "audio/mpeg",
+        size: 1024,
+        sha256:
+          "deadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678",
+      },
+    });
+
+    const created = await db.project.create({
+      data: {
+        name: "Audio Project",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: {
+          create: [
+            {
+              order: 0,
+              durationFrames: 60,
+              transitionIn: Prisma.JsonNull,
+              audioTracks: {
+                create: [
+                  {
+                    assetId: asset.id,
+                    startFrame: 0,
+                    trimStart: 0,
+                    trimEnd: 60,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await toProjectJson(created.id);
+    const scene = result.scenes[0];
+    expect(scene.audioTracks).toHaveLength(1);
+    expect(scene.audioTracks[0].assetSha256).toBe(
+      "deadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678",
+    );
+  });
+
   it("hydrates a project with 2 scenes, 2 layers each, including 1 keyframe", async () => {
     const created = await db.project.create({
       data: {
@@ -101,10 +151,10 @@ describe("toProjectJson", () => {
                           frame: 10,
                           property: "opacity",
                           value: "0.5",
-                          easingOut: { type: "linear" }
-                        }
-                      ]
-                    }
+                          easingOut: { type: "linear" },
+                        },
+                      ],
+                    },
                   },
                   {
                     order: 1,
@@ -112,10 +162,10 @@ describe("toProjectJson", () => {
                     html: "<p>B</p>",
                     css: "p { color: green; }",
                     startFrame: 0,
-                    endFrame: 120
-                  }
-                ]
-              }
+                    endFrame: 120,
+                  },
+                ],
+              },
             },
             {
               order: 1,
@@ -129,7 +179,7 @@ describe("toProjectJson", () => {
                     html: "<p>C</p>",
                     css: "",
                     startFrame: 0,
-                    endFrame: 60
+                    endFrame: 60,
                   },
                   {
                     order: 1,
@@ -137,14 +187,14 @@ describe("toProjectJson", () => {
                     html: "<p>D</p>",
                     css: "",
                     startFrame: 0,
-                    endFrame: 60
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      }
+                    endFrame: 60,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
     });
 
     const result = await toProjectJson(created.id);
