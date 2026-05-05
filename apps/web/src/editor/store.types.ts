@@ -1,4 +1,5 @@
 import type { Project } from "@open-effects/shared-types";
+import type { Easing } from "@open-effects/shared-types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -32,4 +33,9 @@ export interface EditorActions {
   updateLayerFrames: (layerId: string, startFrame: number, endFrame: number) => void;
   setSaveStatus: (s: SaveStatus) => void;
   markSaved: () => void;
+  addKeyframe: (layerId: string, property: string, frame: number, value: string, easingOut?: Easing) => void;
+  deleteKeyframe: (layerId: string, property: string, frame: number) => void;
+  moveKeyframe: (layerId: string, property: string, fromFrame: number, toFrame: number) => void;
+  updateKeyframeValue: (layerId: string, property: string, frame: number, value: string) => void;
+  updateKeyframeEasing: (layerId: string, property: string, frame: number, easingOut: Easing) => void;
 }

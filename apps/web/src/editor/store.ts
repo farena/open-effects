@@ -1,8 +1,11 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import type { Layer } from "@open-effects/shared-types";
+import type { Easing } from "@open-effects/shared-types";
 import type { EditorState, EditorActions } from "./store.types";
 import { defaultScene, defaultLayer } from "./defaults";
+import { ANIMATABLE_KEYS } from "@open-effects/runtime";
+import { newId } from "@/lib/ids";
 
 type StoreState = EditorState & EditorActions;
 
@@ -151,5 +154,73 @@ export const useEditorStore = create<StoreState>()(
         s.saveStatus = "saved";
         s.lastSavedAt = Date.now();
       }),
+
+    addKeyframe: (layerId, property, frame, value, easingOut) =>
+      set((s) => {
+        if (!ANIMATABLE_KEYS.includes(property)) {
+          console.warn(`Unknown animatable property: ${property}`);
+          return;
+        }
+        mutateLayer(s, layerId, (l) => {
+          const existing = l.keyframes.find(
+            (k) => k.property === property && k.frame === frame,
+          );
+          if (existing) {
+            existing.value = value;
+            if (easingOut) existing.easingOut = easingOut;
+            return;
+          }
+          l.keyframes.push({
+            id: newId(),
+            frame,
+            property,
+            value,
+            easingOut: easingOut ?? { type: "linear" },
+          });
+        });
+      }),
+
+    deleteKeyframe: (layerId, property, frame) =>
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          l.keyframes = l.keyframes.filter(
+            (k) => !(k.property === property && k.frame === frame),
+          );
+        }),
+      ),
+
+    moveKeyframe: (layerId, property, fromFrame, toFrame) =>
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          const collision = l.keyframes.find(
+            (k) => k.property === property && k.frame === toFrame,
+          );
+          if (collision) return;
+          const kf = l.keyframes.find(
+            (k) => k.property === property && k.frame === fromFrame,
+          );
+          if (kf) kf.frame = toFrame;
+        }),
+      ),
+
+    updateKeyframeValue: (layerId, property, frame, value) =>
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          const kf = l.keyframes.find(
+            (k) => k.property === property && k.frame === frame,
+          );
+          if (kf) kf.value = value;
+        }),
+      ),
+
+    updateKeyframeEasing: (layerId, property, frame, easingOut) =>
+      set((s) =>
+        mutateLayer(s, layerId, (l) => {
+          const kf = l.keyframes.find(
+            (k) => k.property === property && k.frame === frame,
+          );
+          if (kf) kf.easingOut = easingOut;
+        }),
+      ),
   })),
 );
