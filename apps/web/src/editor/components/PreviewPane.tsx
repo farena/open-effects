@@ -22,6 +22,9 @@ export function PreviewPane() {
   const setCurrentFrame = useEditorStore((s) => s.setCurrentFrame);
   const currentFrame = useEditorStore((s) => s.currentFrame);
   const playerRef = useRef<PlayerRef>(null);
+  // Tracks the last frame value pushed by Player → store so the reverse
+  // sync (store → Player) can short-circuit and avoid feedback echoes.
+  const lastPlayerFrameRef = useRef<number | null>(null);
 
   // Remotion's Player computes the scrubber position as
   //   currentFrame / (durationInFrames - 1)
@@ -37,6 +40,7 @@ export function PreviewPane() {
     const player = playerRef.current;
     if (!player) return;
     const handler = (e: { detail: { frame: number } }) => {
+      lastPlayerFrameRef.current = e.detail.frame;
       setCurrentFrame(e.detail.frame);
     };
     player.addEventListener("frameupdate", handler);
@@ -46,17 +50,17 @@ export function PreviewPane() {
   }, [setCurrentFrame, project.id, hasContent]);
 
   // Propagate store → Player when currentFrame is changed from a non-Player
-  // source (e.g., Timeline click, Inspector input). Pattern A: check the
-  // player's current frame first to avoid a feedback loop when the Player
-  // itself is the source of the update via the frameupdate listener above.
+  // source (e.g., Timeline click, Inspector input). The lastPlayerFrameRef
+  // guard short-circuits when the store update was itself produced by the
+  // Player → store listener above, eliminating any seek-loop risk even if
+  // the Player's getCurrentFrame() lags after a programmatic seek.
   useEffect(() => {
     if (!hasContent) return;
     const player = playerRef.current;
     if (!player) return;
-    const playerFrame = player.getCurrentFrame();
-    if (Math.abs(playerFrame - currentFrame) > 0) {
-      player.seekTo(currentFrame);
-    }
+    if (lastPlayerFrameRef.current === currentFrame) return;
+    if (player.getCurrentFrame() === currentFrame) return;
+    player.seekTo(currentFrame);
   }, [currentFrame, hasContent]);
 
   if (!project.id) return null;
