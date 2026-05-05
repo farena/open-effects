@@ -2,6 +2,11 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useEditorStore } from "./store";
 
+// Edits typically come in bursts (typing in Monaco, dragging a slider).
+// Wait this long after the last change before persisting so a flurry
+// gets coalesced into a single PATCH carrying the latest project.
+const AUTOSAVE_DEBOUNCE_MS = 5000;
+
 export function useAutosave() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -37,7 +42,7 @@ export function useAutosave() {
             description: e instanceof Error ? e.message : String(e),
           });
         }
-      }, 1000);
+      }, AUTOSAVE_DEBOUNCE_MS);
     });
     return () => {
       unsub();
