@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
-import type { AudioTrack } from "@open-effects/shared-types";
+import type { AudioTrack, VolumeKeyframe } from "@open-effects/shared-types";
 import { Waveform } from "./WavesurferLazy";
 import { useEditorStore } from "@/editor/store";
 
@@ -23,6 +23,105 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
+// ---------------------------------------------------------------------------
+// VolumeKeyframeDot — draggable dot rendered inside AudioStrip body.
+// Placed here (rather than Timeline.tsx) so we can use the strip's own local
+// coordinate system (kf.frame is local to the track's trimStart..trimEnd span)
+// without needing to pass extra coordinate conversion props through Timeline.
+// ---------------------------------------------------------------------------
+
+interface VolumeKeyframeDotProps {
+  trackId: string;
+  kf: VolumeKeyframe;
+  trackLocalDuration: number;
+  stripWidthPx: number;
+}
+
+function VolumeKeyframeDot({
+  trackId,
+  kf,
+  trackLocalDuration,
+  stripWidthPx,
+}: VolumeKeyframeDotProps) {
+  const moveVolumeKeyframe = useEditorStore((s) => s.moveVolumeKeyframe);
+  const [dragFrame, setDragFrame] = useState<number | null>(null);
+
+  const dragState = useRef<{
+    startX: number;
+    originalFrame: number;
+    pxPerFrame: number;
+  } | null>(null);
+
+  const displayFrame = dragFrame !== null ? dragFrame : kf.frame;
+  const leftPx =
+    trackLocalDuration > 0
+      ? (displayFrame / trackLocalDuration) * stripWidthPx
+      : 0;
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      // Prevent strip body drag from firing
+      e.stopPropagation();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      const pxPerFrame =
+        trackLocalDuration > 0 ? stripWidthPx / trackLocalDuration : 1;
+      dragState.current = {
+        startX: e.clientX,
+        originalFrame: kf.frame,
+        pxPerFrame,
+      };
+    },
+    [kf.frame, trackLocalDuration, stripWidthPx],
+  );
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const d = dragState.current;
+      if (!d) return;
+      const dx = e.clientX - d.startX;
+      const deltaFrames = dx / d.pxPerFrame;
+      const next = Math.round(
+        clamp(d.originalFrame + deltaFrames, 0, trackLocalDuration),
+      );
+      setDragFrame(next);
+    },
+    [trackLocalDuration],
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const d = dragState.current;
+      if (!d) return;
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      dragState.current = null;
+      setDragFrame((current) => {
+        if (current !== null && current !== d.originalFrame) {
+          moveVolumeKeyframe(trackId, d.originalFrame, current);
+        }
+        return null;
+      });
+    },
+    [trackId, moveVolumeKeyframe],
+  );
+
+  return (
+    <div
+      data-testid="volume-keyframe-dot"
+      className="absolute top-1/2 z-[2] size-2 cursor-grab rounded-full bg-yellow-400 shadow-sm active:cursor-grabbing"
+      style={{
+        left: `${leftPx}px`,
+        transform: "translate(-50%, -50%)",
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      title={`Volume keyframe @ frame ${kf.frame} · value ${kf.value.toFixed(2)}`}
+    />
+  );
+}
+
 export function AudioStrip({
   track,
   trackName,
@@ -35,6 +134,9 @@ export function AudioStrip({
 }: AudioStripProps) {
   const moveAudioTrack = useEditorStore((s) => s.moveAudioTrack);
   const trimAudioTrack = useEditorStore((s) => s.trimAudioTrack);
+  const selectAudioTrack = useEditorStore((s) => s.selectAudioTrack);
+  const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
+  const isSelected = selectedAudioTrackId === track.id;
 
   const label =
     trackName ??
@@ -67,6 +169,9 @@ export function AudioStrip({
   const onPointerDown = useCallback(
     (e: React.PointerEvent, mode: StripDragMode) => {
       if (!mode) return;
+      if (mode === "move") {
+        selectAudioTrack(track.id);
+      }
       e.stopPropagation();
       e.preventDefault();
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -78,7 +183,13 @@ export function AudioStrip({
         initialTrimEnd: track.trimEnd,
       };
     },
-    [track.startFrame, track.trimStart, track.trimEnd],
+    [
+      track.id,
+      track.startFrame,
+      track.trimStart,
+      track.trimEnd,
+      selectAudioTrack,
+    ],
   );
 
   const onPointerMove = useCallback(
@@ -129,7 +240,7 @@ export function AudioStrip({
   return (
     <div
       data-testid="audio-strip"
-      className="absolute top-1.5 flex h-[calc(100%-12px)] min-w-[6px] items-stretch overflow-hidden rounded-sm border border-black/40 shadow-sm"
+      className={`absolute top-1.5 flex h-[calc(100%-12px)] min-w-[6px] items-stretch overflow-hidden rounded-sm border border-black/40 shadow-sm${isSelected ? " ring-2 ring-white/80" : ""}`}
       style={{
         left: leftPx,
         width: widthPx,
@@ -147,13 +258,22 @@ export function AudioStrip({
       />
 
       <div
-        className="flex min-w-0 flex-1 cursor-grab select-none flex-col justify-center overflow-hidden px-1"
+        className="relative flex min-w-0 flex-1 cursor-grab select-none flex-col justify-center overflow-hidden px-1"
         onPointerDown={(e) => onPointerDown(e, "move")}
       >
         <span className="truncate text-[10px] font-medium leading-none text-white/90">
           {label}
         </span>
         <Waveform src={track.assetPath} height={24} />
+        {(track.volumeKeyframes ?? []).map((kf) => (
+          <VolumeKeyframeDot
+            key={kf.frame}
+            trackId={track.id}
+            kf={kf}
+            trackLocalDuration={track.trimEnd - track.trimStart}
+            stripWidthPx={widthPx}
+          />
+        ))}
       </div>
 
       <div
