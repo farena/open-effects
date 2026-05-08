@@ -297,16 +297,16 @@ No runtime/shared-types changes — the schema already supports unlimited tracks
 
 ## Final task checklist
 
-- [ ] T1 — `splitAudioTrack` action (TDD)
-- [ ] T2 — Split trigger on AudioStrip + `S` shortcut
-- [ ] T3 — Continuity test
-- [ ] T4 — AudioGroupHeader
-- [ ] T5 — AudioLaneRow
-- [ ] T6 — Timeline AUDIO group + stacked lanes
-- [ ] T7 — Trash button parity
-- [ ] T8 — Keyframe dot parity
-- [ ] T9 — AudioPropertyPicker + registry
-- [ ] T10 — AudioFxTab refactor
-- [ ] T11 — Persistence + back-compat smoke
+- [x] T1 — `splitAudioTrack` action (TDD)
+- [x] T2 — Split trigger on AudioStrip + `S` shortcut
+- [x] T3 — Continuity test
+- [x] T4 — AudioGroupHeader
+- [x] T5 — AudioLaneRow
+- [x] T6 — Timeline AUDIO group + stacked lanes
+- [x] T7 — Trash button parity
+- [x] T8 — Keyframe dot parity
+- [x] T9 — AudioPropertyPicker + registry
+- [x] T10 — AudioFxTab refactor
+- [x] T11 — Persistence + back-compat smoke
 
 **Total tasks:** 11 · **Estimate:** ~2 weeks (1 dev). · **Critical risks:** split semantics at boundaries (T1 contract), Timeline DOM restructure regressions (T6 — covered by T11 jsdom test + manual).
