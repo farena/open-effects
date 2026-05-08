@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import { temporal } from "zundo";
 import type { Layer, Scene } from "@open-effects/shared-types";
 import type { EditorState, EditorActions } from "./store.types";
 import { defaultScene, defaultLayer } from "./defaults";
@@ -47,7 +48,8 @@ function mutateAudioTrack(
 }
 
 export const useEditorStore = create<StoreState>()(
-  immer((set) => ({
+  temporal(
+    immer((set) => ({
     project: {
       id: "",
       name: "",
@@ -526,4 +528,13 @@ export const useEditorStore = create<StoreState>()(
         }),
       ),
   })),
+    {
+      partialize: (state) =>
+        ({ project: state.project }) as unknown as StoreState,
+      limit: 100,
+      equality: (a, b) => a.project === b.project,
+    },
+  ),
 );
+
+export const useTemporal = () => useEditorStore.temporal.getState();

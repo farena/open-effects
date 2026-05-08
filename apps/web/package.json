@@ -50,6 +50,7 @@
     "tailwind-merge": "^3.5.0",
     "wavesurfer.js": "^7.12.6",
     "zod": "^3.25.76",
+    "zundo": "^2.3.0",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
