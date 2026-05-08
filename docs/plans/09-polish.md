@@ -78,8 +78,8 @@ packages/runtime/
 **Files:**
 - Modify: `apps/web/src/editor/store.ts`, `store.types.ts`
 
-- [ ] **Step 1:** `npm install zundo -w apps/web`
-- [ ] **Step 2:** Wrap the existing `immer` store with `temporal`:
+- [x] **Step 1:** `npm install zundo -w apps/web`
+- [x] **Step 2:** Wrap the existing `immer` store with `temporal`:
   ```ts
   import { temporal } from "zundo";
   import deepEqual from "fast-deep-equal"; // optional, for equality
@@ -97,8 +97,8 @@ packages/runtime/
 
   export const useTemporal = () => useEditorStore.temporal.getState();
   ```
-- [ ] **Step 3:** Verify nothing breaks: typecheck and existing tests pass.
-- [ ] **Step 4:** Commit: `feat(editor): zundo temporal middleware`.
+- [x] **Step 3:** Verify nothing breaks: typecheck and existing tests pass.
+- [x] **Step 4:** Commit: `feat(editor): zundo temporal middleware`.
 
 ---
 
@@ -444,21 +444,21 @@ This is bonus polish; if time-constrained, drop to the next task.
 
 ## Final task checklist (execution order)
 
-- [ ] T1 — Add zundo middleware
-- [ ] T2 — useUndoRedo + keyboard + Topbar buttons (TDD)
-- [ ] T3 — Verify ephemeral mutations excluded
-- [ ] T4 — Add @remotion/transitions + mapper (TDD)
-- [ ] T5 — Refactor `OpenEffectsComposition` to TransitionSeries
-- [ ] T6 — Update offset math (TDD)
-- [ ] T7 — TransitionTab UI + setSceneTransition action
-- [ ] T8 — Form validation
-- [ ] T9 — Loading + error states
-- [ ] T10 — Empty states
-- [ ] T11 — Performance bench
-- [ ] T12 — Manual stress test
-- [ ] T13 — flushAutosave on render
-- [ ] T14 — (bonus) renders list per project
-- [ ] T15 — Stage closure + v1 acceptance pass
+- [x] T1 — Add zundo middleware
+- [x] T2 — useUndoRedo + keyboard + Topbar buttons (TDD)
+- [x] T3 — Verify ephemeral mutations excluded
+- [x] T4 — Add @remotion/transitions + mapper (TDD)
+- [x] T5 — Refactor `OpenEffectsComposition` to TransitionSeries
+- [x] T6 — Update offset math (TDD)
+- [x] T7 — TransitionTab UI + setSceneTransition action
+- [x] T8 — Form validation
+- [x] T9 — Loading + error states
+- [x] T10 — Empty states
+- [x] T11 — Performance bench
+- [ ] T12 — Manual stress test (deferred — requires browser)
+- [x] T13 — flushAutosave on render
+- [x] T14 — (bonus) renders list per project
+- [ ] T15 — Stage closure + v1 acceptance pass (deferred — manual)
 
 **Total tasks:** 15 (14 if T14 dropped) · **Estimate:** 2 weeks · **Critical risks:** transitions math (covered by T6 unit tests + manual T7), performance under stress (T11 bench + T12 visual).
 
