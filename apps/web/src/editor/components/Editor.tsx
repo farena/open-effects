@@ -77,8 +77,13 @@ export function Editor({ initialProject }: { initialProject: Project }) {
       if (raf != null) return;
       raf = requestAnimationFrame(() => {
         raf = null;
-        setViewportH(window.innerHeight);
-        setTimelineH((h) => clampTimelineHeight(h, window.innerHeight));
+        const vh = window.innerHeight;
+        setViewportH(vh);
+        setTimelineH((h) => {
+          const clamped = clampTimelineHeight(h, vh);
+          if (clamped !== h) writeSavedHeight(clamped);
+          return clamped;
+        });
       });
     };
     window.addEventListener("resize", onResize);

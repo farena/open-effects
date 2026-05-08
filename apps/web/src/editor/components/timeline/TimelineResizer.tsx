@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export function TimelineResizer({
   height,
@@ -13,6 +13,12 @@ export function TimelineResizer({
   const startY = useRef(0);
   const startH = useRef(0);
   const draggingRef = useRef(false);
+  // Mirrors the parent-clamped height so onCommit reads the latest
+  // value synchronously, not the React prop which may be one render behind.
+  const latestHRef = useRef(height);
+  useEffect(() => {
+    latestHRef.current = height;
+  }, [height]);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -39,9 +45,9 @@ export function TimelineResizer({
       if (!draggingRef.current) return;
       draggingRef.current = false;
       e.currentTarget.releasePointerCapture(e.pointerId);
-      onCommit(height);
+      onCommit(latestHRef.current);
     },
-    [height, onCommit],
+    [onCommit],
   );
 
   return (
