@@ -151,16 +151,18 @@ curl -N -H "Accept: text/event-stream" \
 Example event stream:
 
 ```
-data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"pending","percent":0}
+data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"queued","progress":0,"startedAt":1746704400000}
 
-data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"running","percent":23}
+data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"rendering","progress":0.23,"startedAt":1746704400000}
 
-data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"running","percent":78}
+data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"rendering","progress":0.78,"startedAt":1746704400000}
 
-data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"completed","percent":100,"outputPath":"/renders/proj_clxyz456/2026-05-08T12-00-00-000Z.mp4"}
+data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"completed","progress":1,"outputUrl":"/renders/proj_clxyz456/2026-05-08T12-00-00-000Z.mp4","startedAt":1746704400000,"finishedAt":1746704430000}
 ```
 
-When `status` is `completed`, the `outputPath` field contains the public path
+`status` progresses through `queued` → `bundling` → `rendering` → `completed`
+(or `error`). `progress` is a 0..1 fraction (multiply by 100 for a percent).
+When `status` is `completed`, the `outputUrl` field contains the public path
 of the output MP4.
 
 To handle errors: when `status` is `error`, the `error` field contains a
@@ -172,13 +174,14 @@ again.
 ## Step 6 — Download the MP4
 
 The output MP4 is served as a static Next.js asset from the `public/renders/`
-directory. Construct the download URL from the `outputPath` returned in step 5.
+directory. Construct the download URL from the `outputUrl` returned in step 5
+(it has no `/api/` prefix — it is a public static path).
 
 ```bash
-OUTPUT_PATH="/renders/proj_clxyz456/2026-05-08T12-00-00-000Z.mp4"
-FILENAME=$(basename "${OUTPUT_PATH}")
+OUTPUT_URL="/renders/proj_clxyz456/2026-05-08T12-00-00-000Z.mp4"
+FILENAME=$(basename "${OUTPUT_URL}")
 
-curl -s -o "${FILENAME}" "http://localhost:3000${OUTPUT_PATH}"
+curl -s -o "${FILENAME}" "http://localhost:3000${OUTPUT_URL}"
 echo "Downloaded to ${FILENAME}"
 ```
 
@@ -240,15 +243,16 @@ echo "Render id=${RENDER_ID}"
 
 # 5. Follow SSE until done
 echo "=== Waiting for render..."
-OUTPUT_PATH=""
+OUTPUT_URL=""
 while IFS= read -r line; do
   if [[ "${line}" == data:* ]]; then
     JOB="${line#data: }"
     STATUS=$(echo "${JOB}" | jq -r '.status')
-    PERCENT=$(echo "${JOB}" | jq -r '.percent // 0')
+    # progress is a 0..1 fraction; convert to percent for display
+    PERCENT=$(echo "${JOB}" | jq -r '((.progress // 0) * 100 | floor)')
     echo "  [${STATUS}] ${PERCENT}%"
     if [[ "${STATUS}" == "completed" ]]; then
-      OUTPUT_PATH=$(echo "${JOB}" | jq -r '.outputPath')
+      OUTPUT_URL=$(echo "${JOB}" | jq -r '.outputUrl')
       break
     elif [[ "${STATUS}" == "error" ]]; then
       echo "Render failed: $(echo "${JOB}" | jq -r '.error')"
@@ -257,10 +261,10 @@ while IFS= read -r line; do
   fi
 done < <(curl -sN "${BASE}/api/render/${PROJECT_ID}/${RENDER_ID}/events")
 
-# 6. Download
-FILENAME=$(basename "${OUTPUT_PATH}")
+# 6. Download (outputUrl is a static path, no /api/ prefix)
+FILENAME=$(basename "${OUTPUT_URL}")
 echo "=== Downloading ${FILENAME}..."
-curl -s -o "${FILENAME}" "${BASE}${OUTPUT_PATH}"
+curl -s -o "${FILENAME}" "${BASE}${OUTPUT_URL}"
 echo "Done! Saved to ${FILENAME}"
 ```
 

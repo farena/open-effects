@@ -127,9 +127,10 @@ curl -s -X DELETE http://localhost:3000/api/projects/proj_clxyz456 | jq .
 
 ---
 
-### `GET /api/projects/:id/renders/:filename`
+### `GET /renders/:projectId/:filename` (download)
 
-Renders are served as static Next.js assets. Download with:
+Renders are served as static Next.js assets — there is no `/api/` prefix. The
+`outputUrl` field returned by the SSE stream is exactly this path.
 
 ```bash
 curl -s -o output.mp4 \
@@ -348,12 +349,14 @@ curl -N http://localhost:3000/api/render/proj_clxyz456/render_clxyz789/events
 **Stream output:**
 
 ```
-data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"pending","percent":0}
+data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"queued","progress":0,"startedAt":1746704400000}
 
-data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"running","percent":42}
+data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"rendering","progress":0.42,"startedAt":1746704400000}
 
-data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"completed","percent":100,"outputPath":"/renders/proj_clxyz456/2026-05-08T12-00-00-000Z.mp4"}
+data: {"id":"render_clxyz789","projectId":"proj_clxyz456","status":"completed","progress":1,"outputUrl":"/renders/proj_clxyz456/2026-05-08T12-00-00-000Z.mp4","startedAt":1746704400000,"finishedAt":1746704430000}
 ```
+
+`status`: `queued` → `bundling` → `rendering` → `completed` (or `error`). `progress` is a 0..1 fraction.
 
 ---
 

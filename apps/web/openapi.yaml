@@ -690,11 +690,11 @@ components:
         createdAt: "2026-05-08T12:00:00.000Z"
 
     # ── RenderJob ─────────────────────────────────────────────────────────────
-    # Source: apps/web/src/lib/render/renderRegistry.ts (inferred from SSE event shape)
+    # Source: apps/web/src/lib/render/renderRegistry.ts
     RenderJob:
       type: object
       description: Render job state emitted by the SSE stream.
-      required: [id, projectId, status]
+      required: [id, projectId, status, progress, startedAt]
       properties:
         id:
           type: string
@@ -703,24 +703,35 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, running, completed, error]
-        percent:
-          type: integer
+          enum: [queued, bundling, rendering, completed, error]
+          description: Current lifecycle phase. Progresses queued → bundling → rendering → completed (or error).
+        progress:
+          type: number
           minimum: 0
-          maximum: 100
-          description: Progress percentage (0–100). Present when status is `running`.
-        outputPath:
+          maximum: 1
+          description: Render progress as a 0..1 fraction (multiply by 100 for percent). Updated continuously while `status` is `rendering`.
+        outputUrl:
           type: string
-          description: "Public path to the output MP4, e.g. `/renders/proj_01/2026-01-01T00-00-00-000Z.mp4`. Present when status is `completed`."
+          description: "Public path to the output MP4 (served as a static asset by Next.js), e.g. `/renders/proj_01/2026-01-01T00-00-00-000Z.mp4`. Present when status is `completed`."
         error:
           type: string
           description: Error message. Present when status is `error`.
+        startedAt:
+          type: integer
+          format: int64
+          description: Unix epoch milliseconds when the job was created.
+        finishedAt:
+          type: integer
+          format: int64
+          description: Unix epoch milliseconds when the job reached `completed` or `error`. Absent while still in flight.
       example:
         id: "render_01"
         projectId: "proj_01"
         status: completed
-        percent: 100
-        outputPath: "/renders/proj_01/2026-05-08T12-00-00-000Z.mp4"
+        progress: 1
+        outputUrl: "/renders/proj_01/2026-05-08T12-00-00-000Z.mp4"
+        startedAt: 1746704400000
+        finishedAt: 1746704430000
 
     # ── Error shapes ──────────────────────────────────────────────────────────
     ErrorSimple:
@@ -1095,6 +1106,45 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /renders/{projectId}/{filename}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-zA-Z0-9]+$'
+        description: Project CUID2 identifier.
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.mp4$'
+        description: "Render filename in ISO-8601-derived format, e.g. `2026-05-08T12-00-00-000Z.mp4`."
+
+    get:
+      tags: [Renders]
+      operationId: downloadRender
+      summary: Download a rendered MP4
+      description: |
+        Serves the MP4 file from `apps/web/public/renders/{projectId}/{filename}`
+        via Next.js static file serving from the `public/` directory.
+
+        **Important:** This URL has no `/api/` prefix — it is a static asset path,
+        not a dedicated API route handler. The `outputUrl` field returned by the
+        SSE stream is exactly this path (e.g. `/renders/proj_01/<timestamp>.mp4`).
+      responses:
+        '200':
+          description: MP4 file stream.
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Render file not found.
+
   /api/projects/{id}/renders/{filename}:
     parameters:
       - name: id
@@ -1111,28 +1161,6 @@ paths:
           type: string
           pattern: '^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.mp4$'
         description: "Render filename in ISO-8601-derived format, e.g. `2026-05-08T12-00-00-000Z.mp4`."
-
-    get:
-      tags: [Projects]
-      operationId: downloadRender
-      summary: Download a rendered MP4
-      description: |
-        Serves the MP4 file from `public/renders/{id}/{filename}` via Next.js
-        static file serving. The URL path is `/api/projects/{id}/renders/{filename}`
-        which maps to the public directory.
-
-        **Note:** This is served as a static asset by Next.js, not via a dedicated
-        API route handler. The response is a binary MP4 stream.
-      responses:
-        '200':
-          description: MP4 file stream.
-          content:
-            video/mp4:
-              schema:
-                type: string
-                format: binary
-        '404':
-          description: Render file not found.
 
     delete:
       tags: [Projects]
@@ -1155,7 +1183,7 @@ paths:
               example:
                 ok: true
         '400':
-          description: Invalid filename or project ID.
+          description: Invalid filename, project ID, or resolved path.
           content:
             application/json:
               schema:
@@ -1167,6 +1195,9 @@ paths:
                 invalidId:
                   value:
                     error: invalid_project_id
+                invalidPath:
+                  value:
+                    error: invalid_path
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -1493,9 +1524,9 @@ paths:
 
         **Event format:** Each event is a bare `data:` line (no named event field):
         ```
-        data: {"id":"render_xyz789","projectId":"proj_01","status":"running","percent":42}
+        data: {"id":"render_xyz789","projectId":"proj_01","status":"rendering","progress":0.42,"startedAt":1746704400000}
 
-        data: {"id":"render_xyz789","projectId":"proj_01","status":"completed","percent":100,"outputPath":"/renders/proj_01/2026-05-08T12-00-00-000Z.mp4"}
+        data: {"id":"render_xyz789","projectId":"proj_01","status":"completed","progress":1,"outputUrl":"/renders/proj_01/2026-05-08T12-00-00-000Z.mp4","startedAt":1746704400000,"finishedAt":1746704430000}
 
         ```
 
@@ -1514,11 +1545,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RenderJob'
               example: |
-                data: {"id":"render_xyz789","projectId":"proj_01","status":"pending","percent":0}
+                data: {"id":"render_xyz789","projectId":"proj_01","status":"queued","progress":0,"startedAt":1746704400000}
 
-                data: {"id":"render_xyz789","projectId":"proj_01","status":"running","percent":55}
+                data: {"id":"render_xyz789","projectId":"proj_01","status":"rendering","progress":0.55,"startedAt":1746704400000}
 
-                data: {"id":"render_xyz789","projectId":"proj_01","status":"completed","percent":100,"outputPath":"/renders/proj_01/2026-05-08T12-00-00-000Z.mp4"}
+                data: {"id":"render_xyz789","projectId":"proj_01","status":"completed","progress":1,"outputUrl":"/renders/proj_01/2026-05-08T12-00-00-000Z.mp4","startedAt":1746704400000,"finishedAt":1746704430000}
 
         '404':
           description: Render job not found.
@@ -1551,7 +1582,7 @@ paths:
         Supports MP3, WAV, M4A, AAC, OGG, and FLAC.
       responses:
         '200':
-          description: Audio file binary.
+          description: Audio file binary. Content type is derived from the file extension.
           content:
             audio/mpeg:
               schema:
@@ -1565,6 +1596,24 @@ paths:
               schema:
                 type: string
                 format: binary
+            audio/aac:
+              schema:
+                type: string
+                format: binary
+            audio/ogg:
+              schema:
+                type: string
+                format: binary
+            audio/flac:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+              example: |
+                (fallback when the file extension does not match a known audio mime type)
         '400':
           description: Invalid filename (contains path traversal characters).
           content:
