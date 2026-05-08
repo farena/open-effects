@@ -4,12 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import { useAutosave } from "@/editor/useAutosave";
 import { useUndoRedo } from "@/editor/useUndoRedo";
+import {
+  clampTimelineHeight,
+  readSavedHeight,
+  writeSavedHeight,
+  TIMELINE_DEFAULT,
+} from "@/editor/lib/timelineHeight";
 import type { Project } from "@open-effects/shared-types";
 import { Topbar } from "./Topbar";
 import { Sidebar } from "./Sidebar";
 import { PreviewPane } from "./PreviewPane";
 import { Inspector } from "./Inspector";
 import { Timeline } from "./Timeline";
+import { TimelineResizer } from "./timeline/TimelineResizer";
 
 const INSPECTOR_WIDTH_KEY = "oe-editor-inspector-width";
 const DEFAULT_INSPECTOR_WIDTH = 340;
@@ -30,12 +37,19 @@ export function Editor({ initialProject }: { initialProject: Project }) {
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(DEFAULT_INSPECTOR_WIDTH);
 
+  // Timeline height state
+  const [timelineH, setTimelineH] = useState(TIMELINE_DEFAULT);
+  const [viewportH, setViewportH] = useState(
+    typeof window === "undefined" ? 800 : window.innerHeight,
+  );
+
   useEffect(() => {
     setProject(initialProject);
   }, [initialProject, setProject]);
   useAutosave();
   useUndoRedo();
 
+  // Hydrate inspector width from localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem(INSPECTOR_WIDTH_KEY);
@@ -48,6 +62,30 @@ export function Editor({ initialProject }: { initialProject: Project }) {
     } catch {
       // ignore
     }
+  }, []);
+
+  // Hydrate timeline height from localStorage on mount
+  useEffect(() => {
+    const saved = readSavedHeight();
+    if (saved != null) setTimelineH(clampTimelineHeight(saved, window.innerHeight));
+  }, []);
+
+  // Viewport tracking for timeline height clamp (rAF throttle)
+  useEffect(() => {
+    let raf: number | null = null;
+    const onResize = () => {
+      if (raf != null) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        setViewportH(window.innerHeight);
+        setTimelineH((h) => clampTimelineHeight(h, window.innerHeight));
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   const onInspectorResizePointerDown = useCallback(
@@ -87,20 +125,26 @@ export function Editor({ initialProject }: { initialProject: Project }) {
     [],
   );
 
-  // Grid mirrors docs/screenshots/editor-layout.png:
+  // Grid layout:
   //   row 1 — topbar (full width)
   //   row 2 — assets | preview | resizer | properties
-  //   row 3 — timeline (cols 1-2) | resizer | properties
+  //   row 3 — timelineResizer (cols 1-2) | resizer | properties
+  //   row 4 — timeline (cols 1-2) | resizer | properties
+  //
+  // The inspector vertical resizer (col 3) spans rows 2-4.
+  // The timeline horizontal resizer occupies cols 1-2 of row 3 only,
+  // so the two resizers never overlap.
   return (
     <div
       className="grid h-screen overflow-hidden"
       style={{
         gridTemplateColumns: `260px minmax(0, 1fr) 6px ${inspectorWidth}px`,
-        gridTemplateRows: "auto 1fr 300px",
+        gridTemplateRows: `auto 1fr 4px ${timelineH}px`,
         gridTemplateAreas: `
-          "topbar     topbar     topbar     topbar"
-          "assets     preview    resizer    properties"
-          "timeline   timeline   resizer    properties"
+          "topbar           topbar           topbar     topbar"
+          "assets           preview          resizer    properties"
+          "timelineResizer  timelineResizer  resizer    properties"
+          "timeline         timeline         resizer    properties"
         `,
       }}
     >
@@ -131,6 +175,13 @@ export function Editor({ initialProject }: { initialProject: Project }) {
         className="min-w-0 overflow-hidden"
       >
         <Inspector />
+      </div>
+      <div style={{ gridArea: "timelineResizer" }}>
+        <TimelineResizer
+          height={timelineH}
+          onResize={(h) => setTimelineH(clampTimelineHeight(h, viewportH))}
+          onCommit={(h) => writeSavedHeight(h)}
+        />
       </div>
       <div
         style={{ gridArea: "timeline" }}
