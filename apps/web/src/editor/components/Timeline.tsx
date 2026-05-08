@@ -721,7 +721,6 @@ export function Timeline() {
   const addLayer = useEditorStore((s) => s.addLayer);
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
-  const removeAudioTrack = useEditorStore((s) => s.removeAudioTrack);
 
   const [expandedByScene, setExpandedByScene] = useState<
     Record<string, boolean>
@@ -1292,7 +1291,6 @@ export function Timeline() {
                             pxPerFrame={pxPerFrame}
                             probedDurationFrames={t.trimEnd}
                             sceneOffsetFrames={off}
-                            onDelete={() => removeAudioTrack(t.id)}
                           />
                         ))}
                       </div>

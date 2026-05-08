@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Scissors } from "lucide-react";
 import type { AudioTrack, VolumeKeyframe } from "@open-effects/shared-types";
 import { Waveform } from "./WavesurferLazy";
 import { useEditorStore } from "@/editor/store";
+import { toast } from "sonner";
 
 type StripDragMode = "move" | "trimLeft" | "trimRight" | null;
 
@@ -16,11 +17,18 @@ interface AudioStripProps {
   pxPerFrame: number;
   probedDurationFrames?: number;
   sceneOffsetFrames?: number;
-  onDelete: () => void;
 }
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
+}
+
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +116,7 @@ function VolumeKeyframeDot({
   return (
     <div
       data-testid="volume-keyframe-dot"
-      className="absolute top-1/2 z-[2] size-2 cursor-grab rounded-full bg-yellow-400 shadow-sm active:cursor-grabbing"
+      className="absolute top-1/2 z-[2] size-2.5 cursor-grab rounded-full bg-primary shadow-sm active:cursor-grabbing"
       style={{
         left: `${leftPx}px`,
         transform: "translate(-50%, -50%)",
@@ -130,11 +138,12 @@ export function AudioStrip({
   pxPerFrame,
   probedDurationFrames,
   sceneOffsetFrames = 0,
-  onDelete,
 }: AudioStripProps) {
   const moveAudioTrack = useEditorStore((s) => s.moveAudioTrack);
   const trimAudioTrack = useEditorStore((s) => s.trimAudioTrack);
   const selectAudioTrack = useEditorStore((s) => s.selectAudioTrack);
+  const splitAudioTrack = useEditorStore((s) => s.splitAudioTrack);
+  const currentFrame = useEditorStore((s) => s.currentFrame);
   const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
   const isSelected = selectedAudioTrackId === track.id;
 
@@ -237,6 +246,38 @@ export function AudioStrip({
     }
   }, []);
 
+  const handleSplit = useCallback(() => {
+    const splitFrameLocal = currentFrame - (sceneOffsetFrames + track.startFrame);
+    const span = track.trimEnd - track.trimStart;
+    if (splitFrameLocal <= 0 || splitFrameLocal >= span) {
+      toast.warning("Move playhead inside the strip to split.");
+      return;
+    }
+    splitAudioTrack(track.id, splitFrameLocal);
+  }, [
+    currentFrame,
+    sceneOffsetFrames,
+    track.startFrame,
+    track.trimEnd,
+    track.trimStart,
+    track.id,
+    splitAudioTrack,
+  ]);
+
+  // Keyboard shortcut: S to split when this track is selected
+  useEffect(() => {
+    if (!isSelected) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "s" && e.key !== "S") return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (isTextEditingTarget(e.target)) return;
+      e.preventDefault();
+      handleSplit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isSelected, handleSplit]);
+
   return (
     <div
       data-testid="audio-strip"
@@ -274,6 +315,20 @@ export function AudioStrip({
             stripWidthPx={widthPx}
           />
         ))}
+        {isSelected && (
+          <button
+            type="button"
+            className="absolute right-1 top-1/2 -translate-y-1/2 z-[3] flex items-center gap-0.5 rounded bg-black/50 px-1 py-0.5 text-[9px] text-white/90 hover:bg-black/70"
+            title="Split at playhead (S)"
+            aria-label="Split audio track at playhead"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSplit();
+            }}
+          >
+            <Scissors className="size-2.5" />
+          </button>
+        )}
       </div>
 
       <div
@@ -281,19 +336,6 @@ export function AudioStrip({
         role="presentation"
         onPointerDown={(e) => onPointerDown(e, "trimRight")}
       />
-
-      <button
-        type="button"
-        className="shrink-0 rounded px-0.5 text-white/70 hover:bg-black/40 hover:text-white"
-        aria-label="Delete audio track"
-        title="Delete audio track"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-      >
-        <Trash2 className="size-3" />
-      </button>
     </div>
   );
 }
