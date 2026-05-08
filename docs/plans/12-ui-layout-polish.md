@@ -308,10 +308,10 @@ apps/web/
 
 ## Final task checklist
 
-- [ ] T1 — Sidebar vertical icon tabs
-- [ ] T2 — `timelineHeight` utility (TDD)
-- [ ] T3 — `TimelineResizer` component
-- [ ] T4 — Wire dynamic timeline height in Editor.tsx
-- [ ] T5 — Topbar back-to-projects button
+- [x] T1 — Sidebar vertical icon tabs
+- [x] T2 — `timelineHeight` utility (TDD)
+- [x] T3 — `TimelineResizer` component
+- [x] T4 — Wire dynamic timeline height in Editor.tsx
+- [x] T5 — Topbar back-to-projects button
 
 **Total tasks:** 5 · **Estimate:** 3–4 days. · **Critical risks:** grid intersection between vertical inspector-resizer and horizontal timeline-resizer (T4 step 4) — verify visually.
