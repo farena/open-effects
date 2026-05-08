@@ -23,3 +23,8 @@ When a task graduates to an active plan, it gets a checkbox tick and a link to t
 | `13-api-docs.md` | OpenAPI 3.1 spec + programmatic guide + worked example | 3–5 days |
 
 Recommended execution order: 12 → 11 → 13 (lightest-to-heaviest, lets the audio overhaul land on a polished UI surface). Plans are independent — order can change without breaking dependencies.
+
+## Pending follow-ups (out of plan scope)
+
+- [ ] `AudioFxTab.localFrame` doesn't account for the active scene's offset — `localFrame = currentFrame - track.startFrame` should be `currentFrame - sceneOffset - track.startFrame`. Pre-existing bug surfaced by plan 11 review (Finding 4); affects keyframes added on tracks in scenes ≥ 2.
+- [ ] Audio lane delete uses no `ConfirmDialog` (layer rows do). Minor UX inconsistency surfaced by plan 11 review.
