@@ -5,7 +5,10 @@ export const LayerSchema = z
   .object({
     id: z.string(),
     order: z.number().int().min(0),
-    name: z.string(),
+    name: z
+      .string()
+      .min(1, "Name is required")
+      .max(100, "Name must be 100 characters or less"),
     html: z.string(),
     css: z.string(),
     startFrame: z.number().int().min(0),
