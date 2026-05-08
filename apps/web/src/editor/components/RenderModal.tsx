@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useRender } from "@/editor/useRender";
+import { flushAutosave } from "@/lib/flushAutosave";
 
 export function RenderModal({
   projectId,
@@ -20,6 +21,17 @@ export function RenderModal({
 }) {
   const [open, setOpen] = useState(false);
   const { state, start, reset } = useRender(projectId);
+
+  const handleStart = async () => {
+    try {
+      await flushAutosave();
+    } catch {
+      // Autosave failure is surfaced through the topbar save indicator.
+      // Block the render so the user fixes it before exporting.
+      return;
+    }
+    await start();
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -34,7 +46,7 @@ export function RenderModal({
             <p className="text-sm text-muted-foreground">
               Render this project to MP4?
             </p>
-            <Button onClick={start}>Start render</Button>
+            <Button onClick={handleStart}>Start render</Button>
           </div>
         )}
 
