@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Music, ImageIcon, Video, Type } from "lucide-react";
 import { UploadButton } from "./UploadButton";
+import { LoadingSkeleton, ErrorBlock } from "@/components/ui/feedback";
 
 interface Asset {
   id: string;
@@ -15,6 +16,11 @@ interface Asset {
 }
 
 type FilterType = "all" | "image" | "audio" | "video" | "font";
+
+type Phase =
+  | { status: "loading" }
+  | { status: "error"; error: string }
+  | { status: "ready"; assets: Asset[] };
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -31,20 +37,38 @@ function AssetIcon({ type }: { type: string }) {
 }
 
 export function AssetsPanel() {
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const [phase, setPhase] = useState<Phase>({ status: "loading" });
   const [filter, setFilter] = useState<FilterType>("all");
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setPhase({ status: "loading" });
     fetch("/api/assets")
-      .then((r) => r.json())
-      .then((data: Asset[]) => setAssets(data))
-      .catch(() => {});
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data: Asset[]) => setPhase({ status: "ready", assets: data }))
+      .catch((e: unknown) =>
+        setPhase({
+          status: "error",
+          error: e instanceof Error ? e.message : "Failed to load assets",
+        }),
+      );
   }, []);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
   function addAsset(asset: Asset) {
-    setAssets((prev) => [asset, ...prev]);
+    setPhase((p) =>
+      p.status === "ready"
+        ? { status: "ready", assets: [asset, ...p.assets] }
+        : { status: "ready", assets: [asset] },
+    );
   }
 
+  const assets = phase.status === "ready" ? phase.assets : [];
   const visible =
     filter === "all" ? assets : assets.filter((a) => a.type === filter);
 
@@ -72,9 +96,16 @@ export function AssetsPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-1 space-y-1">
-        {visible.length === 0 ? (
+        {phase.status === "loading" && <LoadingSkeleton rows={4} />}
+        {phase.status === "error" && (
+          <div className="p-2">
+            <ErrorBlock message={phase.error} onRetry={load} />
+          </div>
+        )}
+        {phase.status === "ready" && visible.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">No assets yet.</p>
         ) : (
+          phase.status === "ready" &&
           visible.map((asset) => (
             <div
               key={asset.id}

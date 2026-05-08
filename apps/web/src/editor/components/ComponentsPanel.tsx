@@ -5,33 +5,45 @@ import { RefreshCw, Trash2, PlusSquare } from "lucide-react";
 import { toast } from "sonner";
 import type { SavedComponent } from "@open-effects/shared-types";
 import { useEditorStore } from "@/editor/store";
+import { LoadingSkeleton, ErrorBlock } from "@/components/ui/feedback";
+
+type Phase =
+  | { status: "loading" }
+  | { status: "error"; error: string }
+  | { status: "ready"; components: SavedComponent[] };
 
 export function ComponentsPanel() {
-  const [components, setComponents] = useState<SavedComponent[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<Phase>({ status: "loading" });
 
   const insertSavedComponent = useEditorStore((s) => s.insertSavedComponent);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    setPhase({ status: "loading" });
     try {
       const res = await fetch("/api/components");
       if (!res.ok) {
+        const msg = `HTTP ${res.status}`;
         toast.error("Failed to load components");
+        setPhase({ status: "error", error: msg });
         return;
       }
       const data: SavedComponent[] = await res.json();
-      setComponents(data);
-    } catch {
+      setPhase({ status: "ready", components: data });
+    } catch (e) {
       toast.error("Failed to load components");
-    } finally {
-      setLoading(false);
+      setPhase({
+        status: "error",
+        error: e instanceof Error ? e.message : "Network error",
+      });
     }
   }, []);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  const components = phase.status === "ready" ? phase.components : [];
+  const loading = phase.status === "loading";
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? Existing instances are not affected.`))
@@ -69,12 +81,17 @@ export function ComponentsPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        {components.length === 0 ? (
+        {phase.status === "loading" && <LoadingSkeleton rows={4} />}
+        {phase.status === "error" && (
+          <ErrorBlock message={phase.error} onRetry={refresh} />
+        )}
+        {phase.status === "ready" && components.length === 0 && (
           <p className="p-4 text-sm text-muted-foreground text-center">
             No saved components yet. Use &ldquo;Save as component&hellip;&rdquo;
             on a layer.
           </p>
-        ) : (
+        )}
+        {phase.status === "ready" && components.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
             {components.map((component) => (
               <ComponentCard
