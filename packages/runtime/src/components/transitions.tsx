@@ -34,5 +34,10 @@ export function mapTransitionToPreset(t: Transition): TransitionConfig | null {
         presentation: slide({ direction: "from-top" }),
         timing,
       };
+    default: {
+      const _exhaustive: never = t.type;
+      void _exhaustive;
+      return null;
+    }
   }
 }

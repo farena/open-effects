@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import { selectActiveScene } from "@/editor/selectors";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ export function SceneTab() {
   const updateSceneName = useEditorStore((s) => s.updateSceneName);
   const updateSceneBackground = useEditorStore((s) => s.updateSceneBackground);
   const setSceneDuration = useEditorStore((s) => s.setSceneDuration);
+  const [durationError, setDurationError] = useState<string | null>(null);
 
   if (!scene) {
     return (
@@ -42,11 +44,22 @@ export function SceneTab() {
           value={scene.durationFrames}
           onChange={(e) => {
             const n = parseInt(e.target.value, 10);
-            if (Number.isFinite(n) && n >= 1) {
-              setSceneDuration(scene.id, n);
+            if (!Number.isFinite(n)) {
+              setDurationError("Must be a number.");
+              return;
             }
+            if (n < 1) {
+              setDurationError("Must be at least 1 frame.");
+              return;
+            }
+            setDurationError(null);
+            setSceneDuration(scene.id, n);
           }}
+          aria-invalid={durationError !== null}
         />
+        {durationError && (
+          <p className="text-xs text-destructive">{durationError}</p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
