@@ -1,9 +1,67 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { Undo2, Redo2 } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { SaveStatus } from "@/editor/store.types";
 import { RenderModal } from "./RenderModal";
+
+function UndoRedoButtons() {
+  const [, force] = useState(0);
+
+  useEffect(() => {
+    const unsub = useEditorStore.temporal.subscribe(() => force((n) => n + 1));
+    return () => unsub();
+  }, []);
+
+  const temporal = useEditorStore.temporal.getState();
+  const canUndo = temporal.pastStates.length > 0;
+  const canRedo = temporal.futureStates.length > 0;
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <div className="flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              disabled={!canUndo}
+              onClick={() => useEditorStore.temporal.getState().undo()}
+              aria-label="Undo"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Undo (Ctrl/Cmd+Z)</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              disabled={!canRedo}
+              onClick={() => useEditorStore.temporal.getState().redo()}
+              aria-label="Redo"
+            >
+              <Redo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Redo (Ctrl/Cmd+Shift+Z)</TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
+  );
+}
 
 /**
  * Returns a human-readable relative time string for a timestamp (ms).
@@ -70,17 +128,19 @@ export function Topbar() {
 
   return (
     <div className="flex h-12 items-center justify-between border-b bg-background px-4">
-      {/* LEFT: project name (read-only for v1) */}
-      <span className="text-sm font-medium">{project.name || "Untitled"}</span>
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium">
+          {project.name || "Untitled"}
+        </span>
+        <UndoRedoButtons />
+      </div>
 
-      {/* CENTER: save status indicator */}
       <SaveIndicator
         saveStatus={saveStatus}
         lastSavedAt={lastSavedAt}
         setSaveStatus={setSaveStatus}
       />
 
-      {/* RIGHT: Render button — enabled in Stage 8 */}
       <RenderModal
         projectId={project.id}
         trigger={

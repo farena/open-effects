@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import { useAutosave } from "@/editor/useAutosave";
+import { useUndoRedo } from "@/editor/useUndoRedo";
 import type { Project } from "@open-effects/shared-types";
 import { Topbar } from "./Topbar";
 import { Sidebar } from "./Sidebar";
@@ -33,6 +34,7 @@ export function Editor({ initialProject }: { initialProject: Project }) {
     setProject(initialProject);
   }, [initialProject, setProject]);
   useAutosave();
+  useUndoRedo();
 
   useEffect(() => {
     try {
