@@ -141,4 +141,5 @@ export interface EditorActions {
     sceneId: string,
     transitionIn: Transition | null,
   ) => void;
+  splitAudioTrack: (trackId: string, splitFrameLocal: number) => void;
 }

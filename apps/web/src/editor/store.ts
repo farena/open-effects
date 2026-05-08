@@ -542,6 +542,49 @@ export const useEditorStore = create<StoreState>()(
             sc.transitionIn = transitionIn;
           }),
         ),
+
+      // Splitting is purely a store action: creates a sibling track with the
+      // same assetId/assetPath, sets trimStart of the new track to the
+      // original's trimStart + splitFrameLocal, and clamps the original's
+      // trimEnd down to that boundary. Volume keyframes are partitioned by
+      // their frame < splitFrameLocal (tie-breaker: keyframes at exactly
+      // splitFrameLocal go to the right half). EQ is deep-copied to both.
+      //
+      // Playback contract: playing both halves end-to-end is sample-equivalent
+      // to playing the original. Remotion <Audio> honours startFrom/endAt
+      // exactly; FFmpeg at render does the same. Both split halves point to
+      // the same asset on disk.
+      splitAudioTrack: (trackId, splitFrameLocal) =>
+        set((s) => {
+          for (const sc of s.project.scenes) {
+            const i = sc.audioTracks.findIndex((t) => t.id === trackId);
+            if (i < 0) continue;
+            const t = sc.audioTracks[i]!;
+            const span = t.trimEnd - t.trimStart;
+            if (splitFrameLocal <= 0 || splitFrameLocal >= span) {
+              console.warn("splitAudioTrack: split outside track range");
+              return;
+            }
+            const splitTrim = t.trimStart + splitFrameLocal;
+            const newTrack = {
+              ...t,
+              id: newId(),
+              startFrame: t.startFrame + splitFrameLocal,
+              trimStart: splitTrim,
+              trimEnd: t.trimEnd,
+              eq: t.eq ? { ...t.eq } : null,
+              volumeKeyframes: t.volumeKeyframes
+                .filter((k) => k.frame >= splitFrameLocal)
+                .map((k) => ({ ...k, frame: k.frame - splitFrameLocal })),
+            };
+            t.trimEnd = splitTrim;
+            t.volumeKeyframes = t.volumeKeyframes.filter(
+              (k) => k.frame < splitFrameLocal,
+            );
+            sc.audioTracks.splice(i + 1, 0, newTrack);
+            return;
+          }
+        }),
     })),
     {
       partialize: (state) =>
