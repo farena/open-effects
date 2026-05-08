@@ -13,3 +13,5 @@ export type {
 } from "./keyframes/propertyRegistry";
 export { evalEasing } from "./keyframes/easings";
 export { evalVolumeAtFrame } from "./keyframes/evalVolumeAtFrame";
+export { mapTransitionToPreset } from "./components/transitions";
+export type { TransitionConfig } from "./components/transitions";
