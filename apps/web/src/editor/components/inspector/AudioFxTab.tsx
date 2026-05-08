@@ -6,6 +6,7 @@ import {
   selectActiveAudioTrack,
   selectVolumeKeyframes,
   selectAudioAnimatedProperties,
+  selectLocalFrameInActiveAudioTrack,
 } from "@/editor/selectors";
 import type { Easing, VolumeKeyframe } from "@open-effects/shared-types";
 import { Button } from "@/components/ui/button";
@@ -165,18 +166,16 @@ function AudioPropertyGroup({
 
 export function AudioFxTab() {
   const track = useEditorStore(selectActiveAudioTrack);
-  const currentFrame = useEditorStore((s) => s.currentFrame);
   const fps = useEditorStore((s) => s.project.fps);
   const volumeKeyframes = useEditorStore(selectVolumeKeyframes);
   const addVolumeKeyframe = useEditorStore((s) => s.addVolumeKeyframe);
   const animatedProps = useEditorStore(selectAudioAnimatedProperties);
+  const localFrame = useEditorStore(selectLocalFrameInActiveAudioTrack);
 
   const [selectedProperty, setSelectedProperty] =
     useState<AudioPropertyKey | null>(null);
 
   if (!track) return null;
-
-  const localFrame = Math.max(0, currentFrame - track.startFrame);
 
   const sortedKeyframes = [...volumeKeyframes].sort(
     (a, b) => a.frame - b.frame,

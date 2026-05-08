@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Music, Trash2 } from "lucide-react";
 import type { AudioTrack } from "@open-effects/shared-types";
 import { AudioStrip } from "../AudioStrip";
+import { ConfirmDialog } from "../ConfirmDialog";
 
 const ROW_H = 28;
 
@@ -30,6 +32,7 @@ export function AudioLaneRow({
 }: AudioLaneRowProps) {
   const trackLabel =
     track.assetPath ? track.assetPath.split("/").pop() : undefined;
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (side === "left") {
     return (
@@ -55,11 +58,20 @@ export function AudioLaneRow({
           title="Remove audio track"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            setConfirmOpen(true);
           }}
         >
           <Trash2 className="size-3" />
         </button>
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={`Delete audio track “${trackLabel ?? "Audio"}”?`}
+          description="The track and its volume keyframes will be removed. This cannot be undone."
+          confirmLabel="Delete"
+          destructive
+          onConfirm={onDelete}
+        />
       </div>
     );
   }

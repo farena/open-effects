@@ -8,6 +8,7 @@ import {
   selectKeyframesForProperty,
   selectActiveAudioTrack,
   selectVolumeKeyframes,
+  selectLocalFrameInActiveAudioTrack,
 } from "@/editor/selectors";
 
 // Minimal helpers to build fake state without React or the real store.
@@ -519,5 +520,82 @@ describe("selectVolumeKeyframes", () => {
       selectedAudioTrackId: "track-1",
     });
     expect(selectVolumeKeyframes(state)).toEqual([kf]);
+  });
+});
+
+// ── selectLocalFrameInActiveAudioTrack ───────────────────────────────────────
+//
+// Regression: keyframes added via AudioFxTab on a track in scene ≥ 2 must
+// account for the scene's global offset *and* the track's startFrame.
+
+describe("selectLocalFrameInActiveAudioTrack", () => {
+  it("returns 0 when no audio track is selected", () => {
+    expect(selectLocalFrameInActiveAudioTrack(makeState())).toBe(0);
+  });
+
+  it("returns currentFrame - track.startFrame for a track in scene 1", () => {
+    const track = { ...makeAudioTrack("track-1"), startFrame: 5 };
+    const scene = { ...makeScene("scene-1", 90), audioTracks: [track] };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene],
+      },
+      selectedAudioTrackId: "track-1",
+      currentFrame: 20,
+    });
+    expect(selectLocalFrameInActiveAudioTrack(state)).toBe(15);
+  });
+
+  it("subtracts the scene offset for tracks in scenes ≥ 2", () => {
+    const track = { ...makeAudioTrack("track-2"), startFrame: 10 };
+    const scene1 = { ...makeScene("scene-1", 90) };
+    const scene2 = {
+      ...makeScene("scene-2", 90),
+      order: 1,
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene1, scene2],
+      },
+      selectedAudioTrackId: "track-2",
+      // Playhead at frame 130: scene 2 starts at 90, track starts at +10,
+      // so the local frame on the track must be 30.
+      currentFrame: 130,
+    });
+    expect(selectLocalFrameInActiveAudioTrack(state)).toBe(30);
+  });
+
+  it("clamps negative results to 0 when playhead precedes the track", () => {
+    const track = { ...makeAudioTrack("track-2"), startFrame: 10 };
+    const scene1 = { ...makeScene("scene-1", 90) };
+    const scene2 = {
+      ...makeScene("scene-2", 90),
+      order: 1,
+      audioTracks: [track],
+    };
+    const state = makeState({
+      project: {
+        id: "p1",
+        name: "T",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: [scene1, scene2],
+      },
+      selectedAudioTrackId: "track-2",
+      currentFrame: 50,
+    });
+    expect(selectLocalFrameInActiveAudioTrack(state)).toBe(0);
   });
 });

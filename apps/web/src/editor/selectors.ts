@@ -56,6 +56,18 @@ export const selectActiveAudioTrack = (s: EditorState) => {
 export const selectVolumeKeyframes = (s: EditorState) =>
   selectActiveAudioTrack(s)?.volumeKeyframes ?? [];
 
+/** Playhead in local audio-track frames when an audio track is active. */
+export const selectLocalFrameInActiveAudioTrack = (s: EditorState): number => {
+  if (!s.selectedAudioTrackId) return 0;
+  for (const sc of s.project.scenes) {
+    const t = sc.audioTracks.find((x) => x.id === s.selectedAudioTrackId);
+    if (!t) continue;
+    const start = sceneGlobalStartFrame(s, sc.id);
+    return Math.max(0, s.currentFrame - start - t.startFrame);
+  }
+  return 0;
+};
+
 export const selectActiveLayer = (s: EditorState) => {
   for (const sc of s.project.scenes) {
     const l = sc.layers.find((x) => x.id === s.selectedLayerId);

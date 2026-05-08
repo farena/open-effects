@@ -26,5 +26,5 @@ Recommended execution order: 12 → 11 → 13 (lightest-to-heaviest, lets the au
 
 ## Pending follow-ups (out of plan scope)
 
-- [ ] `AudioFxTab.localFrame` doesn't account for the active scene's offset — `localFrame = currentFrame - track.startFrame` should be `currentFrame - sceneOffset - track.startFrame`. Pre-existing bug surfaced by plan 11 review (Finding 4); affects keyframes added on tracks in scenes ≥ 2.
-- [ ] Audio lane delete uses no `ConfirmDialog` (layer rows do). Minor UX inconsistency surfaced by plan 11 review.
+- [x] `AudioFxTab.localFrame` doesn't account for the active scene's offset — `localFrame = currentFrame - track.startFrame` should be `currentFrame - sceneOffset - track.startFrame`. Pre-existing bug surfaced by plan 11 review (Finding 4); affects keyframes added on tracks in scenes ≥ 2. Fixed via new `selectLocalFrameInActiveAudioTrack` selector.
+- [x] Audio lane delete uses no `ConfirmDialog` (layer rows do). Minor UX inconsistency surfaced by plan 11 review. Fixed by wiring `ConfirmDialog` into `AudioLaneRow`.
