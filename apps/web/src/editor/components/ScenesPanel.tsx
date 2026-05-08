@@ -16,9 +16,11 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Film } from "lucide-react";
 import type { Scene } from "@open-effects/shared-types";
 import { useEditorStore } from "@/editor/store";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EmptyState } from "./EmptyState";
 
 interface SortableSceneItemProps {
   scene: Scene;
@@ -151,7 +153,12 @@ export function ScenesPanel() {
       {/* List */}
       <div className="flex-1 overflow-y-auto p-1">
         {sorted.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">No scenes yet.</p>
+          <EmptyState
+            icon={Film}
+            title="No scenes"
+            description="Every project starts with at least one scene."
+            action={{ label: "Add scene", onClick: addScene }}
+          />
         ) : (
           <DndContext
             sensors={sensors}

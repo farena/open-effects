@@ -7,7 +7,9 @@ import { DeleteProjectButton } from "./_components/DeleteProjectButton";
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const projects = await db.project.findMany({ orderBy: { updatedAt: "desc" } });
+  const projects = await db.project.findMany({
+    orderBy: { updatedAt: "desc" },
+  });
   return (
     <main className="container mx-auto p-8">
       <header className="flex items-center justify-between">
@@ -15,8 +17,12 @@ export default async function ProjectsPage() {
         <NewProjectDialog />
       </header>
       {projects.length === 0 ? (
-        <Card className="mt-8 p-12 text-center text-muted-foreground">
-          No projects yet. Use “+ New project” to create one.
+        <Card className="mt-8 flex flex-col items-center gap-3 p-12 text-center">
+          <p className="text-base font-medium">No projects yet</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Projects hold scenes, layers, audio, and keyframes. Use the button
+            above to create your first one.
+          </p>
         </Card>
       ) : (
         <ul className="mt-8 grid grid-cols-3 gap-4">
@@ -36,7 +42,9 @@ export default async function ProjectsPage() {
         </ul>
       )}
       <p className="mt-8 text-sm text-muted-foreground">
-        <Link href="/" className="underline">← Home</Link>
+        <Link href="/" className="underline">
+          ← Home
+        </Link>
       </p>
     </main>
   );

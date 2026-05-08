@@ -16,10 +16,12 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Layers } from "lucide-react";
 import type { Layer } from "@open-effects/shared-types";
 import { useEditorStore } from "@/editor/store";
 import { selectActiveScene } from "@/editor/selectors";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EmptyState } from "./EmptyState";
 
 interface SortableLayerItemProps {
   layer: Layer;
@@ -34,8 +36,14 @@ function SortableLayerItem({
   onSelect,
   onDelete,
 }: SortableLayerItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: layer.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: layer.id });
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const style: React.CSSProperties = {
@@ -56,7 +64,10 @@ function SortableLayerItem({
       ].join(" ")}
     >
       {/* Drag handle + label */}
-      <div className="flex items-center gap-2 flex-1 min-w-0" onClick={onSelect}>
+      <div
+        className="flex items-center gap-2 flex-1 min-w-0"
+        onClick={onSelect}
+      >
         <span
           {...attributes}
           {...listeners}
@@ -147,7 +158,15 @@ export function LayersPanel() {
       {/* List */}
       <div className="flex-1 overflow-y-auto p-1">
         {sorted.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">No layers yet.</p>
+          <EmptyState
+            icon={Layers}
+            title="No layers in this scene"
+            description="Layers are HTML/CSS blocks rendered on top of the scene background."
+            action={{
+              label: "Add layer",
+              onClick: () => addLayer(activeScene.id),
+            }}
+          />
         ) : (
           <DndContext
             sensors={sensors}

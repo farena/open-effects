@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Trash2, PlusSquare } from "lucide-react";
+import { RefreshCw, Trash2, PlusSquare, Package } from "lucide-react";
 import { toast } from "sonner";
 import type { SavedComponent } from "@open-effects/shared-types";
 import { useEditorStore } from "@/editor/store";
 import { LoadingSkeleton, ErrorBlock } from "@/components/ui/feedback";
+import { EmptyState } from "./EmptyState";
 
 type Phase =
   | { status: "loading" }
@@ -86,10 +87,11 @@ export function ComponentsPanel() {
           <ErrorBlock message={phase.error} onRetry={refresh} />
         )}
         {phase.status === "ready" && components.length === 0 && (
-          <p className="p-4 text-sm text-muted-foreground text-center">
-            No saved components yet. Use &ldquo;Save as component&hellip;&rdquo;
-            on a layer.
-          </p>
+          <EmptyState
+            icon={Package}
+            title="No saved components"
+            description='Use "Save as component…" from a layer selection to start your library.'
+          />
         )}
         {phase.status === "ready" && components.length > 0 && (
           <div className="grid grid-cols-2 gap-2">

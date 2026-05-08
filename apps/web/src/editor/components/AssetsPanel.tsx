@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Music, ImageIcon, Video, Type } from "lucide-react";
+import { Music, ImageIcon, Video, Type, Upload } from "lucide-react";
 import { UploadButton } from "./UploadButton";
 import { LoadingSkeleton, ErrorBlock } from "@/components/ui/feedback";
+import { EmptyState } from "./EmptyState";
 
 interface Asset {
   id: string;
@@ -103,7 +104,15 @@ export function AssetsPanel() {
           </div>
         )}
         {phase.status === "ready" && visible.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">No assets yet.</p>
+          <EmptyState
+            icon={Upload}
+            title={
+              filter === "all"
+                ? "No assets uploaded"
+                : `No ${filter} assets uploaded`
+            }
+            description="Upload audio, images, video, or fonts to use them in your scenes."
+          />
         ) : (
           phase.status === "ready" &&
           visible.map((asset) => (

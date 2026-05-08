@@ -282,7 +282,7 @@ function AnimatedPropertyBlock({
       <div className="px-3 pb-2">
         {keyframes.length === 0 ? (
           <p className="py-2 text-xs text-muted-foreground">
-            No keyframes yet.
+            No keyframes for this property — pick a frame below and add one.
           </p>
         ) : (
           keyframes.map((kf) => (
