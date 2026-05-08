@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Undo2, Redo2, Film } from "lucide-react";
+import { Undo2, Redo2, Film, ArrowLeft } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -130,6 +130,26 @@ export function Topbar() {
   return (
     <div className="flex h-12 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-3">
+        {project.id && (
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  asChild
+                  aria-label="Back to projects"
+                >
+                  <Link href="/projects">
+                    <ArrowLeft className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Back to projects</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         <span className="text-sm font-medium">
           {project.name || "Untitled"}
         </span>
