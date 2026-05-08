@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Undo2, Redo2 } from "lucide-react";
+import Link from "next/link";
+import { Undo2, Redo2, Film } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -141,14 +142,27 @@ export function Topbar() {
         setSaveStatus={setSaveStatus}
       />
 
-      <RenderModal
-        projectId={project.id}
-        trigger={
-          <Button variant="default" size="sm">
-            Render
+      <div className="flex items-center gap-2">
+        {project.id && (
+          <Button variant="ghost" size="sm" asChild>
+            <Link
+              href={`/projects/${project.id}/renders`}
+              className="flex items-center gap-1.5"
+            >
+              <Film className="h-4 w-4" />
+              Renders
+            </Link>
           </Button>
-        }
-      />
+        )}
+        <RenderModal
+          projectId={project.id}
+          trigger={
+            <Button variant="default" size="sm">
+              Render
+            </Button>
+          }
+        />
+      </div>
     </div>
   );
 }
