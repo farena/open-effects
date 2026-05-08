@@ -14,7 +14,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "docs:lint": "redocly lint openapi.yaml",
-    "docs:build": "redocly build-docs openapi.yaml -o ../../docs/api/redoc.html"
+    "docs:build": "npx redoc-cli build openapi.yaml -o ../../docs/api/redoc.html"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
