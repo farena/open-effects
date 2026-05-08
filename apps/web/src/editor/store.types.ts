@@ -1,4 +1,4 @@
-import type { Project } from "@open-effects/shared-types";
+import type { Project, Transition } from "@open-effects/shared-types";
 import type {
   Easing,
   Eq,
@@ -137,4 +137,8 @@ export interface EditorActions {
     easingOut: Easing,
   ) => void;
   setAudioTrackEq: (trackId: string, eq: Eq | null) => void;
+  setSceneTransition: (
+    sceneId: string,
+    transitionIn: Transition | null,
+  ) => void;
 }

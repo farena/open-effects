@@ -12,6 +12,7 @@ import { HtmlTab } from "./inspector/HtmlTab";
 import { CssTab } from "./inspector/CssTab";
 import { KeyframesTab } from "./inspector/KeyframesTab";
 import { SceneTab } from "./inspector/SceneTab";
+import { TransitionTab } from "./inspector/TransitionTab";
 import { AudioFxTab } from "./inspector/AudioFxTab";
 
 export function Inspector() {
@@ -71,6 +72,7 @@ export function Inspector() {
       >
         <TabsList className="mx-2 mt-2 shrink-0">
           <TabsTrigger value="scene">Scene</TabsTrigger>
+          <TabsTrigger value="transition">Transition</TabsTrigger>
           <TabsTrigger value="keyframes">Keyframes</TabsTrigger>
         </TabsList>
 
@@ -79,6 +81,13 @@ export function Inspector() {
           className="mt-0 flex min-h-0 flex-1 flex-col"
         >
           <SceneTab />
+        </TabsContent>
+
+        <TabsContent
+          value="transition"
+          className="mt-0 flex min-h-0 flex-1 flex-col"
+        >
+          <TransitionTab />
         </TabsContent>
 
         <TabsContent
