@@ -76,9 +76,9 @@ export function TransitionTab() {
       setDurationError(
         `Must be ≤ ${maxDuration} (min of this scene and previous scene).`,
       );
-    } else {
-      setDurationError(null);
+      return;
     }
+    setDurationError(null);
     if (transition.type === "none") return;
     setSceneTransition(scene.id, {
       type: transition.type,

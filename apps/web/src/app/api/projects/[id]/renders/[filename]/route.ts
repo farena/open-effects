@@ -20,7 +20,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
 
   const projectDir = resolve(RENDERS_ROOT, id);
   const target = resolve(projectDir, filename);
-  if (!target.startsWith(projectDir + "/") && target !== projectDir) {
+  if (!target.startsWith(projectDir + "/")) {
     return NextResponse.json({ error: "invalid_path" }, { status: 400 });
   }
 
