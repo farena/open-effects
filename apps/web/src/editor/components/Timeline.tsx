@@ -16,7 +16,6 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
-  Music,
 } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -31,7 +30,8 @@ import {
 } from "@/editor/selectors";
 import { PROPERTIES } from "@open-effects/runtime";
 import type { Layer, Scene } from "@open-effects/shared-types";
-import { AudioStrip } from "./AudioStrip";
+import { AudioGroupHeader } from "./audio/AudioGroupHeader";
+import { AudioLaneRow } from "./audio/AudioLaneRow";
 import {
   probeAudioDuration,
   secondsToFrames,
@@ -42,6 +42,7 @@ const MIN_PX_PER_FRAME = 0.35;
 const MAX_PX_PER_FRAME = 48;
 const STORAGE_PX_PER_FRAME = "oe-timeline-px-per-frame";
 const STORAGE_LAYER_PANEL_W = "oe-timeline-layer-panel-w";
+const STORAGE_AUDIO_EXPANDED = "oe-timeline-audio-expanded";
 const MIN_LAYER_PANEL_W = 140;
 const MAX_LAYER_PANEL_W = 520;
 const DEFAULT_LAYER_PANEL_W = 220;
@@ -721,8 +722,13 @@ export function Timeline() {
   const addLayer = useEditorStore((s) => s.addLayer);
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
+  const removeAudioTrack = useEditorStore((s) => s.removeAudioTrack);
 
   const [expandedByScene, setExpandedByScene] = useState<
+    Record<string, boolean>
+  >({});
+
+  const [expandedAudioByScene, setExpandedAudioByScene] = useState<
     Record<string, boolean>
   >({});
 
@@ -737,6 +743,7 @@ export function Timeline() {
     try {
       const pxRaw = localStorage.getItem(STORAGE_PX_PER_FRAME);
       const wRaw = localStorage.getItem(STORAGE_LAYER_PANEL_W);
+      const audioExpandedRaw = localStorage.getItem(STORAGE_AUDIO_EXPANDED);
       if (pxRaw) {
         const n = parseFloat(pxRaw);
         if (Number.isFinite(n)) {
@@ -747,6 +754,21 @@ export function Timeline() {
         const n = parseInt(wRaw, 10);
         if (Number.isFinite(n)) {
           setLeftPanelW(clamp(n, MIN_LAYER_PANEL_W, MAX_LAYER_PANEL_W));
+        }
+      }
+      if (audioExpandedRaw) {
+        try {
+          const parsed = JSON.parse(audioExpandedRaw);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            // Clamp: only keep boolean values; unknown keys default to true on read
+            const clamped: Record<string, boolean> = {};
+            for (const [k, v] of Object.entries(parsed)) {
+              if (typeof v === "boolean") clamped[k] = v;
+            }
+            setExpandedAudioByScene(clamped);
+          }
+        } catch {
+          /* ignore malformed */
         }
       }
     } catch {
@@ -769,6 +791,17 @@ export function Timeline() {
       /* ignore */
     }
   }, [leftPanelW]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_AUDIO_EXPANDED,
+        JSON.stringify(expandedAudioByScene),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [expandedAudioByScene]);
 
   const resizeDragRef = useRef<{ startX: number; startW: number } | null>(null);
 
@@ -830,6 +863,17 @@ export function Timeline() {
       }
       return next;
     });
+    setExpandedAudioByScene((prev) => {
+      const next = { ...prev };
+      for (const sc of scenes) {
+        // Default to expanded (true) for new scenes; preserve persisted value otherwise
+        if (next[sc.id] === undefined) next[sc.id] = true;
+      }
+      for (const id of Object.keys(next)) {
+        if (!scenes.some((s) => s.id === id)) delete next[id];
+      }
+      return next;
+    });
   }, [scenes]);
 
   const trackRowCount = useMemo(() => {
@@ -837,10 +881,11 @@ export function Timeline() {
     for (const sc of sorted) {
       n += 1; // scene bar row
       if (expandedByScene[sc.id] !== false) n += sc.layers.length;
-      n += 1; // audio lane row (always visible)
+      n += 1; // audio group header row (always visible)
+      if (expandedAudioByScene[sc.id] !== false) n += sc.audioTracks.length;
     }
     return n;
-  }, [sorted, expandedByScene]);
+  }, [sorted, expandedByScene, expandedAudioByScene]);
 
   const sceneOffset = useMemo(() => {
     if (!activeScene) return 0;
@@ -905,6 +950,13 @@ export function Timeline() {
 
   const toggleSceneExpanded = useCallback((id: string) => {
     setExpandedByScene((prev) => ({
+      ...prev,
+      [id]: !(prev[id] !== false),
+    }));
+  }, []);
+
+  const toggleAudioExpanded = useCallback((id: string) => {
+    setExpandedAudioByScene((prev) => ({
       ...prev,
       [id]: !(prev[id] !== false),
     }));
@@ -988,8 +1040,10 @@ export function Timeline() {
               onScroll={onLeftScroll}
               className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
             >
-              {sorted.map((scene) => {
+              {sorted.map((scene, si) => {
                 const expanded = expandedByScene[scene.id] !== false;
+                const audioExpanded = expandedAudioByScene[scene.id] !== false;
+                const sceneOff = sceneStarts[si]!;
                 const layersInScene = [...scene.layers].sort(
                   (a, b) => a.order - b.order,
                 );
@@ -1124,17 +1178,37 @@ export function Timeline() {
                           </div>
                         );
                       })}
-                    {/* Audio lane label row — always shown per scene */}
-                    <div
-                      className="flex items-center gap-1 border-b border-[#2d2d2d] px-2 text-[11px] text-[#8a8a8a]"
-                      style={{ height: ROW_H }}
-                    >
-                      <span className="flex size-6 shrink-0 items-center justify-center">
-                        <Music className="size-3.5 opacity-60" />
-                      </span>
-                      <span className="w-5 shrink-0" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate">Audio</span>
-                    </div>
+                    {/* Audio group header row */}
+                    <AudioGroupHeader
+                      side="left"
+                      expanded={expandedAudioByScene[scene.id] !== false}
+                      onToggle={() => toggleAudioExpanded(scene.id)}
+                      count={scene.audioTracks.length}
+                      onAssetDrop={async ({ id, path }) => {
+                        const seconds = await probeAudioDuration(path);
+                        const fps = useEditorStore.getState().project.fps;
+                        addAudioTrack(scene.id, {
+                          id,
+                          path,
+                          durationFrames: secondsToFrames(seconds, fps),
+                        });
+                      }}
+                    />
+                    {/* Per-track audio lane rows (left rail) */}
+                    {audioExpanded &&
+                      scene.audioTracks.map((t) => (
+                        <AudioLaneRow
+                          key={t.id}
+                          track={t}
+                          sceneId={scene.id}
+                          sceneOffsetFrames={sceneOff}
+                          total={total}
+                          timelineWidthPx={timelineWidthPx}
+                          pxPerFrame={pxPerFrame}
+                          side="left"
+                          onDelete={() => removeAudioTrack(t.id)}
+                        />
+                      ))}
                   </Fragment>
                 );
               })}
@@ -1258,21 +1332,13 @@ export function Timeline() {
                               onSelect={() => selectLayer(layer.id)}
                             />
                           ))}
-                      {/* Audio lane drop zone */}
-                      <div
-                        className="relative border-b border-[#2d2d2d] bg-[#181c20]"
-                        style={{ height: ROW_H, width: timelineWidthPx }}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={async (e) => {
-                          e.preventDefault();
-                          const raw = e.dataTransfer.getData(
-                            "application/x-asset",
-                          );
-                          if (!raw) return;
-                          const { id, path } = JSON.parse(raw) as {
-                            id: string;
-                            path: string;
-                          };
+                      {/* Audio group header row (right side drop target) */}
+                      <AudioGroupHeader
+                        side="right"
+                        expanded={expandedAudioByScene[scene.id] !== false}
+                        onToggle={() => toggleAudioExpanded(scene.id)}
+                        count={scene.audioTracks.length}
+                        onAssetDrop={async ({ id, path }) => {
                           const seconds = await probeAudioDuration(path);
                           const fps = useEditorStore.getState().project.fps;
                           addAudioTrack(scene.id, {
@@ -1281,19 +1347,22 @@ export function Timeline() {
                             durationFrames: secondsToFrames(seconds, fps),
                           });
                         }}
-                      >
-                        {(scene.audioTracks ?? []).map((t) => (
-                          <AudioStrip
+                      />
+                      {/* Per-track audio lane rows (right side strips) */}
+                      {expandedAudioByScene[scene.id] !== false &&
+                        scene.audioTracks.map((t) => (
+                          <AudioLaneRow
                             key={t.id}
                             track={t}
-                            totalFrames={total}
+                            sceneId={scene.id}
+                            sceneOffsetFrames={off}
+                            total={total}
                             timelineWidthPx={timelineWidthPx}
                             pxPerFrame={pxPerFrame}
-                            probedDurationFrames={t.trimEnd}
-                            sceneOffsetFrames={off}
+                            side="right"
+                            onDelete={() => removeAudioTrack(t.id)}
                           />
                         ))}
-                      </div>
                     </Fragment>
                   );
                 })}
