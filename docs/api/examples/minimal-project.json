@@ -1,0 +1,94 @@
+{
+  "id": "proj_minimal01",
+  "name": "Minimal Example",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "scenes": [
+    {
+      "id": "scene_01",
+      "order": 0,
+      "name": "Intro",
+      "background": "#1a1a2e",
+      "durationFrames": 60,
+      "transitionIn": null,
+      "keyframes": [],
+      "layers": [
+        {
+          "id": "layer_01",
+          "order": 0,
+          "name": "Title",
+          "html": "<h1>Hello World</h1>",
+          "css": "h1 { color: white; font-size: 48px; text-align: center; }",
+          "startFrame": 0,
+          "endFrame": 59,
+          "visible": true,
+          "keyframes": [
+            {
+              "id": "kf_01",
+              "frame": 0,
+              "property": "opacity",
+              "value": "0",
+              "easingOut": { "type": "linear" }
+            },
+            {
+              "id": "kf_02",
+              "frame": 30,
+              "property": "opacity",
+              "value": "1",
+              "easingOut": { "type": "linear" }
+            }
+          ]
+        }
+      ],
+      "audioTracks": [
+        {
+          "id": "track_01",
+          "assetId": "asset_placeholder",
+          "assetPath": "/uploads/background-music.mp3",
+          "startFrame": 0,
+          "trimStart": 0,
+          "trimEnd": 60,
+          "eq": null,
+          "volumeKeyframes": [
+            {
+              "id": "vkf_01",
+              "frame": 0,
+              "value": 0,
+              "easingOut": { "type": "linear" }
+            },
+            {
+              "id": "vkf_02",
+              "frame": 30,
+              "value": 1,
+              "easingOut": { "type": "linear" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scene_02",
+      "order": 1,
+      "name": "Outro",
+      "background": "#000000",
+      "durationFrames": 60,
+      "transitionIn": null,
+      "keyframes": [],
+      "layers": [
+        {
+          "id": "layer_02",
+          "order": 0,
+          "name": "Thanks",
+          "html": "<p>Thanks for watching</p>",
+          "css": "p { color: white; font-size: 32px; text-align: center; }",
+          "startFrame": 0,
+          "endFrame": 59,
+          "visible": true,
+          "keyframes": []
+        }
+      ],
+      "audioTracks": []
+    }
+  ]
+}
