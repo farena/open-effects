@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import {
   selectActiveAudioTrack,
   selectVolumeKeyframes,
+  selectAudioAnimatedProperties,
 } from "@/editor/selectors";
 import type { Easing, VolumeKeyframe } from "@open-effects/shared-types";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,10 @@ import {
 } from "@/components/ui/popover";
 import { EasingEditor } from "./EasingEditor";
 import { EqEditor } from "./EqEditor";
+import {
+  AudioPropertyPicker,
+  type AudioPropertyKey,
+} from "@/editor/components/audio/AudioPropertyPicker";
 
 // ---------------------------------------------------------------------------
 // Default linear easing
@@ -42,7 +48,7 @@ function VolumeKeyframeRow({ trackId, keyframe }: VolumeKeyframeRowProps) {
   const deleteVolumeKeyframe = useEditorStore((s) => s.deleteVolumeKeyframe);
 
   function handleVolumeChange([v]: number[]) {
-    updateVolumeKeyframeValue(trackId, keyframe.frame, v);
+    updateVolumeKeyframeValue(trackId, keyframe.frame, v!);
   }
 
   function handleEasingSave(next: Easing) {
@@ -116,6 +122,44 @@ function VolumeKeyframeRow({ trackId, keyframe }: VolumeKeyframeRowProps) {
 }
 
 // ---------------------------------------------------------------------------
+// AudioPropertyGroup — per-property keyframe section (mirrors AnimatedPropertyBlock)
+// ---------------------------------------------------------------------------
+
+interface AudioPropertyGroupProps {
+  propKey: AudioPropertyKey;
+  title: string;
+  localFrame: number;
+  rows: React.ReactNode;
+  onAddKeyframe: () => void;
+}
+
+function AudioPropertyGroup({
+  title,
+  localFrame,
+  rows,
+  onAddKeyframe,
+}: AudioPropertyGroupProps) {
+  return (
+    <details open className="mb-3 overflow-hidden rounded-md border border-border">
+      <summary className="flex cursor-pointer select-none items-center justify-between bg-muted/40 px-3 py-2 text-sm font-medium hover:bg-muted/70">
+        <span>{title}</span>
+      </summary>
+      <div className="px-3 pb-2">
+        {rows}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="mt-1 h-7 w-full justify-start text-xs"
+          onClick={onAddKeyframe}
+        >
+          + keyframe at frame {localFrame}
+        </Button>
+      </div>
+    </details>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -125,6 +169,10 @@ export function AudioFxTab() {
   const fps = useEditorStore((s) => s.project.fps);
   const volumeKeyframes = useEditorStore(selectVolumeKeyframes);
   const addVolumeKeyframe = useEditorStore((s) => s.addVolumeKeyframe);
+  const animatedProps = useEditorStore(selectAudioAnimatedProperties);
+
+  const [selectedProperty, setSelectedProperty] =
+    useState<AudioPropertyKey | null>(null);
 
   if (!track) return null;
 
@@ -134,13 +182,16 @@ export function AudioFxTab() {
     (a, b) => a.frame - b.frame,
   );
 
-  function handleAddKeyframe() {
-    if (!track) return;
-    addVolumeKeyframe(track.id, localFrame, 1, LINEAR_EASING);
-  }
-
   // fps is read but available for potential future display (e.g. time code)
   void fps;
+
+  function handlePickerAdd(key: AudioPropertyKey) {
+    if (!track) return;
+    if (key === "volume") {
+      addVolumeKeyframe(track.id, localFrame, 1, LINEAR_EASING);
+    }
+    // future: pan, pitch handlers go here
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -155,41 +206,70 @@ export function AudioFxTab() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {/* Section 1 — Volume keyframes */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Volume keyframes</span>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-7 text-xs"
-              onClick={handleAddKeyframe}
-            >
-              + Add keyframe @ frame {localFrame}
-            </Button>
-          </div>
-
-          {sortedKeyframes.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              No volume keyframes yet. Add one to animate the volume over time.
-            </p>
-          ) : (
-            <div className="flex flex-col">
-              {sortedKeyframes.map((kf) => (
-                <VolumeKeyframeRow
-                  key={kf.frame}
-                  trackId={track.id}
-                  keyframe={kf}
-                />
-              ))}
-            </div>
-          )}
+        {/* Property picker — add new animated property keyframe */}
+        <div className="flex items-center gap-2">
+          <AudioPropertyPicker
+            value={selectedProperty}
+            onChange={setSelectedProperty}
+            animatedKeys={animatedProps}
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!selectedProperty}
+            className="shrink-0"
+            onClick={() => {
+              if (selectedProperty) handlePickerAdd(selectedProperty);
+            }}
+          >
+            + Add keyframe
+          </Button>
         </div>
+
+        {/* Per-property groups (mirrors KeyframesTab's AnimatedPropertyBlock pattern) */}
+        {animatedProps.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No animated properties yet. Pick a property above and add a
+            keyframe.
+          </p>
+        ) : (
+          <div className="flex flex-col">
+            {/* Volume group */}
+            {animatedProps.includes("volume") && (
+              <AudioPropertyGroup
+                propKey="volume"
+                title="Volume"
+                localFrame={localFrame}
+                onAddKeyframe={() =>
+                  addVolumeKeyframe(track.id, localFrame, 1, LINEAR_EASING)
+                }
+                rows={
+                  sortedKeyframes.length === 0 ? (
+                    <p className="py-2 text-xs text-muted-foreground">
+                      No volume keyframes yet.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col">
+                      {sortedKeyframes.map((kf) => (
+                        <VolumeKeyframeRow
+                          key={kf.frame}
+                          trackId={track.id}
+                          keyframe={kf}
+                        />
+                      ))}
+                    </div>
+                  )
+                }
+              />
+            )}
+            {/* future: pan, pitch groups go here */}
+          </div>
+        )}
 
         {/* Divider */}
         <div className="border-t" />
 
-        {/* Section 2 — EQ */}
+        {/* Section — EQ (unchanged) */}
         <EqEditor track={track} />
       </div>
     </div>
