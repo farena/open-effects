@@ -1,0 +1,1602 @@
+# Route inventory — source of truth for openapi.yaml
+#
+# Source files: apps/web/src/app/api/**/route.ts
+#
+# GET    /api/health                                  → health/route.ts
+# GET    /api/projects                                → projects/route.ts
+# POST   /api/projects                                → projects/route.ts
+# GET    /api/projects/:id                            → projects/[id]/route.ts
+# PATCH  /api/projects/:id                            → projects/[id]/route.ts
+# DELETE /api/projects/:id                            → projects/[id]/route.ts
+# GET    /api/projects/:id/renders/:filename          → projects/[id]/renders/[filename]/route.ts (file served from public/renders; only DELETE implemented as API route — GET is Next.js static)
+# DELETE /api/projects/:id/renders/:filename          → projects/[id]/renders/[filename]/route.ts
+# GET    /api/assets                                  → assets/route.ts
+# POST   /api/assets                                  → assets/route.ts
+# DELETE /api/assets/:id                              → assets/[id]/route.ts
+# GET    /api/components                              → components/route.ts
+# POST   /api/components                              → components/route.ts
+# DELETE /api/components/:id                          → components/[id]/route.ts
+# POST   /api/render/:projectId                       → render/[projectId]/route.ts
+# GET    /api/render/:projectId/:renderId/events      → render/[projectId]/[renderId]/events/route.ts (SSE)
+# GET    /api/render/eq-asset/:filename               → render/eq-asset/[filename]/route.ts
+#
+# Schema sources: packages/shared-types/src/schemas/*.ts
+#   - EasingSchema         → easing.ts
+#   - KeyframeSchema       → keyframe.ts
+#   - VolumeKeyframeSchema → keyframe.ts
+#   - LayerSchema          → layer.ts
+#   - AssetSchema          → audio.ts
+#   - EqSchema             → audio.ts
+#   - AudioTrackSchema     → audio.ts
+#   - TransitionSchema     → scene.ts
+#   - SceneSchema          → scene.ts
+#   - ProjectSchema        → project.ts
+#   - SavedComponentSchema → savedComponent.ts
+#
+# Schema mapping is manual for v1. Auto-generation via zod-to-openapi is
+# deferred to a follow-up plan.
+
+openapi: 3.1.0
+info:
+  title: open-effects API
+  version: 1.0.0
+  description: |
+    REST API for open-effects, a visual video editor over Remotion. Use this
+    API to upload assets, create and patch projects (the editor's source of
+    truth is a `ProjectJson` document), trigger MP4 renders, follow render
+    progress via SSE, and download the produced files.
+
+    ## Authentication
+
+    None in v1 (single-user local deployment). Do not expose the dev server
+    publicly.
+
+    ## Content types
+
+    | Operation | Content-Type |
+    |---|---|
+    | Most requests/responses | `application/json` |
+    | Asset upload | `multipart/form-data` |
+    | SSE progress stream | `text/event-stream` |
+    | OpenAPI spec | `application/yaml` |
+
+    ## Schema mapping
+
+    The `components.schemas` section below is manually derived from the Zod
+    schemas in `packages/shared-types/src/schemas/`. Zod constraints are
+    mirrored exactly (e.g. `width`/`height` integer ≥ 1 ≤ 7680, `fps` enum
+    [24, 30, 60], `volume` 0..1, `Easing` is a discriminated union on `type`).
+
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+
+# No authentication in v1 (single-user local deployment).
+security: []
+
+tags:
+  - name: Health
+    description: Health check endpoint.
+  - name: Projects
+    description: CRUD for projects and their rendered MP4 files.
+  - name: Assets
+    description: Upload and manage binary assets (images, audio, video, fonts).
+  - name: Components
+    description: Save and retrieve reusable layer components.
+  - name: Renders
+    description: Trigger MP4 renders and follow progress via Server-Sent Events.
+
+components:
+  schemas:
+
+    # ── Easing ────────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/easing.ts
+    # z.discriminatedUnion("type", [...]) → oneOf with discriminator
+    EasingLinear:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [linear]
+      example:
+        type: linear
+
+    EasingEaseIn:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [ease-in]
+      example:
+        type: ease-in
+
+    EasingEaseOut:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [ease-out]
+      example:
+        type: ease-out
+
+    EasingEaseInOut:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [ease-in-out]
+      example:
+        type: ease-in-out
+
+    EasingCubicBezier:
+      type: object
+      required: [type, params]
+      properties:
+        type:
+          type: string
+          enum: [cubic-bezier]
+        params:
+          type: array
+          items:
+            type: number
+          minItems: 4
+          maxItems: 4
+          description: "Cubic bezier control points [x1, y1, x2, y2]."
+      example:
+        type: cubic-bezier
+        params: [0.42, 0, 0.58, 1]
+
+    EasingSpring:
+      type: object
+      required: [type, params]
+      properties:
+        type:
+          type: string
+          enum: [spring]
+        params:
+          type: object
+          required: [damping, stiffness, mass]
+          properties:
+            damping:
+              type: number
+              exclusiveMinimum: 0
+            stiffness:
+              type: number
+              exclusiveMinimum: 0
+            mass:
+              type: number
+              exclusiveMinimum: 0
+      example:
+        type: spring
+        params:
+          damping: 10
+          stiffness: 100
+          mass: 1
+
+    Easing:
+      description: |
+        Animation easing function. Discriminated by the `type` field.
+        Corresponds to `EasingSchema` in packages/shared-types/src/schemas/easing.ts.
+      oneOf:
+        - $ref: '#/components/schemas/EasingLinear'
+        - $ref: '#/components/schemas/EasingEaseIn'
+        - $ref: '#/components/schemas/EasingEaseOut'
+        - $ref: '#/components/schemas/EasingEaseInOut'
+        - $ref: '#/components/schemas/EasingCubicBezier'
+        - $ref: '#/components/schemas/EasingSpring'
+      discriminator:
+        propertyName: type
+        mapping:
+          linear: '#/components/schemas/EasingLinear'
+          ease-in: '#/components/schemas/EasingEaseIn'
+          ease-out: '#/components/schemas/EasingEaseOut'
+          ease-in-out: '#/components/schemas/EasingEaseInOut'
+          cubic-bezier: '#/components/schemas/EasingCubicBezier'
+          spring: '#/components/schemas/EasingSpring'
+
+    # ── Keyframe ──────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/keyframe.ts
+    Keyframe:
+      type: object
+      description: |
+        A keyframe on a layer property.
+        Corresponds to `KeyframeSchema` in packages/shared-types/src/schemas/keyframe.ts.
+      required: [frame, property, value, easingOut]
+      properties:
+        id:
+          type: string
+          description: Optional stable identifier (CUID2 generated by the editor).
+        frame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame index at which this keyframe takes effect.
+        property:
+          type: string
+          minLength: 1
+          description: "CSS property name, e.g. `opacity`, `transform`."
+        value:
+          type: string
+          description: "CSS value string, e.g. `\"1\"`, `\"translateX(100px)\"`."
+        easingOut:
+          $ref: '#/components/schemas/Easing'
+      example:
+        id: "kf_01"
+        frame: 0
+        property: opacity
+        value: "0"
+        easingOut:
+          type: linear
+
+    VolumeKeyframe:
+      type: object
+      description: |
+        A keyframe controlling audio volume (0..1) on an audio track.
+        Corresponds to `VolumeKeyframeSchema` in packages/shared-types/src/schemas/keyframe.ts.
+      required: [frame, value, easingOut]
+      properties:
+        id:
+          type: string
+          description: Optional stable identifier.
+        frame:
+          type: integer
+          minimum: 0
+        value:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Volume level, 0 (silent) to 1 (full).
+        easingOut:
+          $ref: '#/components/schemas/Easing'
+      example:
+        id: "vkf_01"
+        frame: 0
+        value: 0
+        easingOut:
+          type: linear
+
+    # ── Layer ─────────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/layer.ts
+    Layer:
+      type: object
+      description: |
+        A composited HTML/CSS layer within a scene.
+        `endFrame` must be ≥ `startFrame`.
+        Corresponds to `LayerSchema` in packages/shared-types/src/schemas/layer.ts.
+      required: [id, order, name, html, css, startFrame, endFrame]
+      properties:
+        id:
+          type: string
+        order:
+          type: integer
+          minimum: 0
+          description: Z-order index (lower = further back).
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        html:
+          type: string
+          description: HTML markup rendered into the layer's container.
+        css:
+          type: string
+          description: Scoped CSS applied to the layer.
+        startFrame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame at which the layer becomes visible.
+        endFrame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame at which the layer is no longer visible. Must be ≥ startFrame.
+        visible:
+          type: boolean
+          default: true
+          description: When false, the layer is excluded from preview and render.
+        keyframes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Keyframe'
+          default: []
+      example:
+        id: "layer_01"
+        order: 0
+        name: "Title"
+        html: "<h1>Hello World</h1>"
+        css: "h1 { color: white; font-size: 48px; }"
+        startFrame: 0
+        endFrame: 59
+        visible: true
+        keyframes:
+          - id: "kf_01"
+            frame: 0
+            property: opacity
+            value: "0"
+            easingOut:
+              type: linear
+          - id: "kf_02"
+            frame: 30
+            property: opacity
+            value: "1"
+            easingOut:
+              type: linear
+
+    # ── Asset ─────────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/audio.ts
+    Asset:
+      type: object
+      description: |
+        A binary asset (image, audio, video, or font) stored on disk.
+        Corresponds to `AssetSchema` in packages/shared-types/src/schemas/audio.ts.
+      required: [id, type, filename, path, mimeType, size]
+      properties:
+        id:
+          type: string
+          description: CUID2 identifier.
+        type:
+          type: string
+          enum: [image, audio, video, font]
+        filename:
+          type: string
+          description: Original filename as uploaded.
+        path:
+          type: string
+          description: "Public path served by Next.js, e.g. `/uploads/abc123.mp3`."
+        mimeType:
+          type: string
+          description: "MIME type detected at upload, e.g. `audio/mpeg`."
+        size:
+          type: integer
+          minimum: 1
+          description: File size in bytes.
+        sha256:
+          type: string
+          description: SHA-256 hex digest of the file content (optional, used for deduplication).
+      example:
+        id: "asset_01"
+        type: audio
+        filename: "background-music.mp3"
+        path: "/uploads/background-music_abc123.mp3"
+        mimeType: audio/mpeg
+        size: 4194304
+        sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+    # ── EQ ────────────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/audio.ts
+    Eq:
+      type: object
+      description: |
+        4-band equalizer settings applied to an audio track at render time.
+        Values are in dB (positive = boost, negative = cut).
+        Corresponds to `EqSchema` in packages/shared-types/src/schemas/audio.ts.
+      required: [low, mid, high, presence]
+      properties:
+        low:
+          type: number
+          description: Low frequency band gain (dB).
+        mid:
+          type: number
+          description: Mid frequency band gain (dB).
+        high:
+          type: number
+          description: High frequency band gain (dB).
+        presence:
+          type: number
+          description: Presence / upper-mid frequency band gain (dB).
+      example:
+        low: 2
+        mid: 0
+        high: -1
+        presence: 1
+
+    # ── AudioTrack ────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/audio.ts
+    AudioTrack:
+      type: object
+      description: |
+        An audio track attached to a scene. `trimEnd` must be > `trimStart`.
+        Corresponds to `AudioTrackSchema` in packages/shared-types/src/schemas/audio.ts.
+      required: [id, assetId, assetPath, startFrame, trimStart, trimEnd]
+      properties:
+        id:
+          type: string
+        assetId:
+          type: string
+          description: References an Asset by its `id`.
+        assetPath:
+          type: string
+          description: "Resolved public path, e.g. `/uploads/abc.mp3`. Kept denormalised for render performance."
+        assetSha256:
+          type: string
+          description: SHA-256 hex digest of the asset file (optional).
+        startFrame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame at which playback begins.
+        trimStart:
+          type: integer
+          minimum: 0
+          description: Frame offset into the audio file to start playback from.
+        trimEnd:
+          type: integer
+          minimum: 0
+          description: Frame offset into the audio file to stop playback. Must be > trimStart.
+        eq:
+          oneOf:
+            - $ref: '#/components/schemas/Eq'
+            - type: "null"
+          description: Optional EQ settings. null or omitted = bypass.
+        volumeKeyframes:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumeKeyframe'
+          default: []
+      example:
+        id: "track_01"
+        assetId: "asset_01"
+        assetPath: "/uploads/background-music_abc123.mp3"
+        startFrame: 0
+        trimStart: 0
+        trimEnd: 60
+        eq: null
+        volumeKeyframes:
+          - id: "vkf_01"
+            frame: 0
+            value: 0
+            easingOut:
+              type: linear
+          - id: "vkf_02"
+            frame: 30
+            value: 1
+            easingOut:
+              type: linear
+
+    # ── Transition ────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/scene.ts
+    Transition:
+      type: object
+      description: |
+        Scene transition applied when entering this scene from the previous one.
+        Corresponds to `TransitionSchema` in packages/shared-types/src/schemas/scene.ts.
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [none, fade, slide-left, slide-right, slide-up, slide-down]
+        durationFrames:
+          type: integer
+          minimum: 0
+          default: 15
+          description: Length of the transition in frames.
+      example:
+        type: fade
+        durationFrames: 15
+
+    # ── Scene ─────────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/scene.ts
+    Scene:
+      type: object
+      description: |
+        A discrete segment of the timeline with its own layers and audio tracks.
+        Corresponds to `SceneSchema` in packages/shared-types/src/schemas/scene.ts.
+      required: [id, order, durationFrames]
+      properties:
+        id:
+          type: string
+        order:
+          type: integer
+          minimum: 0
+          description: Position in the scene sequence (0-indexed).
+        name:
+          type: string
+          minLength: 1
+          default: "Scene"
+        background:
+          type: string
+          default: "#000000"
+          description: CSS background value for the scene stage.
+        durationFrames:
+          type: integer
+          minimum: 1
+          description: Total length of the scene in frames.
+        transitionIn:
+          oneOf:
+            - $ref: '#/components/schemas/Transition'
+            - type: "null"
+          description: Transition effect applied when entering this scene.
+        keyframes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Keyframe'
+          default: []
+          description: Keyframes applied to the whole scene (local frames 0…durationFrames−1).
+        layers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Layer'
+          default: []
+        audioTracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudioTrack'
+          default: []
+      example:
+        id: "scene_01"
+        order: 0
+        name: "Intro"
+        background: "#1a1a2e"
+        durationFrames: 60
+        transitionIn: null
+        keyframes: []
+        layers:
+          - id: "layer_01"
+            order: 0
+            name: "Title"
+            html: "<h1>Hello World</h1>"
+            css: "h1 { color: white; font-size: 48px; }"
+            startFrame: 0
+            endFrame: 59
+            visible: true
+            keyframes: []
+        audioTracks: []
+
+    # ── Project ───────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/project.ts
+    Project:
+      type: object
+      description: |
+        Full project document (`ProjectJson`). This is the body sent to
+        `PATCH /api/projects/:id` and returned by `GET /api/projects/:id`.
+        Corresponds to `ProjectSchema` in packages/shared-types/src/schemas/project.ts.
+      required: [id, name, width, height, fps]
+      properties:
+        id:
+          type: string
+          description: CUID2 identifier (server-generated; must match the URL parameter).
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        width:
+          type: integer
+          minimum: 1
+          maximum: 7680
+          description: Canvas width in pixels.
+        height:
+          type: integer
+          minimum: 1
+          maximum: 7680
+          description: Canvas height in pixels.
+        fps:
+          type: integer
+          enum: [24, 30, 60]
+          description: Frames per second.
+        scenes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Scene'
+          default: []
+      example:
+        id: "proj_01"
+        name: "My Video"
+        width: 1280
+        height: 720
+        fps: 30
+        scenes:
+          - id: "scene_01"
+            order: 0
+            name: "Intro"
+            background: "#000000"
+            durationFrames: 60
+            transitionIn: null
+            keyframes: []
+            layers: []
+            audioTracks: []
+
+    # ── ProjectListItem ───────────────────────────────────────────────────────
+    # Returned by GET /api/projects (Prisma project row, not full ProjectJson)
+    ProjectListItem:
+      type: object
+      description: Lightweight project row returned by the list endpoint (Prisma record, not full ProjectJson).
+      required: [id, name, width, height, fps, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+        fps:
+          type: integer
+          enum: [24, 30, 60]
+        updatedAt:
+          type: string
+          format: date-time
+      example:
+        id: "proj_01"
+        name: "My Video"
+        width: 1280
+        height: 720
+        fps: 30
+        updatedAt: "2026-05-08T12:00:00.000Z"
+
+    # ── SavedComponent ────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/savedComponent.ts
+    SavedComponentPayload:
+      type: object
+      description: Payload of a saved component — a non-empty set of layers.
+      required: [layers]
+      properties:
+        layers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Layer'
+          minItems: 1
+      example:
+        layers:
+          - id: "layer_01"
+            order: 0
+            name: "Badge"
+            html: "<div class=\"badge\">NEW</div>"
+            css: ".badge { background: red; color: white; padding: 4px 8px; }"
+            startFrame: 0
+            endFrame: 59
+            visible: true
+            keyframes: []
+
+    SavedComponent:
+      type: object
+      description: |
+        A reusable layer component saved by the user.
+        Corresponds to `SavedComponentSchema` in packages/shared-types/src/schemas/savedComponent.ts.
+      required: [id, name, payload]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: ["string", "null"]
+        preview:
+          type: ["string", "null"]
+          description: Public path to a PNG thumbnail, or null.
+        payload:
+          $ref: '#/components/schemas/SavedComponentPayload'
+        createdAt:
+          type: string
+          format: date-time
+      example:
+        id: "comp_01"
+        name: "Red Badge"
+        category: "overlays"
+        preview: "/components/comp_01/preview.png"
+        payload:
+          layers:
+            - id: "layer_01"
+              order: 0
+              name: "Badge"
+              html: "<div class=\"badge\">NEW</div>"
+              css: ".badge { background: red; color: white; }"
+              startFrame: 0
+              endFrame: 59
+              visible: true
+              keyframes: []
+        createdAt: "2026-05-08T12:00:00.000Z"
+
+    # ── RenderJob ─────────────────────────────────────────────────────────────
+    # Source: apps/web/src/lib/render/renderRegistry.ts (inferred from SSE event shape)
+    RenderJob:
+      type: object
+      description: Render job state emitted by the SSE stream.
+      required: [id, projectId, status]
+      properties:
+        id:
+          type: string
+          description: Unique render job identifier (CUID2).
+        projectId:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, error]
+        percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Progress percentage (0–100). Present when status is `running`.
+        outputPath:
+          type: string
+          description: "Public path to the output MP4, e.g. `/renders/proj_01/2026-01-01T00-00-00-000Z.mp4`. Present when status is `completed`."
+        error:
+          type: string
+          description: Error message. Present when status is `error`.
+      example:
+        id: "render_01"
+        projectId: "proj_01"
+        status: completed
+        percent: 100
+        outputPath: "/renders/proj_01/2026-05-08T12-00-00-000Z.mp4"
+
+    # ── Error shapes ──────────────────────────────────────────────────────────
+    ErrorSimple:
+      type: object
+      description: Simple error response with a string message.
+      required: [error]
+      properties:
+        error:
+          type: string
+      example:
+        error: not_found
+
+    ErrorValidation:
+      type: object
+      description: Validation error response from Zod `safeParse().error.flatten()`.
+      required: [error]
+      properties:
+        error:
+          type: object
+          properties:
+            formErrors:
+              type: array
+              items:
+                type: string
+            fieldErrors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+      example:
+        error:
+          formErrors: []
+          fieldErrors:
+            fps: ["Expected 24 | 30 | 60"]
+
+  responses:
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorSimple'
+          example:
+            error: not_found
+
+    BadRequest:
+      description: Validation error or malformed input.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ErrorSimple'
+              - $ref: '#/components/schemas/ErrorValidation'
+
+    Conflict:
+      description: Conflict — resource is in use.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, refs]
+            properties:
+              error:
+                type: string
+              refs:
+                type: integer
+            example:
+              error: in_use
+              refs: 2
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Health ──────────────────────────────────────────────────────────────────
+  /api/health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check API and database health
+      description: Returns `200 ok` when the database is reachable, `503 degraded` when it is not.
+      responses:
+        '200':
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, db]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  db:
+                    type: string
+                    enum: [up]
+              example:
+                status: ok
+                db: up
+        '503':
+          description: Service is degraded (database unreachable).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, db]
+                properties:
+                  status:
+                    type: string
+                    enum: [degraded]
+                  db:
+                    type: string
+                    enum: [down]
+              example:
+                status: degraded
+                db: down
+
+  # ── Projects ─────────────────────────────────────────────────────────────────
+  /api/projects:
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      summary: List all projects
+      description: Returns all projects ordered by `updatedAt` descending. Returns lightweight list rows (not full ProjectJson).
+      responses:
+        '200':
+          description: Array of project list items.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectListItem'
+              example:
+                - id: "proj_01"
+                  name: "My Video"
+                  width: 1280
+                  height: 720
+                  fps: 30
+                  updatedAt: "2026-05-08T12:00:00.000Z"
+
+    post:
+      tags: [Projects]
+      operationId: createProject
+      summary: Create a new project
+      description: |
+        Creates a project record and seeds it with one default scene.
+        Returns the generated project `id`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, width, height, fps]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  description: Human-readable project name.
+                width:
+                  type: integer
+                  minimum: 1
+                  description: Canvas width in pixels.
+                height:
+                  type: integer
+                  minimum: 1
+                  description: Canvas height in pixels.
+                fps:
+                  type: integer
+                  enum: [24, 30, 60]
+                  description: Frames per second.
+            examples:
+              hd720:
+                summary: Standard 720p project
+                value:
+                  name: "My First Video"
+                  width: 1280
+                  height: 720
+                  fps: 30
+              fullHd:
+                summary: Full HD 1080p project
+                value:
+                  name: "Full HD Project"
+                  width: 1920
+                  height: 1080
+                  fps: 60
+      responses:
+        '201':
+          description: Project created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id:
+                    type: string
+              example:
+                id: "proj_abc123"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project CUID2 identifier.
+
+    get:
+      tags: [Projects]
+      operationId: getProject
+      summary: Get a project (full ProjectJson)
+      description: Returns the full `ProjectJson` document including all scenes, layers, keyframes, and audio tracks.
+      responses:
+        '200':
+          description: Full project document.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+              example:
+                id: "proj_01"
+                name: "My Video"
+                width: 1280
+                height: 720
+                fps: 30
+                scenes:
+                  - id: "scene_01"
+                    order: 0
+                    name: "Intro"
+                    background: "#000000"
+                    durationFrames: 60
+                    transitionIn: null
+                    keyframes: []
+                    layers: []
+                    audioTracks: []
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Projects]
+      operationId: patchProject
+      summary: Update a project (full ProjectJson replace)
+      description: |
+        Replaces the full `ProjectJson` for the given project. The request body
+        must conform to `ProjectSchema` (see `packages/shared-types`). The `id`
+        in the body is overwritten with the URL parameter.
+
+        See `docs/api/examples/minimal-project.json` for a complete working example.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+            examples:
+              minimal:
+                summary: Minimal 2-scene project (see also docs/api/examples/minimal-project.json)
+                value:
+                  id: "proj_01"
+                  name: "Minimal Video"
+                  width: 1280
+                  height: 720
+                  fps: 30
+                  scenes:
+                    - id: "scene_01"
+                      order: 0
+                      name: "Intro"
+                      background: "#1a1a2e"
+                      durationFrames: 60
+                      transitionIn: null
+                      keyframes: []
+                      layers:
+                        - id: "layer_01"
+                          order: 0
+                          name: "Title"
+                          html: "<h1>Hello</h1>"
+                          css: "h1 { color: white; }"
+                          startFrame: 0
+                          endFrame: 59
+                          visible: true
+                          keyframes:
+                            - id: "kf_01"
+                              frame: 0
+                              property: opacity
+                              value: "0"
+                              easingOut:
+                                type: linear
+                            - id: "kf_02"
+                              frame: 30
+                              property: opacity
+                              value: "1"
+                              easingOut:
+                                type: linear
+                      audioTracks:
+                        - id: "track_01"
+                          assetId: "asset_01"
+                          assetPath: "/uploads/music.mp3"
+                          startFrame: 0
+                          trimStart: 0
+                          trimEnd: 60
+                          eq: null
+                          volumeKeyframes:
+                            - id: "vkf_01"
+                              frame: 0
+                              value: 0
+                              easingOut:
+                                type: linear
+                            - id: "vkf_02"
+                              frame: 30
+                              value: 1
+                              easingOut:
+                                type: linear
+                    - id: "scene_02"
+                      order: 1
+                      name: "Outro"
+                      background: "#000000"
+                      durationFrames: 60
+                      transitionIn: null
+                      keyframes: []
+                      layers:
+                        - id: "layer_02"
+                          order: 0
+                          name: "Thanks"
+                          html: "<p>Thanks for watching</p>"
+                          css: "p { color: white; font-size: 32px; }"
+                          startFrame: 0
+                          endFrame: 59
+                          visible: true
+                          keyframes: []
+                      audioTracks: []
+      responses:
+        '200':
+          description: Project updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+              example:
+                ok: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      summary: Delete a project
+      description: Permanently deletes the project record. Associated render files on disk are NOT deleted by this endpoint.
+      responses:
+        '200':
+          description: Project deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+              example:
+                ok: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/projects/{id}/renders/{filename}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-zA-Z0-9]+$'
+        description: Project CUID2 identifier.
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.mp4$'
+        description: "Render filename in ISO-8601-derived format, e.g. `2026-05-08T12-00-00-000Z.mp4`."
+
+    get:
+      tags: [Projects]
+      operationId: downloadRender
+      summary: Download a rendered MP4
+      description: |
+        Serves the MP4 file from `public/renders/{id}/{filename}` via Next.js
+        static file serving. The URL path is `/api/projects/{id}/renders/{filename}`
+        which maps to the public directory.
+
+        **Note:** This is served as a static asset by Next.js, not via a dedicated
+        API route handler. The response is a binary MP4 stream.
+      responses:
+        '200':
+          description: MP4 file stream.
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Render file not found.
+
+    delete:
+      tags: [Projects]
+      operationId: deleteRender
+      summary: Delete a rendered MP4 file
+      description: |
+        Deletes the render file from disk. The filename must match the pattern
+        `YYYY-MM-DDTHH-MM-SS-mmmZ.mp4` and the project `id` must be alphanumeric.
+      responses:
+        '200':
+          description: Render deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+              example:
+                ok: true
+        '400':
+          description: Invalid filename or project ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                invalidFilename:
+                  value:
+                    error: invalid_filename
+                invalidId:
+                  value:
+                    error: invalid_project_id
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: File system error when deleting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                error: unlink_failed
+
+  # ── Assets ───────────────────────────────────────────────────────────────────
+  /api/assets:
+    get:
+      tags: [Assets]
+      operationId: listAssets
+      summary: List assets
+      description: Returns all assets ordered by `createdAt` descending. Optionally filter by `type`.
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [image, audio, video, font]
+          description: Filter by asset type.
+      responses:
+        '200':
+          description: Array of assets.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Asset'
+              example:
+                - id: "asset_01"
+                  type: audio
+                  filename: "background-music.mp3"
+                  path: "/uploads/background-music_abc123.mp3"
+                  mimeType: audio/mpeg
+                  size: 4194304
+
+    post:
+      tags: [Assets]
+      operationId: uploadAsset
+      summary: Upload an asset
+      description: |
+        Uploads a binary file (image, audio, video, or font). The file is stored
+        under `public/uploads/` and an `Asset` record is created.
+
+        Maximum upload size: 200 MB (enforced at the application layer).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload.
+            encoding:
+              file:
+                contentType: image/*, audio/*, video/*, font/*
+      responses:
+        '201':
+          description: Asset created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+              example:
+                id: "asset_01"
+                type: audio
+                filename: "background-music.mp3"
+                path: "/uploads/background-music_abc123.mp3"
+                mimeType: audio/mpeg
+                size: 4194304
+        '400':
+          description: Missing file or unsupported type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                missingFile:
+                  value:
+                    error: missing_file
+                uploadFailed:
+                  value:
+                    error: upload_failed
+
+  /api/assets/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Asset CUID2 identifier.
+
+    delete:
+      tags: [Assets]
+      operationId: deleteAsset
+      summary: Delete an asset
+      description: |
+        Deletes the asset record and the file on disk. Returns `409 Conflict` if
+        the asset is referenced by one or more audio tracks.
+      responses:
+        '200':
+          description: Asset deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+              example:
+                ok: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ── Components ───────────────────────────────────────────────────────────────
+  /api/components:
+    get:
+      tags: [Components]
+      operationId: listComponents
+      summary: List saved components
+      description: Returns all saved components ordered by `createdAt` descending. Optionally filter by `category`.
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by category name (exact match).
+      responses:
+        '200':
+          description: Array of saved components.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavedComponent'
+              example:
+                - id: "comp_01"
+                  name: "Red Badge"
+                  category: "overlays"
+                  preview: "/components/comp_01/preview.png"
+                  payload:
+                    layers:
+                      - id: "layer_01"
+                        order: 0
+                        name: "Badge"
+                        html: "<div class=\"badge\">NEW</div>"
+                        css: ".badge { background: red; color: white; }"
+                        startFrame: 0
+                        endFrame: 59
+                        visible: true
+                        keyframes: []
+                  createdAt: "2026-05-08T12:00:00.000Z"
+
+    post:
+      tags: [Components]
+      operationId: createComponent
+      summary: Save a reusable component
+      description: |
+        Saves a set of layers as a reusable component. If a base64 PNG `preview`
+        data URL is provided, it is decoded and stored as a PNG thumbnail.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, payload]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                category:
+                  type: ["string", "null"]
+                preview:
+                  type: ["string", "null"]
+                  description: "Base64-encoded PNG data URL (`data:image/png;base64,...`). Optional."
+                payload:
+                  $ref: '#/components/schemas/SavedComponentPayload'
+            example:
+              name: "Red Badge"
+              category: "overlays"
+              preview: null
+              payload:
+                layers:
+                  - id: "layer_01"
+                    order: 0
+                    name: "Badge"
+                    html: "<div class=\"badge\">NEW</div>"
+                    css: ".badge { background: red; color: white; padding: 4px 8px; }"
+                    startFrame: 0
+                    endFrame: 59
+                    visible: true
+                    keyframes: []
+      responses:
+        '201':
+          description: Component created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedComponent'
+              example:
+                id: "comp_01"
+                name: "Red Badge"
+                category: "overlays"
+                preview: null
+                payload:
+                  layers:
+                    - id: "layer_01"
+                      order: 0
+                      name: "Badge"
+                      html: "<div>NEW</div>"
+                      css: ".badge { background: red; }"
+                      startFrame: 0
+                      endFrame: 59
+                      visible: true
+                      keyframes: []
+                createdAt: "2026-05-08T12:00:00.000Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/components/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Component CUID2 identifier.
+
+    delete:
+      tags: [Components]
+      operationId: deleteComponent
+      summary: Delete a saved component
+      responses:
+        '200':
+          description: Component deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+              example:
+                ok: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Renders ──────────────────────────────────────────────────────────────────
+  /api/render/{projectId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project CUID2 identifier.
+
+    post:
+      tags: [Renders]
+      operationId: startRender
+      summary: Start a render job
+      description: |
+        Creates a render job for the project and starts it asynchronously.
+        Returns a `renderId` which can be used to subscribe to the SSE progress
+        stream at `GET /api/render/{projectId}/{renderId}/events`.
+      responses:
+        '202':
+          description: Render job accepted and started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [renderId]
+                properties:
+                  renderId:
+                    type: string
+                    description: Unique identifier of the render job.
+              example:
+                renderId: "render_xyz789"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/render/{projectId}/{renderId}/events:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project CUID2 identifier.
+      - name: renderId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Render job identifier returned by `POST /api/render/{projectId}`.
+
+    get:
+      tags: [Renders]
+      operationId: getRenderEvents
+      summary: Subscribe to render progress (SSE)
+      description: |
+        Opens a Server-Sent Events (SSE) stream that emits `RenderJob` state
+        updates until the render completes or errors.
+
+        **Event format:** Each event is a bare `data:` line (no named event field):
+        ```
+        data: {"id":"render_xyz789","projectId":"proj_01","status":"running","percent":42}
+
+        data: {"id":"render_xyz789","projectId":"proj_01","status":"completed","percent":100,"outputPath":"/renders/proj_01/2026-05-08T12-00-00-000Z.mp4"}
+
+        ```
+
+        The stream closes automatically when `status` is `completed` or `error`.
+
+        **Note:** OpenAPI 3.1 does not formally model SSE — the content type
+        `text/event-stream` is documented here by convention. Use the prose
+        description and event examples above to implement SSE consumers.
+      responses:
+        '200':
+          description: |
+            SSE stream of render job updates. Each event is a bare `data:` line
+            containing a JSON-encoded `RenderJob` object.
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/RenderJob'
+              example: |
+                data: {"id":"render_xyz789","projectId":"proj_01","status":"pending","percent":0}
+
+                data: {"id":"render_xyz789","projectId":"proj_01","status":"running","percent":55}
+
+                data: {"id":"render_xyz789","projectId":"proj_01","status":"completed","percent":100,"outputPath":"/renders/proj_01/2026-05-08T12-00-00-000Z.mp4"}
+
+        '404':
+          description: Render job not found.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: not_found
+
+  /api/render/eq-asset/{filename}:
+    parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+        description: |
+          Audio filename from the EQ processing cache (`.cache/audio/`).
+          Must not contain path separators or `..`.
+
+    get:
+      tags: [Renders]
+      operationId: getEqAsset
+      summary: Retrieve an EQ-processed audio file
+      description: |
+        Serves an EQ-processed audio file from the internal cache directory
+        (`.cache/audio/`). This endpoint is used internally by the Remotion
+        renderer to access EQ-processed audio assets during render.
+
+        Supports MP3, WAV, M4A, AAC, OGG, and FLAC.
+      responses:
+        '200':
+          description: Audio file binary.
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+            audio/wav:
+              schema:
+                type: string
+                format: binary
+            audio/mp4:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid filename (contains path traversal characters).
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                invalidFilename:
+                  value: invalid_filename
+                invalidPath:
+                  value: invalid_path
+        '404':
+          description: File not found in EQ cache.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: not_found
+
+  /api/openapi.yaml:
+    get:
+      tags: [Health]
+      operationId: getOpenApiSpec
+      summary: Retrieve the OpenAPI specification
+      description: |
+        Returns the raw OpenAPI 3.1 YAML specification for this API.
+        Useful for agents that need to discover the API schema at runtime.
+      responses:
+        '200':
+          description: OpenAPI YAML specification.
+          content:
+            application/yaml:
+              schema:
+                type: string
+              example: "openapi: 3.1.0\ninfo:\n  title: open-effects API\n  ..."
