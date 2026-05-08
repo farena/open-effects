@@ -108,3 +108,18 @@ export const selectKeyframesForPropertyOnScene =
       .filter((k) => k.property === property)
       .sort((a, b) => a.frame - b.frame);
   };
+
+/**
+ * Returns the set of audio property keys that already have keyframes on the
+ * active track. For v1 this is just `["volume"]` if volumeKeyframes is non-
+ * empty. Designed so future props (pan/pitch) plug in by extending this list.
+ */
+export const selectAudioAnimatedProperties = (
+  s: EditorState,
+): Array<"volume"> => {
+  const track = selectActiveAudioTrack(s);
+  if (!track) return [];
+  const animated: Array<"volume"> = [];
+  if (track.volumeKeyframes.length > 0) animated.push("volume");
+  return animated;
+};
