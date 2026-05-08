@@ -1361,6 +1361,16 @@ export function Timeline() {
                             pxPerFrame={pxPerFrame}
                             side="right"
                             onDelete={() => removeAudioTrack(t.id)}
+                            onAssetDrop={async ({ id, path }) => {
+                              const seconds = await probeAudioDuration(path);
+                              const fps =
+                                useEditorStore.getState().project.fps;
+                              addAudioTrack(scene.id, {
+                                id,
+                                path,
+                                durationFrames: secondsToFrames(seconds, fps),
+                              });
+                            }}
                           />
                         ))}
                     </Fragment>

@@ -15,6 +15,7 @@ interface AudioLaneRowProps {
   pxPerFrame: number;
   side: "left" | "right";
   onDelete: () => void;
+  onAssetDrop?: (asset: { id: string; path: string }) => void;
 }
 
 export function AudioLaneRow({
@@ -25,6 +26,7 @@ export function AudioLaneRow({
   pxPerFrame,
   side,
   onDelete,
+  onAssetDrop,
 }: AudioLaneRowProps) {
   const trackLabel =
     track.assetPath ? track.assetPath.split("/").pop() : undefined;
@@ -62,11 +64,31 @@ export function AudioLaneRow({
     );
   }
 
-  // Right side: strip container
+  // Right side: strip container — also a drop target so AC3
+  // (header OR any of its lanes) is fully satisfied.
   return (
     <div
       className="relative border-b border-[#2d2d2d] bg-[#181c20]"
       style={{ height: ROW_H, width: timelineWidthPx }}
+      onDragOver={onAssetDrop ? (e) => e.preventDefault() : undefined}
+      onDrop={
+        onAssetDrop
+          ? (e) => {
+              e.preventDefault();
+              const raw = e.dataTransfer.getData("application/x-asset");
+              if (!raw) return;
+              try {
+                const { id, path } = JSON.parse(raw) as {
+                  id: string;
+                  path: string;
+                };
+                onAssetDrop({ id, path });
+              } catch {
+                /* malformed payload — ignore */
+              }
+            }
+          : undefined
+      }
     >
       <AudioStrip
         track={track}
