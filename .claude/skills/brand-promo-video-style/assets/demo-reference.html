@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Demo — Brand Promo Video Style</title>
+<!--
+  Demo de referencia ejecutable.
+  Reproduce las primeras 5 escenas del estilo del video analizado para validar
+  paleta, tipografía, easings y composición.
+  
+  Para usar como punto de partida en una marca nueva:
+  1. Cambiar las custom properties --bg-saturated y --bg-light en :root
+  2. Sustituir el texto de cada escena
+  3. Cambiar el SVG del logo en .logo
+  4. (Opcional) ajustar duraciones del array `scenes` en el script
+-->
+<style>
+:root {
+  --bg-light: #EEEDFB;
+  --bg-saturated: #6B5CFF;
+  --text-dark: #1A1A2E;
+  --text-light: #FFFFFF;
+  --accent-yellow: #FFC93C;
+  --accent-pink: #FF5C8A;
+  --accent-blue: #7BB6FF;
+  --shadow-icon: 0 12px 32px rgba(107, 92, 255, 0.25);
+  --shadow-card: 0 4px 24px rgba(26, 26, 46, 0.08);
+  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --easing-spring-strong: cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  --easing-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body { 
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  max-width: 100vw;
+  max-height: 100vh;
+  background: var(--bg-light);
+  overflow: hidden;
+  transition: background 600ms var(--easing-out);
+}
+
+.stage[data-bg="saturated"] { background: var(--bg-saturated); }
+
+.bg-blob {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 600ms;
+}
+.stage[data-bg="saturated"] .bg-blob { opacity: 0; }
+
+.logo {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+  height: 24px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  color: var(--text-dark);
+  transition: color 600ms;
+}
+.stage[data-bg="saturated"] .logo { color: var(--text-light); }
+
+.scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.scene.active { opacity: 1; pointer-events: auto; }
+
+/* ============== ESCENA 1 — Hook + notificaciones ============== */
+.scene-1 .hero-text {
+  font-size: 64px;
+  font-weight: 600;
+  color: var(--text-dark);
+  letter-spacing: -1.5%;
+  text-align: center;
+  line-height: 1.2;
+  z-index: 2;
+}
+.scene-1 .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  margin-right: 0.25em;
+}
+.scene-1.active .word {
+  animation: word-in 500ms var(--easing-spring) both;
+}
+.scene-1.active .word:nth-child(1) { animation-delay: 0ms; }
+.scene-1.active .word:nth-child(2) { animation-delay: 80ms; }
+.scene-1.active .word:nth-child(3) { animation-delay: 160ms; }
+.scene-1.active .word:nth-child(4) { animation-delay: 240ms; }
+.scene-1.active .word:nth-child(5) { animation-delay: 320ms; }
+.scene-1.active .word:nth-child(6) { animation-delay: 400ms; }
+.scene-1.active .word.break { display: block; animation-delay: 600ms; }
+
+.email-icon-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: var(--accent-yellow);
+  border-radius: 14px;
+  vertical-align: middle;
+  box-shadow: 0 8px 20px rgba(255, 201, 60, 0.4);
+  margin: 0 8px;
+  transform: translateY(-4px);
+}
+.email-icon-inline svg { width: 36px; height: 36px; color: white; }
+
+.notif-cloud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.notif {
+  position: absolute;
+  background: white;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: scale(0.8);
+}
+.scene-1.active .notif {
+  animation: notif-in 700ms var(--easing-spring) forwards;
+}
+.notif-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.notif-dot.red { background: #ff6b6b; }
+.notif-dot.green { background: #51cf66; }
+.notif-dot.yellow { background: var(--accent-yellow); }
+
+@keyframes notif-in {
+  to { opacity: 0.95; transform: scale(1); }
+}
+
+/* ============== ESCENA 2 — Lockup ============== */
+.scene-2 .lockup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: -2%;
+  opacity: 0;
+  transform: scale(0.6);
+}
+.scene-2.active .lockup {
+  animation: lockup-in 700ms var(--easing-spring-strong) forwards;
+}
+.scene-2 .lockup-divider {
+  font-weight: 300;
+  opacity: 0.4;
+  font-size: 56px;
+}
+.scene-2 .lockup-sub {
+  font-weight: 400;
+  font-size: 36px;
+}
+
+@keyframes lockup-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ============== ESCENA 3 — Feature 1 (texto sobre violeta) ============== */
+.scene-3 .hero-text {
+  font-size: 80px;
+  font-weight: 600;
+  color: var(--text-light);
+  letter-spacing: -1%;
+  text-align: center;
+}
+.scene-3 .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  margin-right: 0.25em;
+}
+.scene-3.active .word {
+  animation: word-in 500ms var(--easing-spring) both;
+}
+.scene-3.active .word:nth-child(1) { animation-delay: 100ms; }
+.scene-3.active .word:nth-child(2) { animation-delay: 180ms; }
+
+.cursor {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  bottom: -50px;
+  right: -50px;
+  z-index: 5;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+  opacity: 0;
+}
+.scene-3.active .cursor {
+  animation: cursor-arc 900ms var(--easing-out) 600ms forwards,
+             cursor-bounce 1.2s ease-in-out 1500ms infinite;
+}
+
+@keyframes cursor-arc {
+  0% { 
+    bottom: -50px; right: -50px; opacity: 0; transform: scale(0.8);
+  }
+  60% { opacity: 1; }
+  100% { 
+    bottom: 30%; right: 25%; opacity: 1; transform: scale(1);
+  }
+}
+@keyframes cursor-bounce {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -4px; }
+}
+
+/* ============== ESCENA 4 — Píldora con icono ============== */
+.scene-4 .pill {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.scene-4 .pill-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--bg-saturated);
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-icon);
+  transform: scale(0);
+}
+.scene-4.active .pill-icon {
+  animation: icon-in 600ms var(--easing-spring-strong) forwards;
+}
+.scene-4 .pill-icon svg {
+  width: 44px; height: 44px;
+  opacity: 0;
+}
+.scene-4.active .pill-icon svg {
+  animation: fade-in 400ms var(--easing-spring) 300ms forwards;
+}
+.scene-4 .pill-text {
+  font-size: 56px;
+  font-weight: 500;
+  color: var(--text-dark);
+  letter-spacing: -0.5%;
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.scene-4.active .pill-text {
+  animation: slide-in-left 500ms var(--easing-spring) 450ms forwards;
+}
+
+@keyframes icon-in {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes fade-in { to { opacity: 1; } }
+@keyframes slide-in-left { to { opacity: 1; transform: translateX(0); } }
+
+/* ============== ESCENA 5 — Cards horizontales ============== */
+.scene-5 .cards-row {
+  display: flex;
+  gap: 20px;
+  z-index: 2;
+}
+.scene-5 .ui-card {
+  width: 240px;
+  background: white;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  transform: translateY(30px);
+}
+.scene-5.active .ui-card {
+  animation: card-in 600ms var(--easing-spring) forwards;
+}
+.scene-5.active .ui-card:nth-child(1) { animation-delay: 100ms; }
+.scene-5.active .ui-card:nth-child(2) { animation-delay: 220ms; }
+.scene-5.active .ui-card:nth-child(3) { animation-delay: 340ms; }
+
+.card-header {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-dark);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0;
+}
+.check {
+  width: 14px; height: 14px;
+  border: 1.5px solid #ccc;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.line {
+  height: 6px; flex: 1;
+  background: #e8e8ec;
+  border-radius: 4px;
+}
+
+@keyframes card-in { to { opacity: 1; transform: translateY(0); } }
+
+/* ============== Common ============== */
+@keyframes word-in { to { opacity: 1; transform: translateY(0); } }
+
+.controls {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+  background: rgba(0,0,0,0.6);
+  padding: 8px;
+  border-radius: 8px;
+}
+.controls button {
+  background: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage" data-bg="light">
+  
+  <!-- Blob de fondo decorativo -->
+  <svg class="bg-blob" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <defs>
+      <filter id="blob-blur">
+        <feGaussianBlur stdDeviation="60"/>
+      </filter>
+    </defs>
+    <ellipse cx="900" cy="600" rx="380" ry="220" fill="#6B5CFF" opacity="0.18" filter="url(#blob-blur)"/>
+    <ellipse cx="200" cy="200" rx="240" ry="160" fill="#6B5CFF" opacity="0.10" filter="url(#blob-blur)"/>
+  </svg>
+
+  <!-- Logo -->
+  <div class="logo">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
+      <path d="M4 4 L4 20 L8 16 L8 12 L16 12 L16 20 L20 20 L20 4 L16 4 L16 8 L8 8 L8 4 Z"/>
+    </svg>
+    <span style="margin-left: 8px; font-weight: 700; font-size: 16px; letter-spacing: 1px;">BRANDNAME</span>
+  </div>
+
+  <!-- ========== ESCENA 1 ========== -->
+  <div class="scene scene-1">
+    <h1 class="hero-text">
+      <span class="word">Si</span>
+      <span class="word">tu</span>
+      <span class="word">
+        <span class="email-icon-inline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="m22 7-10 5L2 7"/>
+          </svg>
+        </span>
+      </span>
+      <span class="word">se</span>
+      <span class="word">te</span>
+      <span class="word">hace</span>
+      <span class="word break">pesado</span>
+    </h1>
+    <div class="notif-cloud">
+      <div class="notif" style="left:8%; top:18%; transform: rotate(-3deg) scale(0.8); animation-delay: 700ms;">
+        <span class="notif-dot red"></span> No hemos podido completar tu...
+      </div>
+      <div class="notif" style="left:62%; top:12%; transform: rotate(2deg) scale(0.8); animation-delay: 800ms;">
+        <span class="notif-dot yellow"></span> AVISO FINAL: Tu cuenta aún
+      </div>
+      <div class="notif" style="left:20%; top:68%; transform: rotate(-2deg) scale(0.8); animation-delay: 900ms;">
+        <span class="notif-dot green"></span> Propuesta aprobada
+      </div>
+      <div class="notif" style="left:72%; top:72%; transform: rotate(3deg) scale(0.8); animation-delay: 1000ms;">
+        <span class="notif-dot red"></span> No hemos podido completar tu...
+      </div>
+      <div class="notif" style="left:5%; top:42%; transform: rotate(-4deg) scale(0.8); animation-delay: 1100ms;">
+        <span class="notif-dot green"></span> Consulta sobre tus servicios
+      </div>
+      <div class="notif" style="left:78%; top:38%; transform: rotate(2deg) scale(0.8); animation-delay: 1200ms;">
+        <span class="notif-dot red"></span> No hemos podido completar tu...
+      </div>
+      <div class="notif" style="left:35%; top:82%; transform: rotate(-1deg) scale(0.8); animation-delay: 1300ms;">
+        <span class="notif-dot yellow"></span> AVISO: Inicio de sesión nu...
+      </div>
+      <div class="notif" style="left:45%; top:8%; transform: rotate(1deg) scale(0.8); animation-delay: 1400ms;">
+        <span class="notif-dot green"></span> ¿Dónde está el archivo adjunto?
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== ESCENA 2 — Lockup ========== -->
+  <div class="scene scene-2">
+    <div class="lockup">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
+        <path d="M4 4 L4 20 L8 16 L8 12 L16 12 L16 20 L20 20 L20 4 L16 4 L16 8 L8 8 L8 4 Z"/>
+      </svg>
+      <span>BRANDNAME</span>
+      <span class="lockup-divider">|</span>
+      <span class="lockup-sub">Mail</span>
+    </div>
+  </div>
+
+  <!-- ========== ESCENA 3 — Feature 1 ========== -->
+  <div class="scene scene-3">
+    <h1 class="hero-text">
+      <span class="word">Redacte</span>
+      <span class="word">respuestas</span>
+    </h1>
+    <svg class="cursor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 3 L5 18 L9 14 L11.5 19.5 L14 18.5 L11.5 13 L17 13 Z" 
+            fill="#1A1A2E" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- ========== ESCENA 4 — Píldora ========== -->
+  <div class="scene scene-4">
+    <div class="pill">
+      <div class="pill-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v4"/>
+          <path d="M12 18v4"/>
+          <path d="m4.93 4.93 2.83 2.83"/>
+          <path d="m16.24 16.24 2.83 2.83"/>
+          <path d="M2 12h4"/>
+          <path d="M18 12h4"/>
+          <path d="m4.93 19.07 2.83-2.83"/>
+          <path d="m16.24 7.76 2.83-2.83"/>
+        </svg>
+      </div>
+      <span class="pill-text">Dominio gratis</span>
+    </div>
+  </div>
+
+  <!-- ========== ESCENA 5 — Cards ========== -->
+  <div class="scene scene-5">
+    <div class="cards-row">
+      <div class="ui-card">
+        <div class="card-header">📁 Urgente</div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+      </div>
+      <div class="ui-card">
+        <div class="card-header">📁 Trabajo</div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+      </div>
+      <div class="ui-card">
+        <div class="card-header">📁 Personal</div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+        <div class="card-row"><span class="check"></span><span class="line"></span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button onclick="play()">▶ Reproducir</button>
+  <button onclick="goTo(0)">1: Hook</button>
+  <button onclick="goTo(1)">2: Lockup</button>
+  <button onclick="goTo(2)">3: Feature</button>
+  <button onclick="goTo(3)">4: Píldora</button>
+  <button onclick="goTo(4)">5: Cards</button>
+</div>
+
+<script>
+const stage = document.getElementById('stage');
+const sceneEls = document.querySelectorAll('.scene');
+
+const scenes = [
+  { idx: 0, duration: 4000, bg: 'light' },
+  { idx: 1, duration: 3000, bg: 'light' },
+  { idx: 2, duration: 4000, bg: 'saturated' },
+  { idx: 3, duration: 3000, bg: 'light' },
+  { idx: 4, duration: 3500, bg: 'saturated' },
+];
+
+function goTo(idx) {
+  // Reiniciar todas las escenas para forzar re-trigger de las animaciones
+  sceneEls.forEach((el, i) => {
+    el.classList.remove('active');
+    // Hack: forzar reflow para que la animación se reinicie
+    void el.offsetWidth;
+  });
+  sceneEls[idx].classList.add('active');
+  stage.dataset.bg = scenes[idx].bg;
+}
+
+async function play() {
+  for (const scene of scenes) {
+    goTo(scene.idx);
+    await new Promise(r => setTimeout(r, scene.duration));
+  }
+}
+
+// Reproducir al cargar
+window.addEventListener('load', () => {
+  setTimeout(play, 500);
+});
+</script>
+
+</body>
+</html>
