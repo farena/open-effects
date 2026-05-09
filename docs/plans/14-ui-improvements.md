@@ -15,4 +15,4 @@ When a task graduates to an active plan, it gets a checkbox tick and a link to t
 [x] En el sideba de props de Scene,el duration debe ser en frames como esta ahora, o en segundos, agregar un boton a la derecha del input que cambie el formato para el usuario, sin embargo siempre se debe trabajar en frames. Si el usuario quiere verlo en segundos, solo cambia la vista pero al modificarse, se modifican la cantidad de frames
 [x] Al igual que se hizo con el sidebar de la izquierda, quiero que en el sidebar de props usemos iconos con tooltips para los tabs. En este caso ubicados verticalmente sobre la derecha
 [x] Analizar todos los endpoints y actualizar la documentacion de api en caso de que algo este faltando o se haya modificado.
-[] Crear un skill para la creacion de videos usando la documentacion de la api
+[x] Crear un skill para la creacion de videos usando la documentacion de la api
