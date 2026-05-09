@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Music, Scissors, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { AudioTrack } from "@open-effects/shared-types";
 import { AudioStrip } from "../AudioStrip";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { useEditorStore } from "@/editor/store";
+import {
+  probeAudioDuration,
+  secondsToFrames,
+} from "@/editor/lib/probeAudioDuration";
 
 const ROW_H = 28;
 
@@ -39,7 +43,31 @@ export function AudioLaneRow({
   const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
   const splitAudioTrack = useEditorStore((s) => s.splitAudioTrack);
   const currentFrame = useEditorStore((s) => s.currentFrame);
+  const fps = useEditorStore((s) => s.project.fps);
   const isSelected = selectedAudioTrackId === track.id;
+
+  // Probe the asset's true duration once per (path, fps) so the right-trim
+  // handle can extend the strip up to the original media length, not just
+  // the current trimEnd.
+  const [probedFrames, setProbedFrames] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!track.assetPath) {
+      setProbedFrames(null);
+      return;
+    }
+    probeAudioDuration(track.assetPath)
+      .then((seconds) => {
+        if (cancelled) return;
+        setProbedFrames(secondsToFrames(seconds, fps));
+      })
+      .catch(() => {
+        if (!cancelled) setProbedFrames(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [track.assetPath, fps]);
 
   function handleSplit() {
     const splitFrameLocal =
@@ -154,7 +182,7 @@ export function AudioLaneRow({
         totalFrames={total}
         timelineWidthPx={timelineWidthPx}
         pxPerFrame={pxPerFrame}
-        probedDurationFrames={track.trimEnd}
+        probedDurationFrames={probedFrames ?? undefined}
         sceneOffsetFrames={sceneOffsetFrames}
       />
     </div>
