@@ -491,6 +491,9 @@ function LayerBar({
     (e: React.PointerEvent) => {
       const d = dragRef.current;
       if (!d) return;
+      // Prevent the timeline tracks container from also seeking the playhead
+      // while we are actively dragging a layer bar / trim handle.
+      e.stopPropagation();
       const dx = e.clientX - d.startX;
       const dFrames = pxToFrameDelta(dx);
       const span0 = d.endFrame - d.startFrame;
@@ -629,6 +632,9 @@ function SceneBar({
     (e: React.PointerEvent) => {
       const d = dragRef.current;
       if (!d) return;
+      // Same rationale as in LayerBar: don't bubble move events to the
+      // tracks container, which would otherwise re-seek the playhead.
+      e.stopPropagation();
       const dx = e.clientX - d.startX;
       const dFrames = pxToFrameDelta(dx);
       if (d.mode === "out") {

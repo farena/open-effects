@@ -204,6 +204,9 @@ export function AudioStrip({
     (e: React.PointerEvent) => {
       const d = dragRef.current;
       if (!d) return;
+      // Stop bubbling so the timeline tracks container does not also
+      // re-seek the playhead while we are dragging the strip / its handles.
+      e.stopPropagation();
       const dx = e.clientX - d.startX;
       const dFrames = pxToFrameDelta(dx);
 
