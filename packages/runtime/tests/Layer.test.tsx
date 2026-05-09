@@ -99,4 +99,48 @@ describe("<Layer>", () => {
     const { container } = render(<Layer layer={layer} />);
     expect(container.querySelector('[data-layer-id="L1"]')).toBeNull();
   });
+
+  it("substitutes $KEY references in HTML and CSS at the current frame", () => {
+    // Mock frame is 15; interpolate 0→100 over [0, 30] → expect 50
+    const layer: LayerT = {
+      ...baseLayer,
+      html: '<div class="card">x=$POSITION_X</div>',
+      css: ".card { transform: translateX($POSITION_Xpx); }",
+      keyframes: [
+        {
+          frame: 0,
+          property: "custom.POSITION_X",
+          value: "0",
+          easingOut: { type: "linear" },
+        },
+        {
+          frame: 30,
+          property: "custom.POSITION_X",
+          value: "100",
+          easingOut: { type: "linear" },
+        },
+      ],
+    };
+    const { container } = render(<Layer layer={layer} />);
+    const wrapper = container.querySelector(
+      '[data-layer-id="L1"]',
+    ) as HTMLElement;
+    expect(wrapper.innerHTML).toContain("x=50");
+    const style = container.querySelector("style");
+    expect(style?.textContent).toContain("translateX(50px)");
+  });
+
+  it("leaves $KEY unsubstituted when no matching custom keyframe exists", () => {
+    const layer: LayerT = {
+      ...baseLayer,
+      html: '<div class="card">$MISSING here</div>',
+      css: "",
+      keyframes: [],
+    };
+    const { container } = render(<Layer layer={layer} />);
+    const wrapper = container.querySelector(
+      '[data-layer-id="L1"]',
+    ) as HTMLElement;
+    expect(wrapper.innerHTML).toContain("$MISSING here");
+  });
 });

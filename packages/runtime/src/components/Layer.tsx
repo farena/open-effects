@@ -3,7 +3,9 @@ import { useCurrentFrame, useVideoConfig } from "remotion";
 import type { Layer as LayerT } from "@open-effects/shared-types";
 import { sanitizeHtml } from "../lib/sanitizeHtml";
 import { scopeCss } from "../lib/scopeCss";
+import { substituteCustomValues } from "../lib/substituteCustomValues";
 import { computeStylesAtFrame } from "../keyframes/computeStylesAtFrame";
+import { computeCustomValuesAtFrame } from "../keyframes/computeCustomValuesAtFrame";
 
 export const Layer: React.FC<{ layer: LayerT }> = ({ layer }) => {
   const frame = useCurrentFrame();
@@ -26,13 +28,27 @@ export const Layer: React.FC<{ layer: LayerT }> = ({ layer }) => {
     return computeStylesAtFrame(layer.keyframes, localFrame, fps);
   }, [visibleOnTimeline, layer.keyframes, localFrame, fps]);
 
+  const customValues = useMemo(() => {
+    if (!visibleOnTimeline) return {};
+    return computeCustomValuesAtFrame(layer.keyframes, localFrame, fps);
+  }, [visibleOnTimeline, layer.keyframes, localFrame, fps]);
+
+  const renderedHtml = useMemo(
+    () => substituteCustomValues(cleanHtml, customValues),
+    [cleanHtml, customValues],
+  );
+  const renderedCss = useMemo(
+    () => (scopedCss ? substituteCustomValues(scopedCss, customValues) : scopedCss),
+    [scopedCss, customValues],
+  );
+
   if (!visibleOnTimeline) {
     return null;
   }
 
   return (
     <>
-      {scopedCss && <style dangerouslySetInnerHTML={{ __html: scopedCss }} />}
+      {renderedCss && <style dangerouslySetInnerHTML={{ __html: renderedCss }} />}
       <div
         data-layer-id={layer.id}
         style={{
@@ -41,7 +57,7 @@ export const Layer: React.FC<{ layer: LayerT }> = ({ layer }) => {
           contain: "strict",
           ...animatedStyle,
         }}
-        dangerouslySetInnerHTML={{ __html: cleanHtml }}
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
       />
     </>
   );

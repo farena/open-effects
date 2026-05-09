@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { temporal } from "zundo";
 import type { Layer, Scene } from "@open-effects/shared-types";
+import { isCustomProperty } from "@open-effects/shared-types";
 import type { EditorState, EditorActions } from "./store.types";
 import { defaultScene, defaultLayer } from "./defaults";
 import { ANIMATABLE_KEYS } from "@open-effects/runtime";
@@ -312,7 +313,7 @@ export const useEditorStore = create<StoreState>()(
 
       addKeyframe: (layerId, property, frame, value, easingOut) =>
         set((s) => {
-          if (!ANIMATABLE_KEYS.includes(property)) {
+          if (!ANIMATABLE_KEYS.includes(property) && !isCustomProperty(property)) {
             console.warn(`Unknown animatable property: ${property}`);
             return;
           }

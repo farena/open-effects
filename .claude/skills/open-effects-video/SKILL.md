@@ -112,6 +112,85 @@ Easing is a discriminated union on `type`:
 `cubic-bezier` (`params: [x1, y1, x2, y2]`),
 `spring` (`params: { damping, stiffness, mass }`).
 
+#### Custom keyframes (`$KEY` placeholders)
+
+Built-in keyframe properties (`opacity`, `transform.translateX`, `color`, …) cover
+the common CSS animations. For anything else — a counter that ticks `0 → 100`, a
+gradient stop position, a clip-path inset, an SVG attribute — use **custom
+keyframes**: user-named numeric variables that are interpolated per frame and
+substituted into the layer's HTML/CSS via `$KEY` placeholders.
+
+**Layer-only.** Custom keyframes apply to the layer that owns the HTML/CSS
+template. Scenes have no template, so `custom.*` properties on a scene are
+ignored.
+
+**Schema.** Reuses the existing `Keyframe` shape — the discriminator is the
+`property` field, which must start with `custom.`:
+
+```json
+{
+  "property": "custom.POSITION_X",
+  "frame": 0,
+  "value": "0",
+  "easingOut": { "type": "linear" }
+}
+```
+
+| Field | Constraint |
+|---|---|
+| `property` | `custom.<KEY>` where `KEY` matches `^[A-Z][A-Z0-9_]{0,31}$` |
+| `value` | numeric string (e.g. `"0"`, `"57.3"`) — units go in the template, not the value |
+| `easingOut` | same union as built-in keyframes |
+
+**Reference syntax.** Inside the layer's `html` or `css`, write `$KEY` (no
+braces, no prefix). The runtime regex is `\$([A-Z][A-Z0-9_]*)` — must start with
+an uppercase letter. Lowercase `$foo` is not substituted.
+
+**Units belong in the template, not the value.** Custom keyframes are pure
+numbers. Append the unit next to the placeholder:
+
+```json
+{
+  "html": "<div class=\"box\">x = $POSITION_X</div>",
+  "css":  ".box { transform: translateX($POSITION_Xpx); opacity: $OPACITY; }",
+  "keyframes": [
+    { "property": "custom.POSITION_X", "frame": 0,  "value": "0",   "easingOut": { "type": "linear" } },
+    { "property": "custom.POSITION_X", "frame": 30, "value": "200", "easingOut": { "type": "linear" } },
+    { "property": "custom.OPACITY",    "frame": 0,  "value": "0",   "easingOut": { "type": "linear" } },
+    { "property": "custom.OPACITY",    "frame": 15, "value": "1",   "easingOut": { "type": "linear" } }
+  ]
+}
+```
+
+**Behavior.**
+
+- Interpolation is **always numeric** (`String(lerp(parseFloat(a), parseFloat(b), t))`).
+  No color or length variants — concatenate units in the template instead.
+- Frames are layer-local, just like built-in keyframes (clamped before the first
+  and after the last keyframe).
+- Substitution runs **per frame**, after the HTML sanitizer and after the CSS
+  scoper, on every visible frame.
+- A `$KEY` reference whose key has no keyframes is left **unsubstituted** so the
+  bug is visible at render time (e.g. CSS will read `translateX($MISSINGpx)`,
+  which the browser rejects, surfacing the typo immediately).
+
+**When to use a custom keyframe vs. a built-in property:**
+
+- Use built-ins (`opacity`, `transform.*`, `color`, ...) whenever the target IS
+  a CSS property already in the registry — they emit `style.*` directly, no
+  string substitution overhead, and the browser GPU-composites them.
+- Reach for a custom keyframe when:
+  - The animated thing is **inside the HTML text** (counters, percentages, dynamic copy).
+  - You need a value that drives **multiple CSS properties** at once (one
+    `$T` placeholder used in `transform`, `opacity`, and `border-radius`).
+  - The CSS property isn't in the registry (`clip-path`, `filter`, gradient
+    stops, `stroke-dashoffset`, SVG attributes, etc.).
+
+**Editor UI.** In the keyframe inspector for a layer, the **+ Custom keyframe**
+button accepts an UPPER_SNAKE_CASE name and creates the first keyframe at the
+current local frame with value `0`. Subsequent keyframes for that key are added
+with the same `+ keyframe at frame N` action used by built-ins.
+
 ### 4) Trigger the render — **explicit user request only**
 
 Skip this step (and steps 5–6) when the user only asked to add/edit scenes,

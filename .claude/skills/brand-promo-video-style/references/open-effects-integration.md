@@ -26,6 +26,7 @@ Resumen de lo que ese skill cubre y que debes respetar al pie de la letra para e
   - `transform.rotate` (angle-deg).
   - `color`, `background-color` (color, acepta `#RRGGBB`, `rgba(...)`).
   - `border-radius`, `width`, `height`, `top`, `left` (length-px).
+- **Custom keyframes** — para animar texto dinámico (counters, %), propiedades CSS no listadas (`clip-path`, `filter`, gradientes, `stroke-dashoffset`), o un mismo valor reutilizado en varias propiedades: usar `property: "custom.<KEY>"` (con `KEY` en `UPPER_SNAKE_CASE`, regex `^[A-Z][A-Z0-9_]{0,31}$`) y referenciar `$KEY` dentro del HTML/CSS del layer. Interpolación numérica pura — las unidades van pegadas al placeholder en el template (`translateX($POSITION_Xpx)`, `width: $PCT%`). Solo a nivel layer (las scenes no tienen template). Detalle completo en el skill `open-effects-video`.
 - **Easings disponibles**: `linear`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-bezier { params: [x1,y1,x2,y2] }`, `spring { params: { damping, stiffness, mass } }`.
 - **Transiciones de escena**: `scene.transitionIn` admite `none | fade | slide-{left,right,up,down}` con `durationFrames`.
 - **fps válidos**: `24 | 30 | 60`. **width/height**: enteros 1..7680. **durationFrames** ≥ 1 por escena.

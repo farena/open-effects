@@ -12,6 +12,12 @@ import {
 } from "@/editor/selectors";
 import { PROPERTIES } from "@open-effects/runtime";
 import type { Easing, Keyframe } from "@open-effects/shared-types";
+import {
+  customProperty,
+  extractCustomKey,
+  isCustomProperty,
+  isValidCustomKey,
+} from "@open-effects/shared-types";
 import { PropertyPicker } from "./PropertyPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +45,7 @@ function resolveInitialValue(
   currentFrame: number,
 ): string {
   if (keyframes.length === 0) {
+    if (isCustomProperty(property)) return "0";
     return PROPERTIES[property]?.defaultValue ?? "0";
   }
 
@@ -50,7 +57,24 @@ function resolveInitialValue(
   const next = sorted.find((k) => k.frame > currentFrame);
   if (next) return next.value;
 
+  if (isCustomProperty(property)) return "0";
   return PROPERTIES[property]?.defaultValue ?? "0";
+}
+
+/** Friendly label and unit suffix for a property (built-in or custom). */
+function propertyDisplay(property: string): { label: string; suffix: string | null; isColor: boolean } {
+  const customKey = extractCustomKey(property);
+  if (customKey !== null) {
+    return { label: `Custom · $${customKey}`, suffix: null, isColor: false };
+  }
+  const meta = PROPERTIES[property];
+  if (!meta) return { label: property, suffix: null, isColor: false };
+  return {
+    label: meta.label,
+    suffix:
+      meta.type === "length-px" ? "px" : meta.type === "angle-deg" ? "deg" : null,
+    isColor: meta.type === "color",
+  };
 }
 
 function easingLabel(kf: Keyframe): string {
@@ -102,14 +126,7 @@ function KeyframeRow({ target, property, keyframe }: KeyframeRowProps) {
     setFrameInput(String(keyframe.frame));
   }, [keyframe.frame]);
 
-  const meta = PROPERTIES[property];
-  const isColor = meta?.type === "color";
-  const suffix =
-    meta?.type === "length-px"
-      ? "px"
-      : meta?.type === "angle-deg"
-        ? "deg"
-        : null;
+  const { isColor, suffix } = propertyDisplay(property);
 
   const frameId = `frame-${target.kind}-${target.id}-${keyframe.id ?? keyframe.frame}-${property}`;
 
@@ -256,8 +273,9 @@ function AnimatedPropertyBlock({
   const addKeyframe = useEditorStore((s) => s.addKeyframe);
   const addSceneKeyframe = useEditorStore((s) => s.addSceneKeyframe);
 
-  const meta = PROPERTIES[property];
-  if (!meta) return null;
+  const display = propertyDisplay(property);
+  // Built-in property that is not in the registry — bail; custom properties always render.
+  if (!isCustomProperty(property) && !PROPERTIES[property]) return null;
 
   function handleAddKeyframeHere() {
     const value = resolveInitialValue(keyframes, property, currentFrameLocal);
@@ -274,7 +292,7 @@ function AnimatedPropertyBlock({
       className="mb-3 overflow-hidden rounded-md border border-border"
     >
       <summary className="flex cursor-pointer select-none items-center justify-between bg-muted/40 px-3 py-2 text-sm font-medium hover:bg-muted/70">
-        <span>{meta.label}</span>
+        <span>{display.label}</span>
         <span className="text-xs text-muted-foreground">
           {keyframes.length} kf
         </span>
@@ -306,6 +324,101 @@ function AnimatedPropertyBlock({
         </Button>
       </div>
     </details>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Add custom keyframe (layer only)
+// ---------------------------------------------------------------------------
+
+interface AddCustomKeyframeProps {
+  layerId: string;
+  currentFrameLocal: number;
+  existingProperties: string[];
+}
+
+function AddCustomKeyframe({
+  layerId,
+  currentFrameLocal,
+  existingProperties,
+}: AddCustomKeyframeProps) {
+  const addKeyframe = useEditorStore((s) => s.addKeyframe);
+  const [open, setOpen] = useState(false);
+  const [keyName, setKeyName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function handleSubmit() {
+    const trimmed = keyName.trim();
+    if (!isValidCustomKey(trimmed)) {
+      setError("Use UPPER_SNAKE_CASE (A-Z, 0-9, _; must start with a letter).");
+      return;
+    }
+    const property = customProperty(trimmed);
+    if (existingProperties.includes(property)) {
+      setError(`$${trimmed} already has keyframes.`);
+      return;
+    }
+    addKeyframe(layerId, property, currentFrameLocal, "0");
+    setKeyName("");
+    setError(null);
+    setOpen(false);
+  }
+
+  if (!open) {
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        className="shrink-0"
+        onClick={() => setOpen(true)}
+      >
+        + Custom keyframe
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">$</span>
+        <Input
+          autoFocus
+          placeholder="POSITION_X"
+          className="h-8 flex-1 text-xs"
+          value={keyName}
+          onChange={(e) => {
+            setKeyName(e.target.value.toUpperCase());
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSubmit();
+            if (e.key === "Escape") {
+              setOpen(false);
+              setKeyName("");
+              setError(null);
+            }
+          }}
+        />
+        <Button size="sm" variant="secondary" onClick={handleSubmit}>
+          Add
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setOpen(false);
+            setKeyName("");
+            setError(null);
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+      {error && <span className="text-xs text-destructive">{error}</span>}
+      <span className="text-xs text-muted-foreground">
+        Reference in HTML/CSS as <code>$KEY</code>.
+      </span>
+    </div>
   );
 }
 
@@ -368,6 +481,12 @@ export function KeyframesTab() {
               + Add keyframe
             </Button>
           </div>
+
+          <AddCustomKeyframe
+            layerId={activeLayer.id}
+            currentFrameLocal={localLayerFrame}
+            existingProperties={animatedProperties}
+          />
 
           {animatedProperties.length === 0 ? (
             <p className="text-sm text-muted-foreground">

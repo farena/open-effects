@@ -7,3 +7,4 @@ export * from "./schemas/project";
 export * from "./schemas/savedComponent";
 export * from "./schemas/businessContext";
 export * from "./types";
+export * from "./lib/customKeyframe";
