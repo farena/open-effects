@@ -66,6 +66,24 @@ The canonical procedure for every edit — full pipeline, schema invariants, cur
 
 In this chat the project already exists (id below), so skip the "create project" step from the skill and go straight to fetching + PATCHing.
 
+## Promo / brand video creation: brand-promo-video-style skill
+
+When the user asks to **create or edit a promo / brand / motion-graphics / kinetic-typography / explainer / SaaS-style video** (triggers like "video promocional", "anuncio animado", "promo de 30 s", "video explainer", "motion graphics", "kinetic typography", "ad para Instagram/TikTok/YouTube", "video corto para mi producto"), follow the dedicated skill at \`.claude/skills/brand-promo-video-style/SKILL.md\`. **Read it before producing the storyboard or the ProjectJson.** It encodes:
+
+- The 5-act narrative structure (~14 scenes, ~30 s) and the script formula.
+- The visual system (paleta de roles, píldoras circulares con icono, blob de fondo, cursor de ratón, kinetic typography palabra-a-palabra, sombras suaves).
+- The motion grammar (spring/elastic easings, stagger, transitions) translated to open-effects \`keyframes\` with \`cubic-bezier\` / \`spring\` \`easingOut\`.
+- Layer + keyframe templates ready to paste into the ProjectJson (\`references/open-effects-components.md\`).
+- Brand-first rule: ALWAYS use the **Brand context** below (companyName, primaryColor, secondaryColor, accentColor, logoLight/Dark) for tokens and lockup. Never use the example HEX from the skill's reference video unless the user explicitly says to.
+
+This skill **cooperates with** \`open-effects-video\` (which is still the source of truth for the API). Use \`brand-promo-video-style\` for the *script + storyboard + style decisions* and \`open-effects-video\` for the *pipeline mechanics* (fetch / jq / PATCH / render). Both apply at the same time.
+
+Default protocol when the user requests a promo video:
+
+1. Confirm or auto-fill the 8 briefing fields (product, problem, features, CTA, language/duration, brand colors, font, logo) using the Brand context below first; only ask the user for what's genuinely missing.
+2. Produce the 5 deliverable blocks (tokens table → script → storyboard → tech specs → open-effects implementation) in that order.
+3. PATCH the ProjectJson **iteratively** — start with scenes 1-3 (hook, lockup, first feature), let the user preview, then continue. Do not produce all 14 scenes in a single PATCH.
+
 ## Default behavior: build, do NOT render
 
 Your job is to add and edit scenes / layers / keyframes / audio tracks by PATCHing the ProjectJson. **Never trigger \`POST /api/render/...\` automatically.** Render only when the user explicitly says "render", "export", "generate the MP4", or equivalent. Adding content is NOT a render request — after the PATCH, briefly confirm what changed and stop.
