@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { db } from "@/lib/db";
+import { dbErrorMessage } from "@/lib/dbErrors";
 import { Card } from "@/components/ui/card";
+import { ErrorBlock } from "@/components/ui/feedback";
 import { DeleteRenderButton } from "./_components/DeleteRenderButton";
 
 type RenderEntry = {
@@ -47,10 +49,28 @@ export default async function RendersPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const project = await db.project.findUnique({
-    where: { id },
-    select: { id: true, name: true },
-  });
+  let project;
+  try {
+    project = await db.project.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    });
+  } catch (err) {
+    const message = dbErrorMessage(err, "Failed to load project");
+    return (
+      <main className="container mx-auto p-8">
+        <h1 className="text-2xl font-bold">Renders</h1>
+        <div className="mt-8">
+          <ErrorBlock message={message} />
+        </div>
+        <p className="mt-4 text-sm text-muted-foreground">
+          <Link href="/projects" className="underline">
+            ← Back to projects
+          </Link>
+        </p>
+      </main>
+    );
+  }
   if (!project) notFound();
 
   const renders = await listRenders(id);

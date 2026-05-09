@@ -1,15 +1,30 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { dbErrorMessage } from "@/lib/dbErrors";
 import { Card } from "@/components/ui/card";
+import { ErrorBlock } from "@/components/ui/feedback";
 import { NewProjectDialog } from "./_components/NewProjectDialog";
 import { DeleteProjectButton } from "./_components/DeleteProjectButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const projects = await db.project.findMany({
-    orderBy: { updatedAt: "desc" },
-  });
+  let projects;
+  try {
+    projects = await db.project.findMany({
+      orderBy: { updatedAt: "desc" },
+    });
+  } catch (err) {
+    const message = dbErrorMessage(err, "Failed to load projects");
+    return (
+      <main className="container mx-auto p-8">
+        <h1 className="text-2xl font-bold">Projects</h1>
+        <div className="mt-8">
+          <ErrorBlock message={message} />
+        </div>
+      </main>
+    );
+  }
   return (
     <main className="container mx-auto p-8">
       <header className="flex items-center justify-between">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ErrorBlock } from "@/components/ui/feedback";
+import { dbErrorMessage } from "@/lib/dbErrors";
 
 export default function ProjectError({
   error,
@@ -10,12 +11,10 @@ export default function ProjectError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const message = dbErrorMessage(error, error.message || "Failed to load project");
   return (
     <main className="container mx-auto p-8">
-      <ErrorBlock
-        message={error.message || "Failed to load project"}
-        onRetry={reset}
-      />
+      <ErrorBlock message={message} onRetry={reset} />
       <p className="mt-4 text-sm text-muted-foreground">
         <Link href="/projects" className="underline">
           ← Back to projects
