@@ -161,6 +161,47 @@ curl -s -X DELETE \
   "http://localhost:3000/api/projects/${PROJECT_ID}/renders/$(basename "$OUTPUT_URL")"
 ```
 
+## Material Symbols (Google icons)
+
+Material Symbols are available as a web font directly inside any layer — no asset upload, no extra dependency. Three families: `material-symbols-outlined`, `material-symbols-rounded`, `material-symbols-sharp`.
+
+The HTML sanitizer keeps `<span class="…">` and inline `style`, and the per-layer CSS scoper (`postcss-prefix-selector`) leaves `@import` at-rules untouched, so the font loads cleanly per layer.
+
+**Recipe.** In the layer's `css`, put `@import` as the **first rule** (CSS spec: `@import` must precede all other rules). In the layer's `html`, write the icon's ligature name as the text content of a `<span>`:
+
+```json
+{
+  "html": "<span class=\"material-symbols-outlined icon\">favorite</span>",
+  "css": "@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200'); .icon { font-size: 240px; color: #fff; font-variation-settings: 'FILL' 1, 'wght' 500; }"
+}
+```
+
+Variation axes (all optional, set via `font-variation-settings`):
+
+| Axis  | Range      | Effect                                       |
+|-------|------------|----------------------------------------------|
+| `wght`| 100–700    | Stroke weight                                |
+| `FILL`| 0 or 1     | 0 = outlined, 1 = filled                     |
+| `opsz`| 20–48      | Optical size (match to rendered font-size)   |
+| `GRAD`| -50..200   | Emphasis (subtle weight tweak)               |
+
+Pick another family by swapping the URL `family=` value and the matching class name:
+
+- `Material+Symbols+Rounded` ↔ `material-symbols-rounded`
+- `Material+Symbols+Sharp`   ↔ `material-symbols-sharp`
+
+Browse names at https://fonts.google.com/icons. Use the **icon name** (lowercase, underscores) as the span text, e.g. `play_arrow`, `arrow_forward`, `check_circle`, `bolt`, `rocket_launch`.
+
+**When to prefer Material Symbols over an image asset:**
+
+- UI affordances (play, pause, close, arrows, check marks).
+- Decorative accents that should match the layer's text color.
+- Anything that needs to scale crisply or animate `color` / `font-size` via keyframes.
+
+Stick with PNG/SVG assets only when the user supplies a specific brand mark or a custom illustration that isn't part of the icon set.
+
+**Render-timing note.** When the project is rendered (not just previewed), Chromium must fetch the font before the frame is captured. Keeping `@import` as the very first rule of the layer CSS is enough in practice — but if you see icons rendered as the literal ligature text in the MP4, move the `@import` to a layer that starts at frame 0 or pre-render once to warm the browser cache.
+
 ## Drop-in end-to-end script
 
 A complete reference implementation lives at

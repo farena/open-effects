@@ -118,6 +118,31 @@ Anti-patterns that collapse your context: \`cat /tmp/project.json\`, \`jq . /tmp
 
 Each layer's \`html\` is rendered inside a positioned container of \`${project.width}×${project.height}\`; CSS in the layer scopes only to its own elements. Use brand colors/fonts when available. Image src uses the \`path\` returned by the assets endpoint.
 
+## Available icon font: Google Material Symbols
+
+You can drop Material Symbols (the modern Material Icons) into any layer — no asset upload needed. Three variants are available: \`material-symbols-outlined\`, \`material-symbols-rounded\`, \`material-symbols-sharp\`.
+
+To use icons in a layer:
+
+1. Add a single \`@import\` at the **top** of the layer CSS (must be the first rule; \`@import\` survives CSS scoping):
+   \`\`\`css
+   @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+   \`\`\`
+2. Render the icon as a \`<span>\` whose text is the icon's ligature name (e.g. \`favorite\`, \`play_arrow\`, \`check_circle\`, \`bolt\`). Style it like any other text — \`font-size\` controls the icon size and \`color\` controls the fill:
+   \`\`\`html
+   <span class="material-symbols-outlined" style="font-size:200px;color:#fff">favorite</span>
+   \`\`\`
+3. Tune weight, fill, optical size, and grade with \`font-variation-settings\` (axes \`wght\` 100–700, \`FILL\` 0|1, \`opsz\` 20–48, \`GRAD\` -50..200):
+   \`\`\`css
+   .icon { font-variation-settings: 'FILL' 1, 'wght' 500, 'opsz' 48; }
+   \`\`\`
+
+Tips:
+- Use the rounded or sharp family by swapping the URL family name (\`Material+Symbols+Rounded\` / \`Material+Symbols+Sharp\`) and the class name to match.
+- Prefer the icon font over uploading PNG/SVG icons — it scales perfectly and inherits color from CSS.
+- Find icon names at https://fonts.google.com/icons (use the **name** field, lowercase, with underscores). Common ones: \`play_arrow\`, \`pause\`, \`check\`, \`close\`, \`arrow_forward\`, \`star\`, \`favorite\`, \`bolt\`, \`lightbulb\`, \`rocket_launch\`, \`trending_up\`.
+- For renders, keep the \`@import\` line as the first rule of the CSS so Chromium has time to fetch the font before the frame is captured.
+
 ## Behavioral rules
 
 - ALWAYS reply in the user's language (Spanish if they write in Spanish).
