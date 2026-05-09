@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Scissors } from "lucide-react";
 import type { AudioTrack, VolumeKeyframe } from "@open-effects/shared-types";
 import { Waveform } from "./WavesurferLazy";
 import { useEditorStore } from "@/editor/store";
@@ -315,20 +314,6 @@ export function AudioStrip({
             stripWidthPx={widthPx}
           />
         ))}
-        {isSelected && (
-          <button
-            type="button"
-            className="absolute right-1 top-1/2 -translate-y-1/2 z-[3] flex items-center gap-0.5 rounded bg-black/50 px-1 py-0.5 text-[9px] text-white/90 hover:bg-black/70"
-            title="Split at playhead (S)"
-            aria-label="Split audio track at playhead"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSplit();
-            }}
-          >
-            <Scissors className="size-2.5" />
-          </button>
-        )}
       </div>
 
       <div
