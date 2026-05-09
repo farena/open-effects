@@ -111,7 +111,8 @@ export function ProjectChat({
                 <p className="text-sm mb-1">No messages yet</p>
                 <p className="text-xs">
                   Try: &ldquo;Add a 60-frame intro scene with my brand
-                  colors&rdquo; or &ldquo;Render this project&rdquo;.
+                  colors&rdquo; or &ldquo;Add a centered title layer to scene
+                  2&rdquo;.
                 </p>
               </div>
             )}
@@ -140,11 +141,11 @@ export function ProjectChat({
             onSend={handleSend}
             isStreaming={isStreaming}
             onStop={stop}
-            placeholder="Describe a change or ask to render…"
+            placeholder="Describe a scene or layer to add…"
             suggestions={[
               "Add a 60-frame intro with a centered title",
               "Make the second scene fade in",
-              "Render the project",
+              "Add a logo layer to the first scene",
             ]}
           />
         </>

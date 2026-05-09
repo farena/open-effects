@@ -1,8 +1,8 @@
 ---
 name: open-effects-video
-description: Create videos programmatically with the open-effects HTTP API (asset upload → project + ProjectJson → render → MP4 download). Use this skill whenever the user wants to drive open-effects from the terminal, build a video without opening the editor UI, generate a video for a script/automation, render an MP4 from JSON, batch-create videos, or asks "how do I create a video with open-effects from the API/CLI". Trigger on phrases like "create a video", "render a video", "build an MP4", "make a video programmatically", or any request that mentions open-effects + automation.
+description: Authoritative reference for driving open-effects through its HTTP API — asset upload, project creation, PATCHing ProjectJson (scenes, layers, keyframes, audio tracks), and (optionally) triggering renders. Use this skill ANY time the user asks to add, edit, remove, or animate scenes / layers / keyframes / audio in an open-effects project, whether from the terminal or from the in-editor AI chat. Trigger on phrases like "add a scene", "agregar escena", "añadir layer", "create a video", "edit the project", "make this fade in", "render the project", "build an MP4", or any other open-effects ProjectJson edit. Rendering is OPTIONAL — only run the render steps when the user explicitly asks to render/export.
 metadata:
-  tags: open-effects, video, api, render, remotion, automation
+  tags: open-effects, video, api, render, remotion, automation, scenes, layers, keyframes
 ---
 
 # Creating videos with the open-effects API
@@ -112,7 +112,12 @@ Easing is a discriminated union on `type`:
 `cubic-bezier` (`params: [x1, y1, x2, y2]`),
 `spring` (`params: { damping, stiffness, mass }`).
 
-### 4) Trigger the render
+### 4) Trigger the render — **explicit user request only**
+
+Skip this step (and steps 5–6) when the user only asked to add/edit scenes,
+layers, keyframes, or audio. Edits are previewed live in the editor and the
+user renders themselves when ready. Run a render only when the user explicitly
+says "render", "export", "generate the MP4", or similar.
 
 ```bash
 RENDER_ID=$(curl -s -X POST "http://localhost:3000/api/render/${PROJECT_ID}" \
