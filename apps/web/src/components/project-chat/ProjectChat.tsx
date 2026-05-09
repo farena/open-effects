@@ -18,6 +18,20 @@ interface ProjectChatProps {
   onClose: () => void;
 }
 
+const CHAT_WIDTH_KEY = "oe-project-chat-width";
+const DEFAULT_CHAT_WIDTH = 420;
+const MIN_CHAT_WIDTH = 320;
+// Cap at 50% of the viewport — re-evaluated against window.innerWidth on every drag.
+const MAX_CHAT_VIEWPORT_FRACTION = 0.5;
+
+function clampChatWidth(n: number, viewportW: number): number {
+  const max = Math.max(
+    MIN_CHAT_WIDTH,
+    Math.floor(viewportW * MAX_CHAT_VIEWPORT_FRACTION),
+  );
+  return Math.min(max, Math.max(MIN_CHAT_WIDTH, Math.round(n)));
+}
+
 export function ProjectChat({
   projectId,
   projectName,
@@ -26,6 +40,12 @@ export function ProjectChat({
 }: ProjectChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [claudeAvailable, setClaudeAvailable] = useState<boolean | null>(null);
+
+  // Resizable panel width — persisted in localStorage, capped at 50% viewport.
+  const [width, setWidth] = useState<number>(DEFAULT_CHAT_WIDTH);
+  const widthRef = useRef<number>(DEFAULT_CHAT_WIDTH);
+  const dragStartXRef = useRef<number>(0);
+  const dragStartWidthRef = useRef<number>(DEFAULT_CHAT_WIDTH);
 
   const storageKey = `oe-chat-messages-project-${projectId}`;
   const sessionKey = `oe-chat-session-project-${projectId}`;
@@ -59,6 +79,89 @@ export function ProjectChat({
     },
   });
 
+  // Hydrate width from localStorage on first open and clamp to current viewport.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(CHAT_WIDTH_KEY);
+      const parsed = raw == null ? NaN : Number.parseInt(raw, 10);
+      const initial = Number.isFinite(parsed) ? parsed : DEFAULT_CHAT_WIDTH;
+      const clamped = clampChatWidth(initial, window.innerWidth);
+      widthRef.current = clamped;
+      setWidth(clamped);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Re-clamp on viewport resize so a shrinking window cannot leave the panel
+  // wider than 50% vw.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf: number | null = null;
+    const onResize = () => {
+      if (raf != null) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        setWidth((prev) => {
+          const next = clampChatWidth(prev, window.innerWidth);
+          if (next !== prev) {
+            widthRef.current = next;
+            try {
+              localStorage.setItem(CHAT_WIDTH_KEY, String(next));
+            } catch {
+              // ignore
+            }
+          }
+          return next;
+        });
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  const onResizePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      dragStartXRef.current = e.clientX;
+      dragStartWidthRef.current = widthRef.current;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [],
+  );
+
+  const onResizePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+      // Panel sits flush right; dragging the left edge LEFT increases width.
+      const delta = dragStartXRef.current - e.clientX;
+      const next = clampChatWidth(
+        dragStartWidthRef.current + delta,
+        window.innerWidth,
+      );
+      widthRef.current = next;
+      setWidth(next);
+    },
+    [],
+  );
+
+  const onResizePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      try {
+        localStorage.setItem(CHAT_WIDTH_KEY, String(widthRef.current));
+      } catch {
+        // ignore
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!open) return;
     void fetch("/api/chat/health")
@@ -86,10 +189,25 @@ export function ProjectChat({
 
   return (
     <aside
-      className="fixed right-0 top-0 bottom-0 z-50 w-[420px] max-w-[90vw] bg-background border-l border-border shadow-xl flex flex-col"
+      className="fixed right-0 top-0 bottom-0 z-50 bg-background border-l border-border shadow-xl flex flex-col"
       role="complementary"
       aria-label="Project AI chat"
+      style={{ width: `${width}px` }}
     >
+      {/* Drag handle — left edge */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize chat panel"
+        className="absolute left-0 top-0 bottom-0 z-10 w-1.5 -translate-x-1/2 cursor-col-resize select-none touch-none group"
+        onPointerDown={onResizePointerDown}
+        onPointerMove={onResizePointerMove}
+        onPointerUp={onResizePointerUp}
+        onPointerCancel={onResizePointerUp}
+      >
+        <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border/40 group-hover:bg-primary/60" />
+      </div>
+
       <div className="px-4 py-3 border-b border-border flex items-start justify-between">
         <div>
           <h2 className="text-sm font-semibold">AI assistant</h2>

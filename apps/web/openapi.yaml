@@ -10,6 +10,8 @@
 # DELETE /api/projects/:id                            → projects/[id]/route.ts
 # GET    /api/projects/:id/renders/:filename          → projects/[id]/renders/[filename]/route.ts (file served from public/renders; only DELETE implemented as API route — GET is Next.js static)
 # DELETE /api/projects/:id/renders/:filename          → projects/[id]/renders/[filename]/route.ts
+# GET    /api/projects/:id/script                     → projects/[id]/script/route.ts (voice-over script lines; outside ProjectJson)
+# PUT    /api/projects/:id/script                     → projects/[id]/script/route.ts
 # GET    /api/assets                                  → assets/route.ts
 # POST   /api/assets                                  → assets/route.ts
 # DELETE /api/assets/:id                              → assets/[id]/route.ts
@@ -596,6 +598,64 @@ components:
             layers: []
             audioTracks: []
 
+    # ── VideoScriptLine ───────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/videoScript.ts
+    VideoScriptLine:
+      type: object
+      description: |
+        One line of the voice-over script. `timestamp` is a free-form string
+        (no parsing enforced — values like `00:00`, `00:12.5`, `01:23`, or
+        `00:00:42` are all valid). The agent should keep lines in the order
+        they should be read.
+      required: [id, timestamp, text]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Stable identifier (cuid-style). Reuse existing ids when editing.
+        timestamp:
+          type: string
+          maxLength: 20
+          description: Free-form timecode (e.g. `00:00`, `01:23`).
+        text:
+          type: string
+          maxLength: 2000
+          description: Voice-over text for this line.
+      example:
+        id: "vsl_01"
+        timestamp: "00:00"
+        text: "Welcome to KMPUS."
+
+    VideoScriptResponse:
+      type: object
+      description: Response body for `GET /api/projects/:id/script`.
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoScriptLine'
+      example:
+        lines:
+          - id: "vsl_01"
+            timestamp: "00:00"
+            text: "Welcome to KMPUS."
+
+    VideoScriptPutRequest:
+      type: object
+      description: Request body for `PUT /api/projects/:id/script` — replaces the entire script.
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoScriptLine'
+      example:
+        lines:
+          - id: "vsl_01"
+            timestamp: "00:00"
+            text: "Welcome to KMPUS."
+
     # ── ProjectListItem ───────────────────────────────────────────────────────
     # Returned by GET /api/projects (Prisma project row, not full ProjectJson)
     ProjectListItem:
@@ -1103,6 +1163,99 @@ paths:
                     type: boolean
               example:
                 ok: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/projects/{id}/script:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project CUID2 identifier.
+
+    get:
+      tags: [Projects]
+      operationId: getProjectScript
+      summary: Get the project's voice-over script
+      description: |
+        Returns the array of script lines for the project. Each line has a
+        free-form `timestamp` string (no parsing enforced — values like
+        `00:00`, `00:12.5`, `01:23`, `00:00:42` are all accepted) and a `text`
+        body for the voice-over.
+
+        The script is **stored on the Project but is NOT part of the
+        `ProjectJson`** returned by `GET /api/projects/:id`. Use this dedicated
+        endpoint to read or write it; do not try to set it via the project
+        PATCH (that endpoint will silently ignore unknown fields).
+      responses:
+        '200':
+          description: Current script lines (possibly empty).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoScriptResponse'
+              example:
+                lines:
+                  - id: "vsl_01"
+                    timestamp: "00:00"
+                    text: "Welcome to KMPUS — payments without the busywork."
+                  - id: "vsl_02"
+                    timestamp: "00:05"
+                    text: "Send invoices, collect online, reconcile in a click."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Projects]
+      operationId: putProjectScript
+      summary: Replace the project's voice-over script
+      description: |
+        Replaces the **entire** script with the array provided in `lines`.
+        Pass `lines: []` to clear it. Each line must include `id`, `timestamp`,
+        and `text`. Reuse existing `id`s to keep diffs stable; mint a new
+        cuid-style id for new lines.
+
+        This endpoint is the only way to mutate the script — `PATCH /api/projects/:id`
+        does NOT carry the script.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoScriptPutRequest'
+            example:
+              lines:
+                - id: "vsl_01"
+                  timestamp: "00:00"
+                  text: "Welcome to KMPUS — payments without the busywork."
+                - id: "vsl_02"
+                  timestamp: "00:05"
+                  text: "Send invoices, collect online, reconcile in a click."
+      responses:
+        '200':
+          description: Script saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, lines]
+                properties:
+                  ok:
+                    type: boolean
+                  lines:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VideoScriptLine'
+              example:
+                ok: true
+                lines:
+                  - id: "vsl_01"
+                    timestamp: "00:00"
+                    text: "Welcome to KMPUS — payments without the busywork."
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
 

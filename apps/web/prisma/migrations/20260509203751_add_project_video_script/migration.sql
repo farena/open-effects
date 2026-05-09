@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Project` ADD COLUMN `videoScript` JSON NOT NULL DEFAULT (JSON_ARRAY());

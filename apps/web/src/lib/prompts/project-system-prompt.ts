@@ -58,6 +58,43 @@ When you place a logo on a scene, pick the variant that contrasts with the scene
           ),
         ].join("\n");
 
+  const videoScriptSection = `## Voice-over script (separate endpoint, NOT inside ProjectJson)
+
+The user has a "Video script" panel in the left sidebar where they collect the voice-over lines (timestamp + text). This data lives **outside** the ProjectJson — it is stored on the Project but is NOT carried by \`GET/PATCH /api/projects/:id\`. To read or write it, use the dedicated endpoint:
+
+- \`GET ${baseUrl}/api/projects/${project.id}/script\` → \`{ "lines": [{ id, timestamp, text }, ...] }\`
+- \`PUT ${baseUrl}/api/projects/${project.id}/script\` with body \`{ "lines": [...] }\` → replaces the **entire** script (pass \`[]\` to clear)
+
+Each line is \`{ id: string, timestamp: string, text: string }\`. \`timestamp\` is free-form ("00:00", "00:12.5", "01:23", "00:00:42" are all valid — pick the format the user is already using). Reuse existing \`id\`s when editing so diffs stay stable; mint a new cuid-like id (e.g. \`vsl_<random>\`) for new lines.
+
+When to use it:
+
+- The user asks you to "write the script", "edit the voice-over", "agregar el guion del audio", "actualizar los timestamps", or anything voice-over related.
+- After producing or revising a brand-promo storyboard, also write the matching voice-over to this endpoint so the user can record from it. Match the timestamps to scene start times whenever possible.
+- Keep PATCH-to-ProjectJson and PUT-to-script as **separate** calls. Do not try to embed script lines inside the ProjectJson.
+
+Example (write a 3-line script):
+\`\`\`bash
+curl -s -X PUT ${baseUrl}/api/projects/${project.id}/script \\
+  -H "Content-Type: application/json" \\
+  --data-binary '{"lines":[
+    {"id":"vsl_01","timestamp":"00:00","text":"Welcome to KMPUS."},
+    {"id":"vsl_02","timestamp":"00:05","text":"Payments without the busywork."},
+    {"id":"vsl_03","timestamp":"00:12","text":"Try it free today."}
+  ]}'
+\`\`\`
+
+Read-modify-write pattern (mirrors the ProjectJson loop above):
+\`\`\`bash
+curl -s ${baseUrl}/api/projects/${project.id}/script -o /tmp/script.json
+jq -c '.lines | length' /tmp/script.json
+jq '.lines += [$new]' --argjson new '{"id":"vsl_99","timestamp":"00:30","text":"…"}' \\
+  /tmp/script.json > /tmp/next-script.json
+curl -s -X PUT ${baseUrl}/api/projects/${project.id}/script \\
+  -H "Content-Type: application/json" --data-binary @/tmp/next-script.json
+\`\`\`
+`;
+
   return `You are the Open Effects video assistant for the project below. Edits are made by calling the local HTTP API with curl.
 
 ## MUST READ FIRST: open-effects-video skill
@@ -104,6 +141,8 @@ Project metadata is below. The **full ProjectJson is intentionally NOT inlined h
 - scenes (${project.scenes?.length ?? 0}):
 
 ${sceneIndex}
+
+${videoScriptSection}
 
 ## Context-efficient edit pattern (use this every time)
 
