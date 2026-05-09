@@ -42,18 +42,20 @@ export default function BusinessContextPage() {
   }
 
   return (
-    <div className="h-screen grid grid-cols-1 md:grid-cols-[1fr_400px]">
-      <BusinessContextView
-        context={context}
-        onSaved={setContext}
-        onReload={loadContext}
-      />
-      <div className="border-l border-border bg-background hidden md:flex md:flex-col">
+    <div className="h-screen max-h-screen flex overflow-hidden">
+      <main className="flex-1 min-w-0 h-full overflow-hidden">
+        <BusinessContextView
+          context={context}
+          onSaved={setContext}
+          onReload={loadContext}
+        />
+      </main>
+      <aside className="hidden md:flex md:flex-col w-[400px] h-full max-h-screen border-l border-border bg-background overflow-hidden">
         <BusinessContextChat
           claudeAvailable={claudeAvailable}
           onContextUpdated={loadContext}
         />
-      </div>
+      </aside>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Check, Save, Plus, X, RefreshCw } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Check, Save, Plus, X, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusinessContext } from "@open-effects/shared-types";
@@ -29,6 +29,7 @@ export function BusinessContextView({
   }, [context]);
 
   const isDirty =
+    draft.companyName !== context.companyName ||
     draft.summary !== context.summary ||
     draft.audience !== context.audience ||
     draft.products !== context.products ||
@@ -36,7 +37,12 @@ export function BusinessContextView({
     draft.competitors !== context.competitors ||
     draft.notes !== context.notes ||
     draft.keyMessages.join("|") !== context.keyMessages.join("|") ||
-    draft.differentiators.join("|") !== context.differentiators.join("|");
+    draft.differentiators.join("|") !== context.differentiators.join("|") ||
+    draft.primaryColor !== context.primaryColor ||
+    draft.secondaryColor !== context.secondaryColor ||
+    draft.accentColor !== context.accentColor ||
+    draft.logoLightAssetId !== context.logoLightAssetId ||
+    draft.logoDarkAssetId !== context.logoDarkAssetId;
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -45,6 +51,7 @@ export function BusinessContextView({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyName: draft.companyName,
           summary: draft.summary,
           audience: draft.audience,
           products: draft.products,
@@ -53,6 +60,11 @@ export function BusinessContextView({
           differentiators: draft.differentiators,
           competitors: draft.competitors,
           notes: draft.notes,
+          primaryColor: draft.primaryColor,
+          secondaryColor: draft.secondaryColor,
+          accentColor: draft.accentColor,
+          logoLightAssetId: draft.logoLightAssetId,
+          logoDarkAssetId: draft.logoDarkAssetId,
         }),
       });
       if (res.ok) {
@@ -99,14 +111,20 @@ export function BusinessContextView({
 
   const isEmpty =
     draft === DEFAULT_BUSINESS_CONTEXT ||
-    (!draft.summary &&
+    (!draft.companyName &&
+      !draft.summary &&
       !draft.audience &&
       !draft.products &&
       !draft.tone &&
       draft.keyMessages.length === 0 &&
       draft.differentiators.length === 0 &&
       !draft.competitors &&
-      !draft.notes);
+      !draft.notes &&
+      !draft.primaryColor &&
+      !draft.secondaryColor &&
+      !draft.accentColor &&
+      !draft.logoLightAssetId &&
+      !draft.logoDarkAssetId);
 
   return (
     <div className="h-full flex flex-col">
@@ -147,7 +165,7 @@ export function BusinessContextView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
         <div className="max-w-2xl mx-auto space-y-6">
           {isEmpty && (
             <div className="rounded-xl border border-dashed border-border p-4 text-center">
@@ -159,6 +177,82 @@ export function BusinessContextView({
               </p>
             </div>
           )}
+
+          <Field label="Company name" hint="The brand name as it should appear in copy.">
+            <Input
+              value={draft.companyName}
+              onChange={(e) =>
+                setDraft({ ...draft, companyName: e.target.value })
+              }
+              placeholder="Acme Inc."
+            />
+          </Field>
+
+          <Field
+            label="Logos"
+            hint="Upload one variant for light backgrounds and one for dark backgrounds."
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <LogoUploader
+                label="Over light"
+                background="light"
+                assetPath={draft.logoLightAssetPath}
+                onUploaded={(asset) =>
+                  setDraft({
+                    ...draft,
+                    logoLightAssetId: asset.id,
+                    logoLightAssetPath: asset.path,
+                  })
+                }
+                onClear={() =>
+                  setDraft({
+                    ...draft,
+                    logoLightAssetId: null,
+                    logoLightAssetPath: null,
+                  })
+                }
+              />
+              <LogoUploader
+                label="Over dark"
+                background="dark"
+                assetPath={draft.logoDarkAssetPath}
+                onUploaded={(asset) =>
+                  setDraft({
+                    ...draft,
+                    logoDarkAssetId: asset.id,
+                    logoDarkAssetPath: asset.path,
+                  })
+                }
+                onClear={() =>
+                  setDraft({
+                    ...draft,
+                    logoDarkAssetId: null,
+                    logoDarkAssetPath: null,
+                  })
+                }
+              />
+            </div>
+          </Field>
+
+          <Field label="Brand colors" hint="Primary, secondary and accent.">
+            <div className="grid grid-cols-3 gap-3">
+              <ColorField
+                label="Primary"
+                value={draft.primaryColor}
+                onChange={(v) => setDraft({ ...draft, primaryColor: v })}
+              />
+              <ColorField
+                label="Secondary"
+                value={draft.secondaryColor}
+                onChange={(v) => setDraft({ ...draft, secondaryColor: v })}
+              />
+              <ColorField
+                label="Accent"
+                value={draft.accentColor}
+                onChange={(v) => setDraft({ ...draft, accentColor: v })}
+              />
+            </div>
+          </Field>
 
           <Field label="Summary" hint="One-sentence elevator pitch.">
             <textarea
@@ -351,6 +445,148 @@ function Field({
       <label className="text-sm font-medium block">{label}</label>
       {hint && <p className="text-xs text-muted-foreground mb-2">{hint}</p>}
       <div className={hint ? "" : "mt-2"}>{children}</div>
+    </div>
+  );
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const swatch = value ?? "#ffffff";
+  return (
+    <div className="space-y-1.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2">
+        <label
+          className="relative h-9 w-9 shrink-0 cursor-pointer rounded-md border border-input overflow-hidden"
+          style={{ backgroundColor: swatch }}
+          aria-label={`${label} color picker`}
+        >
+          <input
+            type="color"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            value={swatch}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </label>
+        <Input
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value || null)}
+          placeholder="#000000"
+          className="font-mono text-xs"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="text-muted-foreground hover:text-destructive"
+            aria-label={`Clear ${label}`}
+            title="Clear"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface UploadedAsset {
+  id: string;
+  path: string;
+  filename: string;
+  type: string;
+}
+
+function LogoUploader({
+  label,
+  background,
+  assetPath,
+  onUploaded,
+  onClear,
+}: {
+  label: string;
+  background: "light" | "dark";
+  assetPath: string | null;
+  onUploaded: (asset: UploadedAsset) => void;
+  onClear: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/assets", { method: "POST", body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const asset: UploadedAsset = await res.json();
+      onUploaded(asset);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const bg = background === "light" ? "bg-white" : "bg-neutral-900";
+  const borderColor =
+    background === "light" ? "border-neutral-200" : "border-neutral-700";
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        {assetPath && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-muted-foreground hover:text-destructive"
+            aria-label={`Remove ${label} logo`}
+            title="Remove"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      <input
+        ref={ref}
+        type="file"
+        hidden
+        accept="image/*"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (f) await handleFile(f);
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        disabled={busy}
+        className={`group relative flex h-28 w-full items-center justify-center rounded-md border ${borderColor} ${bg} transition hover:brightness-95 disabled:opacity-50`}
+      >
+        {assetPath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={assetPath}
+            alt={`${label} logo`}
+            className="max-h-full max-w-full object-contain p-2"
+          />
+        ) : (
+          <span
+            className={`flex flex-col items-center gap-1 text-xs ${background === "light" ? "text-neutral-500" : "text-neutral-400"}`}
+          >
+            <Upload className="h-4 w-4" />
+            {busy ? "Uploading…" : "Upload"}
+          </span>
+        )}
+      </button>
     </div>
   );
 }

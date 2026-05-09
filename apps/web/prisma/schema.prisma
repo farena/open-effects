@@ -85,15 +85,17 @@ model VolumeKeyframe {
 }
 
 model Asset {
-  id          String       @id @default(cuid())
-  type        String       // "image" | "audio" | "video" | "font"
-  filename    String
-  path        String
-  mimeType    String
-  size        Int
-  sha256      String       @unique
-  createdAt   DateTime     @default(now())
-  audioTracks AudioTrack[]
+  id                  String            @id @default(cuid())
+  type                String            // "image" | "audio" | "video" | "font"
+  filename            String
+  path                String
+  mimeType            String
+  size                Int
+  sha256              String            @unique
+  createdAt           DateTime          @default(now())
+  audioTracks         AudioTrack[]
+  logoLightContexts   BusinessContext[] @relation("BusinessContextLogoLight")
+  logoDarkContexts    BusinessContext[] @relation("BusinessContextLogoDark")
   @@index([type])
 }
 
@@ -108,15 +110,25 @@ model SavedComponent {
 }
 
 model BusinessContext {
-  id              Int      @id @default(1)
-  summary         String   @default("") @db.Text
-  audience        String   @default("") @db.Text
-  products        String   @default("") @db.Text
-  tone            String   @default("") @db.Text
-  keyMessages     Json     @default("[]")
-  differentiators Json     @default("[]")
-  competitors     String   @default("") @db.Text
-  notes           String   @default("") @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                Int      @id @default(1)
+  companyName       String   @default("") @db.Text
+  summary           String   @default("") @db.Text
+  audience          String   @default("") @db.Text
+  products          String   @default("") @db.Text
+  tone              String   @default("") @db.Text
+  keyMessages       Json     @default("[]")
+  differentiators   Json     @default("[]")
+  competitors       String   @default("") @db.Text
+  notes             String   @default("") @db.Text
+  primaryColor      String?
+  secondaryColor    String?
+  accentColor       String?
+  logoLightAssetId  String?
+  logoLightAsset    Asset?   @relation("BusinessContextLogoLight", fields: [logoLightAssetId], references: [id], onDelete: SetNull)
+  logoDarkAssetId   String?
+  logoDarkAsset     Asset?   @relation("BusinessContextLogoDark", fields: [logoDarkAssetId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  @@index([logoLightAssetId])
+  @@index([logoDarkAssetId])
 }

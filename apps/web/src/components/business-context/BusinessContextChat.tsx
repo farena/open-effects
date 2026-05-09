@@ -58,7 +58,7 @@ export function BusinessContextChat({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-border flex items-start justify-between">
+      <div className="px-4 py-3 border-b border-border flex items-start justify-between shrink-0">
         <div>
           <h2 className="text-sm font-semibold">Context Coach</h2>
           <p className="text-xs text-muted-foreground">
@@ -75,7 +75,7 @@ export function BusinessContextChat({
         )}
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
         {messages.length === 0 && (
           <div className="p-6 text-center text-muted-foreground">
             <p className="text-sm mb-1">No messages yet</p>

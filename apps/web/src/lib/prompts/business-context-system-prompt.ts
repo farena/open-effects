@@ -2,6 +2,7 @@ import type { BusinessContext } from "@open-effects/shared-types";
 
 export function buildBusinessContextSystemPrompt(ctx: BusinessContext): string {
   const hasContent =
+    ctx.companyName ||
     ctx.summary ||
     ctx.audience ||
     ctx.products ||
@@ -9,10 +10,16 @@ export function buildBusinessContextSystemPrompt(ctx: BusinessContext): string {
     ctx.keyMessages.length > 0 ||
     ctx.differentiators.length > 0 ||
     ctx.competitors ||
-    ctx.notes;
+    ctx.notes ||
+    ctx.primaryColor ||
+    ctx.secondaryColor ||
+    ctx.accentColor ||
+    ctx.logoLightAssetPath ||
+    ctx.logoDarkAssetPath;
 
   const currentSection = hasContent
     ? `## Current business context (already saved)
+- Company name: ${ctx.companyName || "(empty)"}
 - Summary: ${ctx.summary || "(empty)"}
 - Audience: ${ctx.audience || "(empty)"}
 - Products / services: ${ctx.products || "(empty)"}
@@ -20,7 +27,10 @@ export function buildBusinessContextSystemPrompt(ctx: BusinessContext): string {
 - Key messages: ${ctx.keyMessages.length > 0 ? ctx.keyMessages.map((m) => `"${m}"`).join(", ") : "(empty)"}
 - Differentiators: ${ctx.differentiators.length > 0 ? ctx.differentiators.map((d) => `"${d}"`).join(", ") : "(empty)"}
 - Competitors / alternatives: ${ctx.competitors || "(empty)"}
-- Extra notes: ${ctx.notes || "(empty)"}`
+- Extra notes: ${ctx.notes || "(empty)"}
+- Brand colors: primary=${ctx.primaryColor || "(empty)"}, secondary=${ctx.secondaryColor || "(empty)"}, accent=${ctx.accentColor || "(empty)"}
+- Logo over light: ${ctx.logoLightAssetPath || "(empty)"}
+- Logo over dark: ${ctx.logoDarkAssetPath || "(empty)"}`
     : `## Current business context
 (empty — this is the user's first time configuring it)`;
 
@@ -33,14 +43,17 @@ ${currentSection}
 ### When the context is empty or thin
 1. Greet briefly and explain that you'll ask a few questions so future videos speak the user's voice.
 2. Ask focused questions ONE AT A TIME, in this order:
-   a. What does the brand/business do, in one sentence? (→ summary)
-   b. Who is the target audience? Be specific about role, industry, pain point. (→ audience)
-   c. What products or services do you sell or promote? (→ products)
-   d. What tone of voice should videos use? (e.g. expert and warm, edgy and direct, playful, cinematic) (→ tone)
-   e. What are 3-5 key messages or beliefs you want every video to reinforce? (→ keyMessages)
-   f. What makes you different from alternatives? (→ differentiators)
-   g. Who are competitors or what do people use today instead of you? (→ competitors)
-   h. Anything else important — recurring objections, jargon, things to AVOID, visual references? (→ notes)
+   a. What is the company / brand name? (→ companyName)
+   b. What does the brand/business do, in one sentence? (→ summary)
+   c. Who is the target audience? Be specific about role, industry, pain point. (→ audience)
+   d. What products or services do you sell or promote? (→ products)
+   e. What tone of voice should videos use? (e.g. expert and warm, edgy and direct, playful, cinematic) (→ tone)
+   f. Brand colors — primary, secondary, accent (hex codes if known). (→ primaryColor / secondaryColor / accentColor)
+   g. What are 3-5 key messages or beliefs you want every video to reinforce? (→ keyMessages)
+   h. What makes you different from alternatives? (→ differentiators)
+   i. Who are competitors or what do people use today instead of you? (→ competitors)
+   j. Anything else important — recurring objections, jargon, things to AVOID, visual references? (→ notes)
+Note: logo uploads (light + dark variants) are done by the user via the form on the left, not via chat.
 3. After EACH user answer, immediately persist the new field via curl (see API below). Confirm with one short sentence and ask the next question.
 4. When all fields have content, summarize what you captured and ask if anything should be refined.
 
@@ -66,6 +79,7 @@ curl -s -X PUT http://localhost:3000/api/business-context \\
   -d '{"summary": "..."}'
 
 Available fields (all optional in each PUT):
+- companyName (string) — brand / company name
 - summary (string) — one-sentence elevator pitch
 - audience (string) — target audience description
 - products (string) — what they sell or promote
@@ -74,6 +88,11 @@ Available fields (all optional in each PUT):
 - differentiators (string[]) — what makes them different
 - competitors (string) — who/what they compete with
 - notes (string) — anything else (jargon, visual references, things to avoid, recurring objections)
+- primaryColor (string | null) — hex string like "#1f6feb"
+- secondaryColor (string | null) — hex string
+- accentColor (string | null) — hex string
+- logoLightAssetId (string | null) — Asset id for logo to use over light backgrounds (uploaded via form, not chat)
+- logoDarkAssetId (string | null) — Asset id for logo to use over dark backgrounds (uploaded via form, not chat)
 
 Read current state with:
 curl -s http://localhost:3000/api/business-context

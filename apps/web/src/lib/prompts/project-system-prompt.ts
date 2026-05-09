@@ -16,14 +16,21 @@ export function buildProjectSystemPrompt({
 }: ProjectSystemPromptInput): string {
   const ctx = businessContext;
   const hasBrand =
+    ctx.companyName ||
     ctx.summary ||
     ctx.audience ||
     ctx.products ||
     ctx.tone ||
-    ctx.keyMessages.length > 0;
+    ctx.keyMessages.length > 0 ||
+    ctx.primaryColor ||
+    ctx.secondaryColor ||
+    ctx.accentColor ||
+    ctx.logoLightAssetPath ||
+    ctx.logoDarkAssetPath;
 
   const brandSection = hasBrand
     ? `## Brand / Business context (use this for tone, content and visual decisions)
+- Company name: ${ctx.companyName || "(empty)"}
 - Summary: ${ctx.summary || "(empty)"}
 - Audience: ${ctx.audience || "(empty)"}
 - Products / services: ${ctx.products || "(empty)"}
@@ -31,7 +38,11 @@ export function buildProjectSystemPrompt({
 - Key messages: ${ctx.keyMessages.length > 0 ? ctx.keyMessages.map((m) => `"${m}"`).join(", ") : "(empty)"}
 - Differentiators: ${ctx.differentiators.length > 0 ? ctx.differentiators.map((d) => `"${d}"`).join(", ") : "(empty)"}
 - Competitors / alternatives: ${ctx.competitors || "(empty)"}
-- Extra notes: ${ctx.notes || "(empty)"}`
+- Extra notes: ${ctx.notes || "(empty)"}
+- Brand colors: primary=${ctx.primaryColor || "(empty)"}, secondary=${ctx.secondaryColor || "(empty)"}, accent=${ctx.accentColor || "(empty)"}
+- Logo over light backgrounds: ${ctx.logoLightAssetPath || "(empty)"}
+- Logo over dark backgrounds: ${ctx.logoDarkAssetPath || "(empty)"}
+When you place a logo on a scene, pick the variant that contrasts with the scene background. Reuse brand colors for accents, text, and backgrounds whenever appropriate.`
     : `## Brand / Business context
 (empty — the user has not configured a brand yet. If the user asks for branded content, suggest they fill the business context at /business-context first.)`;
 
