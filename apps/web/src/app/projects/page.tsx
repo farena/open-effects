@@ -29,7 +29,15 @@ export default async function ProjectsPage() {
     <main className="container mx-auto p-8">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Projects</h1>
-        <NewProjectDialog />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/business-context"
+            className="text-sm underline text-muted-foreground hover:text-foreground"
+          >
+            Business context
+          </Link>
+          <NewProjectDialog />
+        </div>
       </header>
       {projects.length === 0 ? (
         <Card className="mt-8 flex flex-col items-center gap-3 p-12 text-center">

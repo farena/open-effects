@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Undo2, Redo2, Film, ArrowLeft } from "lucide-react";
+import { Undo2, Redo2, Film, ArrowLeft, Sparkles } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { SaveStatus } from "@/editor/store.types";
 import { RenderModal } from "./RenderModal";
+import { ProjectChat } from "@/components/project-chat/ProjectChat";
 
 function UndoRedoButtons() {
   const [, force] = useState(0);
@@ -126,6 +127,7 @@ export function Topbar() {
   const saveStatus = useEditorStore((s) => s.saveStatus);
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
   const setSaveStatus = useEditorStore((s) => s.setSaveStatus);
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <div className="flex h-12 items-center justify-between border-b bg-background px-4">
@@ -164,6 +166,18 @@ export function Topbar() {
 
       <div className="flex items-center gap-2">
         {project.id && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setChatOpen(true)}
+            className="flex items-center gap-1.5"
+            aria-label="Open AI assistant"
+          >
+            <Sparkles className="h-4 w-4" />
+            AI
+          </Button>
+        )}
+        {project.id && (
           <Button variant="ghost" size="sm" asChild>
             <Link
               href={`/projects/${project.id}/renders`}
@@ -183,6 +197,15 @@ export function Topbar() {
           }
         />
       </div>
+
+      {project.id && (
+        <ProjectChat
+          projectId={project.id}
+          projectName={project.name || "Untitled"}
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>
   );
 }

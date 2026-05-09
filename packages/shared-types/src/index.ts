@@ -5,4 +5,5 @@ export * from "./schemas/audio";
 export * from "./schemas/scene";
 export * from "./schemas/project";
 export * from "./schemas/savedComponent";
+export * from "./schemas/businessContext";
 export * from "./types";

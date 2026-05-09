@@ -106,3 +106,17 @@ model SavedComponent {
   createdAt DateTime @default(now())
   @@index([category])
 }
+
+model BusinessContext {
+  id              Int      @id @default(1)
+  summary         String   @default("") @db.Text
+  audience        String   @default("") @db.Text
+  products        String   @default("") @db.Text
+  tone            String   @default("") @db.Text
+  keyMessages     Json     @default("[]")
+  differentiators Json     @default("[]")
+  competitors     String   @default("") @db.Text
+  notes           String   @default("") @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
