@@ -53,6 +53,14 @@ export const selectActiveAudioTrack = (s: EditorState) => {
   return null;
 };
 
+export const selectActiveAudioTrackSceneId = (s: EditorState): string | null => {
+  if (!s.selectedAudioTrackId) return null;
+  for (const sc of s.project.scenes) {
+    if (sc.audioTracks.some((x) => x.id === s.selectedAudioTrackId)) return sc.id;
+  }
+  return null;
+};
+
 export const selectVolumeKeyframes = (s: EditorState) =>
   selectActiveAudioTrack(s)?.volumeKeyframes ?? [];
 

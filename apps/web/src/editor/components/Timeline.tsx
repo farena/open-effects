@@ -27,9 +27,12 @@ import {
   selectAnimatedSceneProperties,
   selectKeyframesForProperty,
   selectKeyframesForPropertyOnScene,
+  selectActiveAudioTrack,
+  selectActiveAudioTrackSceneId,
+  selectAudioAnimatedProperties,
 } from "@/editor/selectors";
 import { PROPERTIES } from "@open-effects/runtime";
-import type { Layer, Scene } from "@open-effects/shared-types";
+import type { AudioTrack, Layer, Scene } from "@open-effects/shared-types";
 import { AudioGroupHeader } from "./audio/AudioGroupHeader";
 import { AudioLaneRow } from "./audio/AudioLaneRow";
 import {
@@ -66,6 +69,11 @@ function keyframeSectionHeight(propCount: number): number {
 
 function propertyDisplayLabel(property: string): string {
   return PROPERTIES[property]?.label ?? property;
+}
+
+function audioPropertyDisplayLabel(property: string): string {
+  if (property === "volume") return "Volume";
+  return property;
 }
 /** Scene span bar color (distinct from per-layer label colors). */
 const SCENE_TRACK_BG = "#5b21b6";
@@ -348,6 +356,118 @@ function ScenePropertyLane({
             key={kf.frame}
             data-testid="scene-keyframe-dot"
             className="absolute top-1/2 z-[1] size-2.5 cursor-grab rounded-full bg-violet-400 active:cursor-grabbing"
+            style={{
+              left: `${leftPx}px`,
+              transform: "translate(-50%, -50%)",
+            }}
+            onPointerDown={(e) => handlePointerDown(e, kf.frame)}
+            onPointerMove={(e) => handlePointerMove(e, kf.frame)}
+            onPointerUp={(e) => handlePointerUp(e, kf.frame)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AudioPropertyLane — keyframe dots for one animated audio property.
+// kf.frame is local to the track (0..trimEnd-trimStart). Dots are positioned
+// in global frames as `sceneOffset + track.startFrame + kf.frame`. On drop,
+// the new global frame is converted back to track-local for moveVolumeKeyframe.
+// ---------------------------------------------------------------------------
+
+interface AudioPropertyLaneProps {
+  property: "volume";
+  track: AudioTrack;
+  sceneOffset: number;
+  total: number;
+  timelineWidthPx: number;
+}
+
+function AudioPropertyLane({
+  property,
+  track,
+  sceneOffset,
+  total,
+  timelineWidthPx,
+}: AudioPropertyLaneProps) {
+  const moveVolumeKeyframe = useEditorStore((s) => s.moveVolumeKeyframe);
+  const keyframes =
+    property === "volume" ? (track.volumeKeyframes ?? []) : [];
+  const trackLocalSpan = Math.max(0, track.trimEnd - track.trimStart);
+
+  const [dragFrames, setDragFrames] = useState<Record<number, number>>({});
+  const dragState = useRef<{
+    kfFrame: number;
+    laneRect: DOMRect;
+  } | null>(null);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, kfFrame: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const lane = e.currentTarget.parentElement as HTMLElement;
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      dragState.current = {
+        kfFrame,
+        laneRect: lane.getBoundingClientRect(),
+      };
+    },
+    [],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, kfFrame: number) => {
+      if (!dragState.current || dragState.current.kfFrame !== kfFrame) return;
+      const { laneRect } = dragState.current;
+      const raw = ((e.clientX - laneRect.left) / laneRect.width) * total;
+      const next = Math.round(Math.max(0, Math.min(total, raw)));
+      setDragFrames((prev) => ({ ...prev, [kfFrame]: next }));
+    },
+    [total],
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, kfFrame: number) => {
+      if (!dragState.current || dragState.current.kfFrame !== kfFrame) return;
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      const draggedGlobal = dragFrames[kfFrame];
+      dragState.current = null;
+      setDragFrames((prev) => {
+        const next = { ...prev };
+        delete next[kfFrame];
+        return next;
+      });
+      if (draggedGlobal === undefined) return;
+      const globalOriginal = sceneOffset + track.startFrame + kfFrame;
+      if (draggedGlobal === globalOriginal) return;
+      const targetLocal = Math.round(
+        clamp(draggedGlobal - sceneOffset - track.startFrame, 0, trackLocalSpan),
+      );
+      if (targetLocal === kfFrame) return;
+      moveVolumeKeyframe(track.id, kfFrame, targetLocal);
+    },
+    [dragFrames, sceneOffset, track.id, track.startFrame, trackLocalSpan, moveVolumeKeyframe],
+  );
+
+  return (
+    <div
+      className="relative shrink-0 rounded bg-muted/25"
+      style={{ width: timelineWidthPx, height: KEYFRAME_LANE_ROW_H }}
+    >
+      {keyframes.map((kf) => {
+        const globalFrame =
+          dragFrames[kf.frame] !== undefined
+            ? dragFrames[kf.frame]!
+            : sceneOffset + track.startFrame + kf.frame;
+        const leftPx = total > 0 ? (globalFrame / total) * timelineWidthPx : 0;
+
+        return (
+          <div
+            key={kf.frame}
+            data-testid="audio-keyframe-dot"
+            className="absolute top-1/2 z-[1] size-2.5 cursor-grab rounded-full bg-emerald-400 active:cursor-grabbing"
             style={{
               left: `${leftPx}px`,
               transform: "translate(-50%, -50%)",
@@ -725,6 +845,9 @@ export function Timeline() {
   const selectLayer = useEditorStore((s) => s.selectLayer);
   const toggleLayerVisible = useEditorStore((s) => s.toggleLayerVisible);
   const animatedSceneProps = useEditorStore(selectAnimatedSceneProperties);
+  const activeAudioTrack = useEditorStore(selectActiveAudioTrack);
+  const activeAudioTrackSceneId = useEditorStore(selectActiveAudioTrackSceneId);
+  const audioAnimatedProps = useEditorStore(selectAudioAnimatedProperties);
   const addLayer = useEditorStore((s) => s.addLayer);
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
@@ -939,17 +1062,30 @@ export function Timeline() {
 
   const showLayerKeyframeLanes =
     activeLayer !== null && animatedProps.length > 0 && total > 0;
+  const showAudioKeyframeLanes =
+    activeAudioTrack !== null &&
+    audioAnimatedProps.length > 0 &&
+    total > 0;
   const showSceneKeyframeLanes =
     activeLayer === null &&
+    activeAudioTrack === null &&
     activeScene !== null &&
     animatedSceneProps.length > 0 &&
     total > 0;
 
+  const audioSceneOffset = useMemo(() => {
+    if (!activeAudioTrackSceneId) return 0;
+    const idx = sorted.findIndex((sc) => sc.id === activeAudioTrackSceneId);
+    return idx >= 0 ? sceneStarts[idx]! : 0;
+  }, [activeAudioTrackSceneId, sorted, sceneStarts]);
+
   const keyframeBlockHeight = showLayerKeyframeLanes
     ? keyframeSectionHeight(animatedProps.length)
-    : showSceneKeyframeLanes
-      ? keyframeSectionHeight(animatedSceneProps.length)
-      : 0;
+    : showAudioKeyframeLanes
+      ? keyframeSectionHeight(audioAnimatedProps.length)
+      : showSceneKeyframeLanes
+        ? keyframeSectionHeight(animatedSceneProps.length)
+        : 0;
 
   const playheadTracksHeight =
     RULER_H + ROW_H * trackRowCount + keyframeBlockHeight;
@@ -1218,7 +1354,9 @@ export function Timeline() {
                   </Fragment>
                 );
               })}
-              {(showLayerKeyframeLanes || showSceneKeyframeLanes) && (
+              {(showLayerKeyframeLanes ||
+                showAudioKeyframeLanes ||
+                showSceneKeyframeLanes) && (
                 <>
                   {showLayerKeyframeLanes && activeLayer && (
                     <>
@@ -1240,6 +1378,35 @@ export function Timeline() {
                           >
                             <span className="min-w-0 flex-1 truncate pl-5 font-medium">
                               {propertyDisplayLabel(prop)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {showAudioKeyframeLanes && activeAudioTrack && (
+                    <>
+                      <div
+                        className="flex shrink-0 items-center gap-1 border-t border-[#3a3a3a] bg-[#252525] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+                        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+                      >
+                        <span className="min-w-0 flex-1 truncate">
+                          Audio keyframes ·{" "}
+                          {activeAudioTrack.assetPath
+                            ?.split("/")
+                            .pop() ?? "Audio"}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-1 py-1">
+                        {audioAnimatedProps.map((prop) => (
+                          <div
+                            key={prop}
+                            className="flex shrink-0 items-center border-b border-[#2d2d2d] px-2 text-[11px] text-[#c4c4c4]"
+                            style={{ height: KEYFRAME_LANE_ROW_H }}
+                            title={audioPropertyDisplayLabel(prop)}
+                          >
+                            <span className="min-w-0 flex-1 truncate pl-5 font-medium">
+                              {audioPropertyDisplayLabel(prop)}
                             </span>
                           </div>
                         ))}
@@ -1401,6 +1568,32 @@ export function Timeline() {
                         property={prop}
                         layer={activeLayer}
                         sceneOffset={sceneOffset}
+                        total={total}
+                        timelineWidthPx={timelineWidthPx}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showAudioKeyframeLanes && activeAudioTrack && (
+                <div className="border-t border-[#3a3a3a] bg-[#202020]">
+                  <div
+                    className="flex items-center border-b border-[#2d2d2d] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+                    style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+                  >
+                    <span className="sr-only">
+                      Audio keyframes timeline for track{" "}
+                      {activeAudioTrack.assetPath?.split("/").pop() ?? "Audio"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1 py-1">
+                    {audioAnimatedProps.map((prop) => (
+                      <AudioPropertyLane
+                        key={prop}
+                        property={prop}
+                        track={activeAudioTrack}
+                        sceneOffset={audioSceneOffset}
                         total={total}
                         timelineWidthPx={timelineWidthPx}
                       />
