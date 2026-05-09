@@ -21,8 +21,79 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NewProjectFormSchema } from "@open-effects/shared-types";
+import { cn } from "@/lib/utils";
 
 type FormErrors = Partial<Record<"name" | "width" | "height" | "fps", string>>;
+
+type SizePreset = {
+  id: string;
+  ratio: string;
+  width: number;
+  height: number;
+  caption: string;
+};
+
+const SIZE_PRESETS: readonly SizePreset[] = [
+  {
+    id: "ig-square",
+    ratio: "1:1",
+    width: 1080,
+    height: 1080,
+    caption: "Instagram Post · 1080 × 1080",
+  },
+  {
+    id: "ig-portrait",
+    ratio: "4:5",
+    width: 1080,
+    height: 1350,
+    caption: "Instagram Portrait · 1080 × 1350",
+  },
+  {
+    id: "vertical",
+    ratio: "9:16",
+    width: 1080,
+    height: 1920,
+    caption: "Reel · Story · Short · 1080 × 1920",
+  },
+  {
+    id: "yt-hd",
+    ratio: "16:9",
+    width: 1920,
+    height: 1080,
+    caption: "YouTube HD · 1920 × 1080",
+  },
+];
+
+function findPresetId(width: number, height: number): string | null {
+  const match = SIZE_PRESETS.find((p) => p.width === width && p.height === height);
+  return match ? match.id : null;
+}
+
+function AspectIcon({
+  width,
+  height,
+  active,
+}: {
+  width: number;
+  height: number;
+  active: boolean;
+}) {
+  const max = 18;
+  const ratio = width / height;
+  const w = ratio >= 1 ? max : Math.round(max * ratio);
+  const h = ratio >= 1 ? Math.round(max / ratio) : max;
+  return (
+    <div className="grid h-5 w-5 place-items-center">
+      <div
+        className={cn(
+          "rounded-[2px] border",
+          active ? "border-foreground bg-foreground/10" : "border-muted-foreground/60",
+        )}
+        style={{ width: w, height: h }}
+      />
+    </div>
+  );
+}
 
 export function NewProjectDialog() {
   const router = useRouter();
@@ -104,6 +175,7 @@ export function NewProjectDialog() {
   }
 
   const hasErrors = Object.values(fieldErrors).some(Boolean);
+  const activePresetId = findPresetId(width, height);
 
   return (
     <Dialog
@@ -138,6 +210,53 @@ export function NewProjectDialog() {
                 {fieldErrors.name}
               </p>
             )}
+          </div>
+          <div className="grid gap-2">
+            <Label>Size</Label>
+            <div
+              role="radiogroup"
+              aria-label="Size preset"
+              className="flex flex-wrap items-start gap-1"
+            >
+              {SIZE_PRESETS.map((preset) => {
+                const active = activePresetId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      setWidth(preset.width);
+                      setHeight(preset.height);
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        width: undefined,
+                        height: undefined,
+                      }));
+                    }}
+                    className={cn(
+                      "flex flex-col items-center gap-1 rounded-md border px-3 py-1.5 text-[11px] tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active
+                        ? "border-foreground bg-accent text-foreground"
+                        : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
+                    )}
+                  >
+                    <AspectIcon
+                      width={preset.width}
+                      height={preset.height}
+                      active={active}
+                    />
+                    <span>{preset.ratio}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {activePresetId
+                ? SIZE_PRESETS.find((p) => p.id === activePresetId)?.caption
+                : `Custom · ${width || 0} × ${height || 0}`}
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-1.5">
