@@ -1,5 +1,6 @@
 export type MessagePart =
   | { kind: "text"; text: string }
+  | { kind: "image"; url: string; filename?: string }
   | {
       kind: "tool";
       toolId: string;
@@ -8,6 +9,11 @@ export type MessagePart =
       status: "running" | "ok" | "error";
       resultSummary?: string;
     };
+
+export interface ChatAttachment {
+  path: string;
+  filename?: string;
+}
 
 export interface ChatMessage {
   id: string;

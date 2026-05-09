@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
+import path from "node:path";
 import { getClaudePath, isClaudeAvailable } from "@/lib/claude-path";
 import { buildBusinessContextSystemPrompt } from "@/lib/prompts/business-context-system-prompt";
 import { buildProjectSystemPrompt } from "@/lib/prompts/project-system-prompt";
@@ -10,12 +11,70 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+const MAX_ATTACHMENTS = 8;
+
+type ChatAttachmentInput = { path?: unknown; filename?: unknown };
+
 type ChatBody = {
   message?: string;
   sessionId?: string | null;
   mode?: "business-context" | "project";
   projectId?: string;
+  attachments?: ChatAttachmentInput[];
 };
+
+interface ResolvedAttachment {
+  diskPath: string;
+  filename: string;
+}
+
+function resolveAttachments(
+  raw: ChatAttachmentInput[] | undefined,
+): ResolvedAttachment[] | { error: string } {
+  if (!raw) return [];
+  if (!Array.isArray(raw)) return { error: "attachments must be an array" };
+  if (raw.length > MAX_ATTACHMENTS) {
+    return { error: `Too many attachments (max ${MAX_ATTACHMENTS})` };
+  }
+
+  const assetsRoot = path.resolve(process.cwd(), "public", "assets");
+  const resolved: ResolvedAttachment[] = [];
+
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      return { error: "Invalid attachment entry" };
+    }
+    const url = typeof item.path === "string" ? item.path : "";
+    if (!url.startsWith("/assets/") || url.includes("..")) {
+      return { error: "Attachment path must be /assets/<file>" };
+    }
+    const diskPath = path.resolve(process.cwd(), "public", url.replace(/^\//, ""));
+    if (!diskPath.startsWith(assetsRoot + path.sep)) {
+      return { error: "Attachment path escapes assets directory" };
+    }
+    const filename =
+      typeof item.filename === "string" && item.filename
+        ? item.filename
+        : path.basename(diskPath);
+    resolved.push({ diskPath, filename });
+  }
+
+  return resolved;
+}
+
+function buildPromptWithAttachments(
+  message: string,
+  attachments: ResolvedAttachment[],
+): string {
+  if (attachments.length === 0) return message;
+  const list = attachments
+    .map((a) => `- ${a.diskPath}${a.filename ? ` (${a.filename})` : ""}`)
+    .join("\n");
+  return `${message}
+
+[The user attached ${attachments.length} reference image${attachments.length === 1 ? "" : "s"}. Use the Read tool on each path below to view them — they are intended as visual/design references for this request.]
+${list}`;
+}
 
 export async function POST(request: NextRequest) {
   if (!isClaudeAvailable()) {
@@ -35,7 +94,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { message, sessionId, mode, projectId } = body;
+  const { message, sessionId, mode, projectId, attachments } = body;
 
   if (
     !message ||
@@ -44,6 +103,11 @@ export async function POST(request: NextRequest) {
     message.length > 10000
   ) {
     return NextResponse.json({ error: "Invalid message" }, { status: 400 });
+  }
+
+  const resolved = resolveAttachments(attachments);
+  if (!Array.isArray(resolved)) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
   }
 
   let systemPrompt: string;
@@ -82,9 +146,11 @@ export async function POST(request: NextRequest) {
   const claudePath = getClaudePath();
   const abortController = new AbortController();
 
+  const promptText = buildPromptWithAttachments(message, resolved);
+
   const args = [
     "-p",
-    message,
+    promptText,
     "--output-format",
     "stream-json",
     "--include-partial-messages",

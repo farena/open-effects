@@ -5,6 +5,7 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { AlertCircle, Plug } from "lucide-react";
 import { useChatStream } from "@/lib/use-chat-stream";
+import type { ChatAttachment } from "@/types/chat";
 
 interface BusinessContextChatProps {
   claudeAvailable: boolean;
@@ -32,8 +33,11 @@ export function BusinessContextChat({
     }
   }, [messages]);
 
-  const handleSend = async (message: string) => {
-    await send(message, { mode: "business-context" });
+  const handleSend = async (
+    message: string,
+    attachments?: ChatAttachment[],
+  ) => {
+    await send(message, { mode: "business-context" }, attachments);
   };
 
   if (!claudeAvailable) {

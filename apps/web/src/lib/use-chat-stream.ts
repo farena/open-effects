@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { ChatMessage, MessagePart } from "@/types/chat";
+import type { ChatAttachment, ChatMessage, MessagePart } from "@/types/chat";
 
 export interface UseChatStreamOptions {
   endpoint?: string;
   storageKey?: string | null;
   sessionKey?: string | null;
-  onStreamEnd?: () => void;
+  /** Called after each assistant turn completes (or aborts).
+   *  `usedTools` is true if the assistant invoked at least one tool. */
+  onStreamEnd?: (usedTools: boolean) => void;
 }
 
 function extractText(parts: MessagePart[]): string {
@@ -74,7 +76,11 @@ export function useChatStream(opts: UseChatStreamOptions = {}): {
   messages: ChatMessage[];
   isStreaming: boolean;
   error: string | null;
-  send: (message: string, body: Record<string, unknown>) => Promise<void>;
+  send: (
+    message: string,
+    body: Record<string, unknown>,
+    attachments?: ChatAttachment[],
+  ) => Promise<void>;
   clear: () => void;
   stop: () => void;
 } {
@@ -110,15 +116,27 @@ export function useChatStream(opts: UseChatStreamOptions = {}): {
   }, []);
 
   const send = useCallback(
-    async (message: string, extraBody: Record<string, unknown>) => {
+    async (
+      message: string,
+      extraBody: Record<string, unknown>,
+      attachments?: ChatAttachment[],
+    ) => {
       if (isStreaming) return;
       setError(null);
       setIsStreaming(true);
+      let usedTools = false;
+
+      const userParts: MessagePart[] = [{ kind: "text", text: message }];
+      if (attachments) {
+        for (const a of attachments) {
+          userParts.push({ kind: "image", url: a.path, filename: a.filename });
+        }
+      }
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "user",
-        parts: [{ kind: "text", text: message }],
+        parts: userParts,
       };
 
       const assistantId = crypto.randomUUID();
@@ -139,6 +157,7 @@ export function useChatStream(opts: UseChatStreamOptions = {}): {
           body: JSON.stringify({
             message,
             sessionId: sessionIdRef.current,
+            attachments: attachments && attachments.length > 0 ? attachments : undefined,
             ...extraBody,
           }),
           signal: abortRef.current.signal,
@@ -204,6 +223,7 @@ export function useChatStream(opts: UseChatStreamOptions = {}): {
                 const toolId = data.id as string;
                 const name = (data.name as string) ?? "Tool";
                 const summary = (data.summary as string) ?? "";
+                usedTools = true;
                 updateAssistant((parts) => [
                   ...parts,
                   {
@@ -272,7 +292,7 @@ export function useChatStream(opts: UseChatStreamOptions = {}): {
           saveMessages(storageKey, prev);
           return prev;
         });
-        onStreamEnd?.();
+        onStreamEnd?.(usedTools);
       }
     },
     [isStreaming, endpoint, storageKey, sessionKey, onStreamEnd],

@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { useChatStream } from "@/lib/use-chat-stream";
 import { AlertCircle, Plug, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { ChatAttachment } from "@/types/chat";
+import type { Project } from "@open-effects/shared-types";
+import { useEditorStore } from "@/editor/store";
 
 interface ProjectChatProps {
   projectId: string;
@@ -26,9 +30,33 @@ export function ProjectChat({
   const storageKey = `oe-chat-messages-project-${projectId}`;
   const sessionKey = `oe-chat-session-project-${projectId}`;
 
+  const replaceProjectFromServer = useEditorStore(
+    (s) => s.replaceProjectFromServer,
+  );
+
+  const refreshProject = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const project = (await res.json()) as Project;
+      replaceProjectFromServer(project);
+      toast.success("Project updated by AI", { duration: 1500 });
+    } catch (err) {
+      console.error("[project-chat] failed to refresh project", err);
+      toast.error("Could not refresh project", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }, [projectId, replaceProjectFromServer]);
+
   const { messages, isStreaming, error, send, clear, stop } = useChatStream({
     storageKey,
     sessionKey,
+    onStreamEnd: (usedTools) => {
+      if (usedTools) void refreshProject();
+    },
   });
 
   useEffect(() => {
@@ -47,8 +75,11 @@ export function ProjectChat({
     }
   }, [messages]);
 
-  const handleSend = async (message: string) => {
-    await send(message, { mode: "project", projectId });
+  const handleSend = async (
+    message: string,
+    attachments?: ChatAttachment[],
+  ) => {
+    await send(message, { mode: "project", projectId }, attachments);
   };
 
   if (!open) return null;
@@ -141,7 +172,7 @@ export function ProjectChat({
             onSend={handleSend}
             isStreaming={isStreaming}
             onStop={stop}
-            placeholder="Describe a scene or layer to add…"
+            placeholder="Describe a scene or layer to add… (attach images for design reference)"
             suggestions={[
               "Add a 60-frame intro with a centered title",
               "Make the second scene fade in",

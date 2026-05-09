@@ -72,6 +72,30 @@ export const useEditorStore = create<StoreState>()(
           s.selectedSceneId = p.scenes[0]?.id ?? null;
         }),
 
+      replaceProjectFromServer: (p) =>
+        set((s) => {
+          const prevSceneId = s.selectedSceneId;
+          const prevLayerId = s.selectedLayerId;
+          const prevTrackId = s.selectedAudioTrackId;
+          s.project = p;
+          const sceneStillExists =
+            prevSceneId != null &&
+            p.scenes.some((sc) => sc.id === prevSceneId);
+          s.selectedSceneId = sceneStillExists
+            ? prevSceneId
+            : (p.scenes[0]?.id ?? null);
+          const layerStillExists =
+            prevLayerId != null &&
+            p.scenes.some((sc) => sc.layers.some((l) => l.id === prevLayerId));
+          if (!layerStillExists) s.selectedLayerId = null;
+          const trackStillExists =
+            prevTrackId != null &&
+            p.scenes.some((sc) =>
+              sc.audioTracks.some((t) => t.id === prevTrackId),
+            );
+          if (!trackStillExists) s.selectedAudioTrackId = null;
+        }),
+
       selectScene: (id) =>
         set((s) => {
           s.selectedSceneId = id;

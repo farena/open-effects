@@ -20,6 +20,7 @@ export interface EditorState {
 
 export interface EditorActions {
   setProject: (p: Project) => void;
+  replaceProjectFromServer: (p: Project) => void;
   selectScene: (id: string | null) => void;
   selectLayer: (id: string | null) => void;
   setCurrentFrame: (f: number) => void;
