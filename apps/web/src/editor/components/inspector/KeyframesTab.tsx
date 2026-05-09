@@ -285,14 +285,16 @@ function AnimatedPropertyBlock({
             No keyframes for this property — pick a frame below and add one.
           </p>
         ) : (
-          keyframes.map((kf) => (
-            <KeyframeRow
-              key={`${kf.frame}-${kf.property}`}
-              target={target}
-              property={property}
-              keyframe={kf}
-            />
-          ))
+          [...keyframes]
+            .sort((a, b) => a.frame - b.frame)
+            .map((kf) => (
+              <KeyframeRow
+                key={`${kf.frame}-${kf.property}`}
+                target={target}
+                property={property}
+                keyframe={kf}
+              />
+            ))
         )}
         <Button
           size="sm"
