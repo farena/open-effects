@@ -30,6 +30,14 @@ import {
 
 const LINEAR_EASING: Easing = { type: "linear" };
 
+// Format seconds (potentially fractional) as `m:ss.SSS` for display.
+function formatSeconds(totalSeconds: number): string {
+  const safe = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safe / 60);
+  const secs = safe - minutes * 60;
+  return `${minutes}:${secs.toFixed(3).padStart(6, "0")}`;
+}
+
 // ---------------------------------------------------------------------------
 // Volume keyframe row
 // ---------------------------------------------------------------------------
@@ -181,9 +189,6 @@ export function AudioFxTab() {
     (a, b) => a.frame - b.frame,
   );
 
-  // fps is read but available for potential future display (e.g. time code)
-  void fps;
-
   function handlePickerAdd(key: AudioPropertyKey) {
     if (!track) return;
     if (key === "volume") {
@@ -191,6 +196,9 @@ export function AudioFxTab() {
     }
     // future: pan, pitch handlers go here
   }
+
+  const trimStartSeconds = track.trimStart / fps;
+  const trimEndSeconds = track.trimEnd / fps;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -205,6 +213,35 @@ export function AudioFxTab() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+        {/* Original-asset clip range — read-only DESDE/HASTA */}
+        <section
+          className="grid grid-cols-2 gap-2 rounded-md border border-border bg-muted/30 p-3"
+          aria-label="Audio clip range in original asset"
+        >
+          <div className="flex flex-col gap-0.5">
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Desde
+            </Label>
+            <span className="font-mono text-xs tabular-nums">
+              {formatSeconds(trimStartSeconds)}
+            </span>
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {track.trimStart} f
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Hasta
+            </Label>
+            <span className="font-mono text-xs tabular-nums">
+              {formatSeconds(trimEndSeconds)}
+            </span>
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {track.trimEnd} f
+            </span>
+          </div>
+        </section>
+
         {/* Property picker — add new animated property keyframe */}
         <div className="flex items-center gap-2">
           <AudioPropertyPicker
