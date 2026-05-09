@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   Fragment,
+  type ReactNode,
 } from "react";
 import {
   Eye,
@@ -66,6 +67,65 @@ function keyframeSectionHeight(propCount: number): number {
     KEYFRAME_LANE_STACK_PY +
     propCount * KEYFRAME_LANE_ROW_H +
     (propCount - 1) * KEYFRAME_LANE_GAP
+  );
+}
+
+interface KeyframeSidebarBlockProps {
+  title: string;
+  properties: string[];
+  labelFor: (property: string) => string;
+}
+
+function KeyframeSidebarBlock({
+  title,
+  properties,
+  labelFor,
+}: KeyframeSidebarBlockProps) {
+  return (
+    <>
+      <div
+        className="flex shrink-0 items-center gap-1 border-t border-[#3a3a3a] bg-[#252525] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+      >
+        <span className="min-w-0 flex-1 truncate">{title}</span>
+      </div>
+      <div className="flex shrink-0 flex-col gap-1 py-1">
+        {properties.map((prop) => (
+          <div
+            key={prop}
+            className="flex shrink-0 items-center border-b border-[#2d2d2d] px-2 text-[11px] text-[#c4c4c4]"
+            style={{ height: KEYFRAME_LANE_ROW_H }}
+            title={labelFor(prop)}
+          >
+            <span className="min-w-0 flex-1 truncate pl-5 font-medium">
+              {labelFor(prop)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+interface KeyframeTimelineBlockProps {
+  srLabel: string;
+  children: ReactNode;
+}
+
+function KeyframeTimelineBlock({
+  srLabel,
+  children,
+}: KeyframeTimelineBlockProps) {
+  return (
+    <div className="border-t border-[#3a3a3a] bg-[#202020]">
+      <div
+        className="flex items-center border-b border-[#2d2d2d] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
+        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
+      >
+        <span className="sr-only">{srLabel}</span>
+      </div>
+      <div className="flex flex-col gap-1 py-1">{children}</div>
+    </div>
   );
 }
 
@@ -1223,6 +1283,8 @@ export function Timeline() {
                 const layersInScene = [...scene.layers].sort(
                   (a, b) => a.order - b.order,
                 );
+                const sceneKeyframesHere =
+                  showSceneKeyframeLanes && activeScene?.id === scene.id;
                 return (
                   <Fragment key={scene.id}>
                     <div
@@ -1282,14 +1344,24 @@ export function Timeline() {
                         +
                       </button>
                     </div>
+                    {sceneKeyframesHere && activeScene && (
+                      <KeyframeSidebarBlock
+                        title={`Scene keyframes · ${activeScene.name}`}
+                        properties={animatedSceneProps}
+                        labelFor={propertyDisplayLabel}
+                      />
+                    )}
                     {expanded &&
                       layersInScene.map((layer, i) => {
                         const revIndex = layersInScene.length - i;
                         const selected = selectedLayerId === layer.id;
                         const color = labelColorForLayerId(layer.id);
+                        const layerKeyframesHere =
+                          showLayerKeyframeLanes &&
+                          activeLayer?.id === layer.id;
                         return (
+                          <Fragment key={layer.id}>
                           <div
-                            key={layer.id}
                             className={[
                               "flex items-center gap-1 border-b border-[#2d2d2d] px-2 text-[11px]",
                               selected ? "bg-[#3d4a5c]" : "hover:bg-[#2f2f2f]",
@@ -1352,6 +1424,14 @@ export function Timeline() {
                               <Trash2 className="size-3" />
                             </button>
                           </div>
+                          {layerKeyframesHere && activeLayer && (
+                            <KeyframeSidebarBlock
+                              title={`Keyframes · ${activeLayer.name}`}
+                              properties={animatedProps}
+                              labelFor={propertyDisplayLabel}
+                            />
+                          )}
+                          </Fragment>
                         );
                       })}
                   </Fragment>
@@ -1365,106 +1445,35 @@ export function Timeline() {
                 onAssetDrop={handleAudioAssetDrop}
               />
               {audioExpanded &&
-                allAudioTracks.map(({ track, sceneId, sceneOffset }) => (
-                  <AudioLaneRow
-                    key={track.id}
-                    track={track}
-                    sceneId={sceneId}
-                    sceneOffsetFrames={sceneOffset}
-                    total={total}
-                    timelineWidthPx={timelineWidthPx}
-                    pxPerFrame={pxPerFrame}
-                    side="left"
-                    onDelete={() => removeAudioTrack(track.id)}
-                  />
-                ))}
-              {(showLayerKeyframeLanes ||
-                showAudioKeyframeLanes ||
-                showSceneKeyframeLanes) && (
-                <>
-                  {showLayerKeyframeLanes && activeLayer && (
-                    <>
-                      <div
-                        className="flex shrink-0 items-center gap-1 border-t border-[#3a3a3a] bg-[#252525] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
-                        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
-                      >
-                        <span className="min-w-0 flex-1 truncate">
-                          Keyframes · {activeLayer.name}
-                        </span>
-                      </div>
-                      <div className="flex shrink-0 flex-col gap-1 py-1">
-                        {animatedProps.map((prop) => (
-                          <div
-                            key={prop}
-                            className="flex shrink-0 items-center border-b border-[#2d2d2d] px-2 text-[11px] text-[#c4c4c4]"
-                            style={{ height: KEYFRAME_LANE_ROW_H }}
-                            title={propertyDisplayLabel(prop)}
-                          >
-                            <span className="min-w-0 flex-1 truncate pl-5 font-medium">
-                              {propertyDisplayLabel(prop)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {showAudioKeyframeLanes && activeAudioTrack && (
-                    <>
-                      <div
-                        className="flex shrink-0 items-center gap-1 border-t border-[#3a3a3a] bg-[#252525] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
-                        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
-                      >
-                        <span className="min-w-0 flex-1 truncate">
-                          Audio keyframes ·{" "}
-                          {activeAudioTrack.assetPath
-                            ?.split("/")
-                            .pop() ?? "Audio"}
-                        </span>
-                      </div>
-                      <div className="flex shrink-0 flex-col gap-1 py-1">
-                        {audioAnimatedProps.map((prop) => (
-                          <div
-                            key={prop}
-                            className="flex shrink-0 items-center border-b border-[#2d2d2d] px-2 text-[11px] text-[#c4c4c4]"
-                            style={{ height: KEYFRAME_LANE_ROW_H }}
-                            title={audioPropertyDisplayLabel(prop)}
-                          >
-                            <span className="min-w-0 flex-1 truncate pl-5 font-medium">
-                              {audioPropertyDisplayLabel(prop)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {showSceneKeyframeLanes && activeScene && (
-                    <>
-                      <div
-                        className="flex shrink-0 items-center gap-1 border-t border-[#3a3a3a] bg-[#252525] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
-                        style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
-                      >
-                        <span className="min-w-0 flex-1 truncate">
-                          Scene keyframes · {activeScene.name}
-                        </span>
-                      </div>
-                      <div className="flex shrink-0 flex-col gap-1 py-1">
-                        {animatedSceneProps.map((prop) => (
-                          <div
-                            key={prop}
-                            className="flex shrink-0 items-center border-b border-[#2d2d2d] px-2 text-[11px] text-[#c4c4c4]"
-                            style={{ height: KEYFRAME_LANE_ROW_H }}
-                            title={propertyDisplayLabel(prop)}
-                          >
-                            <span className="min-w-0 flex-1 truncate pl-5 font-medium">
-                              {propertyDisplayLabel(prop)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
+                allAudioTracks.map(({ track, sceneId, sceneOffset }) => {
+                  const audioKeyframesHere =
+                    showAudioKeyframeLanes &&
+                    activeAudioTrack?.id === track.id;
+                  return (
+                    <Fragment key={track.id}>
+                      <AudioLaneRow
+                        track={track}
+                        sceneId={sceneId}
+                        sceneOffsetFrames={sceneOffset}
+                        total={total}
+                        timelineWidthPx={timelineWidthPx}
+                        pxPerFrame={pxPerFrame}
+                        side="left"
+                        onDelete={() => removeAudioTrack(track.id)}
+                      />
+                      {audioKeyframesHere && activeAudioTrack && (
+                        <KeyframeSidebarBlock
+                          title={`Audio keyframes · ${
+                            activeAudioTrack.assetPath?.split("/").pop() ??
+                            "Audio"
+                          }`}
+                          properties={audioAnimatedProps}
+                          labelFor={audioPropertyDisplayLabel}
+                        />
+                      )}
+                    </Fragment>
+                  );
+                })}
             </div>
           </div>
 
@@ -1497,6 +1506,8 @@ export function Timeline() {
                 {sorted.map((scene, si) => {
                   const expanded = expandedByScene[scene.id] !== false;
                   const off = sceneStarts[si]!;
+                  const sceneKeyframesHere =
+                    showSceneKeyframeLanes && activeScene?.id === scene.id;
                   return (
                     <Fragment key={scene.id}>
                       <SceneBar
@@ -1512,23 +1523,62 @@ export function Timeline() {
                         pxPerFrame={pxPerFrame}
                         onSelect={() => selectScene(scene.id)}
                       />
+                      {sceneKeyframesHere && activeScene && (
+                        <KeyframeTimelineBlock
+                          srLabel={`Scene keyframes timeline for ${activeScene.name}`}
+                        >
+                          {animatedSceneProps.map((prop) => (
+                            <ScenePropertyLane
+                              key={prop}
+                              property={prop}
+                              sceneId={activeScene.id}
+                              sceneOffset={sceneOffset}
+                              sceneDuration={activeScene.durationFrames}
+                              total={total}
+                              timelineWidthPx={timelineWidthPx}
+                            />
+                          ))}
+                        </KeyframeTimelineBlock>
+                      )}
                       {expanded &&
                         [...scene.layers]
                           .sort((a, b) => a.order - b.order)
-                          .map((layer) => (
-                            <LayerBar
-                              key={layer.id}
-                              layer={layer}
-                              sceneOffset={off}
-                              sceneDuration={scene.durationFrames}
-                              timelineWidthPx={timelineWidthPx}
-                              total={total}
-                              isSelected={selectedLayerId === layer.id}
-                              labelColor={labelColorForLayerId(layer.id)}
-                              pxPerFrame={pxPerFrame}
-                              onSelect={() => selectLayer(layer.id)}
-                            />
-                          ))}
+                          .map((layer) => {
+                            const layerKeyframesHere =
+                              showLayerKeyframeLanes &&
+                              activeLayer?.id === layer.id;
+                            return (
+                              <Fragment key={layer.id}>
+                                <LayerBar
+                                  layer={layer}
+                                  sceneOffset={off}
+                                  sceneDuration={scene.durationFrames}
+                                  timelineWidthPx={timelineWidthPx}
+                                  total={total}
+                                  isSelected={selectedLayerId === layer.id}
+                                  labelColor={labelColorForLayerId(layer.id)}
+                                  pxPerFrame={pxPerFrame}
+                                  onSelect={() => selectLayer(layer.id)}
+                                />
+                                {layerKeyframesHere && activeLayer && (
+                                  <KeyframeTimelineBlock
+                                    srLabel={`Keyframes timeline for layer ${activeLayer.name}`}
+                                  >
+                                    {animatedProps.map((prop) => (
+                                      <PropertyLane
+                                        key={prop}
+                                        property={prop}
+                                        layer={activeLayer}
+                                        sceneOffset={sceneOffset}
+                                        total={total}
+                                        timelineWidthPx={timelineWidthPx}
+                                      />
+                                    ))}
+                                  </KeyframeTimelineBlock>
+                                )}
+                              </Fragment>
+                            );
+                          })}
                     </Fragment>
                   );
                 })}
@@ -1542,98 +1592,46 @@ export function Timeline() {
                   onAssetDrop={handleAudioAssetDrop}
                 />
                 {audioExpanded &&
-                  allAudioTracks.map(({ track, sceneId, sceneOffset }) => (
-                    <AudioLaneRow
-                      key={track.id}
-                      track={track}
-                      sceneId={sceneId}
-                      sceneOffsetFrames={sceneOffset}
-                      total={total}
-                      timelineWidthPx={timelineWidthPx}
-                      pxPerFrame={pxPerFrame}
-                      side="right"
-                      onDelete={() => removeAudioTrack(track.id)}
-                      onAssetDrop={handleAudioAssetDrop}
-                    />
-                  ))}
+                  allAudioTracks.map(({ track, sceneId, sceneOffset }) => {
+                    const audioKeyframesHere =
+                      showAudioKeyframeLanes &&
+                      activeAudioTrack?.id === track.id;
+                    return (
+                      <Fragment key={track.id}>
+                        <AudioLaneRow
+                          track={track}
+                          sceneId={sceneId}
+                          sceneOffsetFrames={sceneOffset}
+                          total={total}
+                          timelineWidthPx={timelineWidthPx}
+                          pxPerFrame={pxPerFrame}
+                          side="right"
+                          onDelete={() => removeAudioTrack(track.id)}
+                          onAssetDrop={handleAudioAssetDrop}
+                        />
+                        {audioKeyframesHere && activeAudioTrack && (
+                          <KeyframeTimelineBlock
+                            srLabel={`Audio keyframes timeline for track ${
+                              activeAudioTrack.assetPath?.split("/").pop() ??
+                              "Audio"
+                            }`}
+                          >
+                            {audioAnimatedProps.map((prop) => (
+                              <AudioPropertyLane
+                                key={prop}
+                                property={prop}
+                                track={activeAudioTrack}
+                                sceneOffset={audioSceneOffset}
+                                total={total}
+                                timelineWidthPx={timelineWidthPx}
+                              />
+                            ))}
+                          </KeyframeTimelineBlock>
+                        )}
+                      </Fragment>
+                    );
+                  })}
               </div>
-
-              {showLayerKeyframeLanes && activeLayer && (
-                <div className="border-t border-[#3a3a3a] bg-[#202020]">
-                  <div
-                    className="flex items-center border-b border-[#2d2d2d] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
-                    style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
-                  >
-                    <span className="sr-only">
-                      Keyframes timeline for layer {activeLayer.name}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 py-1">
-                    {animatedProps.map((prop) => (
-                      <PropertyLane
-                        key={prop}
-                        property={prop}
-                        layer={activeLayer}
-                        sceneOffset={sceneOffset}
-                        total={total}
-                        timelineWidthPx={timelineWidthPx}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {showAudioKeyframeLanes && activeAudioTrack && (
-                <div className="border-t border-[#3a3a3a] bg-[#202020]">
-                  <div
-                    className="flex items-center border-b border-[#2d2d2d] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
-                    style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
-                  >
-                    <span className="sr-only">
-                      Audio keyframes timeline for track{" "}
-                      {activeAudioTrack.assetPath?.split("/").pop() ?? "Audio"}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 py-1">
-                    {audioAnimatedProps.map((prop) => (
-                      <AudioPropertyLane
-                        key={prop}
-                        property={prop}
-                        track={activeAudioTrack}
-                        sceneOffset={audioSceneOffset}
-                        total={total}
-                        timelineWidthPx={timelineWidthPx}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {showSceneKeyframeLanes && activeScene && (
-                <div className="border-t border-[#3a3a3a] bg-[#202020]">
-                  <div
-                    className="flex items-center border-b border-[#2d2d2d] px-2 text-[10px] font-semibold uppercase tracking-wide text-[#8a8a8a]"
-                    style={{ height: KEYFRAME_SIDEBAR_HEADER_H }}
-                  >
-                    <span className="sr-only">
-                      Scene keyframes timeline for {activeScene.name}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1 py-1">
-                    {animatedSceneProps.map((prop) => (
-                      <ScenePropertyLane
-                        key={prop}
-                        property={prop}
-                        sceneId={activeScene.id}
-                        sceneOffset={sceneOffset}
-                        sceneDuration={activeScene.durationFrames}
-                        total={total}
-                        timelineWidthPx={timelineWidthPx}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {total > 0 && (
                 <>
