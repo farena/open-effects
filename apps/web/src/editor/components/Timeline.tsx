@@ -15,6 +15,8 @@ import {
   ZoomOut,
   ChevronDown,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Trash2,
 } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
@@ -857,9 +859,7 @@ export function Timeline() {
     Record<string, boolean>
   >({});
 
-  const [expandedAudioByScene, setExpandedAudioByScene] = useState<
-    Record<string, boolean>
-  >({});
+  const [audioExpanded, setAudioExpanded] = useState<boolean>(true);
 
   const [pxPerFrame, setPxPerFrame] = useState(DEFAULT_PX_PER_FRAME);
   const [leftPanelW, setLeftPanelW] = useState(DEFAULT_LAYER_PANEL_W);
@@ -888,14 +888,7 @@ export function Timeline() {
       if (audioExpandedRaw) {
         try {
           const parsed = JSON.parse(audioExpandedRaw);
-          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-            // Clamp: only keep boolean values; unknown keys default to true on read
-            const clamped: Record<string, boolean> = {};
-            for (const [k, v] of Object.entries(parsed)) {
-              if (typeof v === "boolean") clamped[k] = v;
-            }
-            setExpandedAudioByScene(clamped);
-          }
+          if (typeof parsed === "boolean") setAudioExpanded(parsed);
         } catch {
           /* ignore malformed */
         }
@@ -925,12 +918,12 @@ export function Timeline() {
     try {
       localStorage.setItem(
         STORAGE_AUDIO_EXPANDED,
-        JSON.stringify(expandedAudioByScene),
+        JSON.stringify(audioExpanded),
       );
     } catch {
       /* ignore */
     }
-  }, [expandedAudioByScene]);
+  }, [audioExpanded]);
 
   const resizeDragRef = useRef<{ startX: number; startW: number } | null>(null);
 
@@ -992,29 +985,29 @@ export function Timeline() {
       }
       return next;
     });
-    setExpandedAudioByScene((prev) => {
-      const next = { ...prev };
-      for (const sc of scenes) {
-        // Default to expanded (true) for new scenes; preserve persisted value otherwise
-        if (next[sc.id] === undefined) next[sc.id] = true;
-      }
-      for (const id of Object.keys(next)) {
-        if (!scenes.some((s) => s.id === id)) delete next[id];
-      }
-      return next;
-    });
   }, [scenes]);
 
+  const allAudioTracks = useMemo(
+    () =>
+      sorted.flatMap((sc, si) =>
+        sc.audioTracks.map((t) => ({
+          track: t,
+          sceneId: sc.id,
+          sceneOffset: sceneStarts[si]!,
+        })),
+      ),
+    [sorted, sceneStarts],
+  );
+
   const trackRowCount = useMemo(() => {
-    let n = 0;
+    let n = 1; // project-level audio group header row (always visible)
+    if (audioExpanded) n += allAudioTracks.length;
     for (const sc of sorted) {
       n += 1; // scene bar row
       if (expandedByScene[sc.id] !== false) n += sc.layers.length;
-      n += 1; // audio group header row (always visible)
-      if (expandedAudioByScene[sc.id] !== false) n += sc.audioTracks.length;
     }
     return n;
-  }, [sorted, expandedByScene, expandedAudioByScene]);
+  }, [sorted, expandedByScene, audioExpanded, allAudioTracks.length]);
 
   const sceneOffset = useMemo(() => {
     if (!activeScene) return 0;
@@ -1097,12 +1090,38 @@ export function Timeline() {
     }));
   }, []);
 
-  const toggleAudioExpanded = useCallback((id: string) => {
-    setExpandedAudioByScene((prev) => ({
-      ...prev,
-      [id]: !(prev[id] !== false),
-    }));
+  const anyLayerExpanded = useMemo(
+    () => sorted.some((sc) => expandedByScene[sc.id] !== false),
+    [sorted, expandedByScene],
+  );
+
+  const toggleAllLayers = useCallback(() => {
+    setExpandedByScene((prev) => {
+      const expandAny = !sorted.some((sc) => prev[sc.id] !== false);
+      const next: Record<string, boolean> = { ...prev };
+      for (const sc of sorted) next[sc.id] = expandAny;
+      return next;
+    });
+  }, [sorted]);
+
+  const toggleAudioExpanded = useCallback(() => {
+    setAudioExpanded((prev) => !prev);
   }, []);
+
+  const handleAudioAssetDrop = useCallback(
+    async ({ id, path }: { id: string; path: string }) => {
+      const targetSceneId = sorted[0]?.id;
+      if (!targetSceneId) return;
+      const seconds = await probeAudioDuration(path);
+      const fps = useEditorStore.getState().project.fps;
+      addAudioTrack(targetSceneId, {
+        id,
+        path,
+        durationFrames: secondsToFrames(seconds, fps),
+      });
+    },
+    [sorted, addAudioTrack],
+  );
 
   return (
     <div className="flex h-full flex-col bg-[#232323] text-[#e8e8e8]">
@@ -1176,16 +1195,31 @@ export function Timeline() {
               <span className="w-5 shrink-0 text-center">#</span>
               <span className="w-3 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 truncate">Timeline</span>
+              <button
+                type="button"
+                className="flex size-5 shrink-0 items-center justify-center rounded text-[#aaa] hover:bg-[#3a3a3a] hover:text-white"
+                aria-label={
+                  anyLayerExpanded ? "Collapse all layers" : "Expand all layers"
+                }
+                title={
+                  anyLayerExpanded ? "Collapse all layers" : "Expand all layers"
+                }
+                onClick={toggleAllLayers}
+              >
+                {anyLayerExpanded ? (
+                  <ChevronsDownUp className="size-3.5" />
+                ) : (
+                  <ChevronsUpDown className="size-3.5" />
+                )}
+              </button>
             </div>
             <div
               ref={leftRef}
               onScroll={onLeftScroll}
               className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
             >
-              {sorted.map((scene, si) => {
+              {sorted.map((scene) => {
                 const expanded = expandedByScene[scene.id] !== false;
-                const audioExpanded = expandedAudioByScene[scene.id] !== false;
-                const sceneOff = sceneStarts[si]!;
                 const layersInScene = [...scene.layers].sort(
                   (a, b) => a.order - b.order,
                 );
@@ -1320,40 +1354,30 @@ export function Timeline() {
                           </div>
                         );
                       })}
-                    {/* Audio group header row */}
-                    <AudioGroupHeader
-                      side="left"
-                      expanded={expandedAudioByScene[scene.id] !== false}
-                      onToggle={() => toggleAudioExpanded(scene.id)}
-                      count={scene.audioTracks.length}
-                      onAssetDrop={async ({ id, path }) => {
-                        const seconds = await probeAudioDuration(path);
-                        const fps = useEditorStore.getState().project.fps;
-                        addAudioTrack(scene.id, {
-                          id,
-                          path,
-                          durationFrames: secondsToFrames(seconds, fps),
-                        });
-                      }}
-                    />
-                    {/* Per-track audio lane rows (left rail) */}
-                    {audioExpanded &&
-                      scene.audioTracks.map((t) => (
-                        <AudioLaneRow
-                          key={t.id}
-                          track={t}
-                          sceneId={scene.id}
-                          sceneOffsetFrames={sceneOff}
-                          total={total}
-                          timelineWidthPx={timelineWidthPx}
-                          pxPerFrame={pxPerFrame}
-                          side="left"
-                          onDelete={() => removeAudioTrack(t.id)}
-                        />
-                      ))}
                   </Fragment>
                 );
               })}
+              <AudioGroupHeader
+                side="left"
+                expanded={audioExpanded}
+                onToggle={toggleAudioExpanded}
+                count={allAudioTracks.length}
+                onAssetDrop={handleAudioAssetDrop}
+              />
+              {audioExpanded &&
+                allAudioTracks.map(({ track, sceneId, sceneOffset }) => (
+                  <AudioLaneRow
+                    key={track.id}
+                    track={track}
+                    sceneId={sceneId}
+                    sceneOffsetFrames={sceneOffset}
+                    total={total}
+                    timelineWidthPx={timelineWidthPx}
+                    pxPerFrame={pxPerFrame}
+                    side="left"
+                    onDelete={() => removeAudioTrack(track.id)}
+                  />
+                ))}
               {(showLayerKeyframeLanes ||
                 showAudioKeyframeLanes ||
                 showSceneKeyframeLanes) && (
@@ -1505,50 +1529,33 @@ export function Timeline() {
                               onSelect={() => selectLayer(layer.id)}
                             />
                           ))}
-                      {/* Audio group header row (right side drop target) */}
-                      <AudioGroupHeader
-                        side="right"
-                        expanded={expandedAudioByScene[scene.id] !== false}
-                        onToggle={() => toggleAudioExpanded(scene.id)}
-                        count={scene.audioTracks.length}
-                        onAssetDrop={async ({ id, path }) => {
-                          const seconds = await probeAudioDuration(path);
-                          const fps = useEditorStore.getState().project.fps;
-                          addAudioTrack(scene.id, {
-                            id,
-                            path,
-                            durationFrames: secondsToFrames(seconds, fps),
-                          });
-                        }}
-                      />
-                      {/* Per-track audio lane rows (right side strips) */}
-                      {expandedAudioByScene[scene.id] !== false &&
-                        scene.audioTracks.map((t) => (
-                          <AudioLaneRow
-                            key={t.id}
-                            track={t}
-                            sceneId={scene.id}
-                            sceneOffsetFrames={off}
-                            total={total}
-                            timelineWidthPx={timelineWidthPx}
-                            pxPerFrame={pxPerFrame}
-                            side="right"
-                            onDelete={() => removeAudioTrack(t.id)}
-                            onAssetDrop={async ({ id, path }) => {
-                              const seconds = await probeAudioDuration(path);
-                              const fps =
-                                useEditorStore.getState().project.fps;
-                              addAudioTrack(scene.id, {
-                                id,
-                                path,
-                                durationFrames: secondsToFrames(seconds, fps),
-                              });
-                            }}
-                          />
-                        ))}
                     </Fragment>
                   );
                 })}
+
+                {/* Project-level Audio group (right side drop target) */}
+                <AudioGroupHeader
+                  side="right"
+                  expanded={audioExpanded}
+                  onToggle={toggleAudioExpanded}
+                  count={allAudioTracks.length}
+                  onAssetDrop={handleAudioAssetDrop}
+                />
+                {audioExpanded &&
+                  allAudioTracks.map(({ track, sceneId, sceneOffset }) => (
+                    <AudioLaneRow
+                      key={track.id}
+                      track={track}
+                      sceneId={sceneId}
+                      sceneOffsetFrames={sceneOffset}
+                      total={total}
+                      timelineWidthPx={timelineWidthPx}
+                      pxPerFrame={pxPerFrame}
+                      side="right"
+                      onDelete={() => removeAudioTrack(track.id)}
+                      onAssetDrop={handleAudioAssetDrop}
+                    />
+                  ))}
               </div>
 
               {showLayerKeyframeLanes && activeLayer && (
