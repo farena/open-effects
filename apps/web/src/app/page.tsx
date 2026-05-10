@@ -11,20 +11,6 @@ export default function Home() {
             open-effects
           </span>
         </div>
-        <nav className="flex items-center gap-1 text-sm">
-          <Link
-            href="/business-context"
-            className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            Business context
-          </Link>
-          <Link
-            href="/projects"
-            className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            Projects
-          </Link>
-        </nav>
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center p-8 gap-10">

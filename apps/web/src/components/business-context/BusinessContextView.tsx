@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Check, Save, Plus, X, RefreshCw, Upload } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Check,
+  Save,
+  Plus,
+  X,
+  RefreshCw,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BusinessContext } from "@open-effects/shared-types";
@@ -128,14 +137,21 @@ export function BusinessContextView({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-4 border-b border-border bg-background flex items-center justify-between shrink-0">
+      <div className="px-6 py-4 border-b border-border bg-background flex items-center shrink-0">
+        <div className="me-2">
+          <Link href="/">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
         <div>
           <h1 className="text-lg font-bold">Business Context</h1>
           <p className="text-xs text-muted-foreground">
             Brand memory injected into every project chat.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ms-auto">
           <Button
             variant="ghost"
             size="sm"
@@ -145,11 +161,7 @@ export function BusinessContextView({
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={!isDirty || saving}
-          >
+          <Button size="sm" onClick={handleSave} disabled={!isDirty || saving}>
             {savedFlash ? (
               <>
                 <Check className="h-4 w-4" />
@@ -178,7 +190,10 @@ export function BusinessContextView({
             </div>
           )}
 
-          <Field label="Company name" hint="The brand name as it should appear in copy.">
+          <Field
+            label="Company name"
+            hint="The brand name as it should appear in copy."
+          >
             <Input
               value={draft.companyName}
               onChange={(e) =>
@@ -257,9 +272,7 @@ export function BusinessContextView({
           <Field label="Summary" hint="One-sentence elevator pitch.">
             <textarea
               value={draft.summary}
-              onChange={(e) =>
-                setDraft({ ...draft, summary: e.target.value })
-              }
+              onChange={(e) => setDraft({ ...draft, summary: e.target.value })}
               placeholder="We help X do Y by Z."
               rows={2}
               className={textareaClass}
@@ -272,9 +285,7 @@ export function BusinessContextView({
           >
             <textarea
               value={draft.audience}
-              onChange={(e) =>
-                setDraft({ ...draft, audience: e.target.value })
-              }
+              onChange={(e) => setDraft({ ...draft, audience: e.target.value })}
               placeholder="Founders of language schools..."
               rows={3}
               className={textareaClass}
@@ -284,9 +295,7 @@ export function BusinessContextView({
           <Field label="Products / services">
             <textarea
               value={draft.products}
-              onChange={(e) =>
-                setDraft({ ...draft, products: e.target.value })
-              }
+              onChange={(e) => setDraft({ ...draft, products: e.target.value })}
               placeholder="We sell..."
               rows={3}
               className={textareaClass}
@@ -411,7 +420,7 @@ export function BusinessContextView({
             <textarea
               value={draft.notes}
               onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-              placeholder="Avoid the phrase &quot;all-in-one&quot;..."
+              placeholder='Avoid the phrase "all-in-one"...'
               rows={4}
               className={textareaClass}
             />
