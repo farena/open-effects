@@ -274,7 +274,16 @@ describe("ANIMATION_PRESETS catalog smoke", () => {
     }
   });
 
-  it("ANIMATION_PRESETS.length === 12 (after Task 5 additions)", () => {
-    expect(ANIMATION_PRESETS.length).toBe(12);
+  it("ANIMATION_PRESETS.length === 24 (after Task 5b additions)", () => {
+    expect(ANIMATION_PRESETS.length).toBe(24);
+  });
+
+  it("category counts: 9 IN, 8 OUT, 7 EFFECT", () => {
+    const inCount = ANIMATION_PRESETS.filter((p) => p.category === "in").length;
+    const outCount = ANIMATION_PRESETS.filter((p) => p.category === "out").length;
+    const effectCount = ANIMATION_PRESETS.filter((p) => p.category === "effect").length;
+    expect(inCount).toBe(9);
+    expect(outCount).toBe(8);
+    expect(effectCount).toBe(7);
   });
 });
