@@ -39,8 +39,8 @@ Out of scope (deferred):
 | `apps/web/src/editor/presets/animation-presets.ts` | Built-in catalog (≥12 entries). Each preset declares defaults and a `build` function. |
 | `apps/web/src/editor/presets/build-keyframes.ts` | Pure `buildPresetKeyframes(preset, ctx)` — computes anchor frame per category, clamps duration to layer length, calls `preset.build`. |
 | `apps/web/src/editor/presets/detect-conflicts.ts` | Pure `detectPresetConflicts(layer, preset, ctx)` — returns properties of `layer.keyframes` that overlap the target range. |
-| `apps/web/src/editor/presets/build-keyframes.test.ts` | Vitest unit tests for `buildPresetKeyframes` (anchors, clamp, all 3 categories, all 12 presets smoke). |
-| `apps/web/src/editor/presets/detect-conflicts.test.ts` | Vitest unit tests for collision detection. |
+| `apps/web/tests/editor/presets/build-keyframes.test.ts` | Vitest unit tests for `buildPresetKeyframes` (anchors, clamp, all 3 categories, all 24 presets smoke). |
+| `apps/web/tests/editor/presets/detect-conflicts.test.ts` | Vitest unit tests for collision detection. |
 | `apps/web/src/editor/components/inspector/PresetsTab.tsx` | UI: catalog state (chip selector + card grid) and configuration state (duration, EasingEditor, values, anchor for EFFECT, Apply). Wires `ConfirmDialog` for collision flow. |
 
 ### Modified files
@@ -49,7 +49,7 @@ Out of scope (deferred):
 |------|--------|
 | `apps/web/src/editor/components/Inspector.tsx` (~line 103, `LAYER_TABS`) | Add `{ value: "presets", label: "Presets", Icon: Sparkles }` and add `presets: <PresetsTab layer={activeLayer} />` to the tab content map. |
 | `apps/web/src/editor/store.ts` | Add action `applyAnimationPresetToLayer(layerId, preset, params, options)` using `mutateLayer`. `options.replaceConflicts` controls behavior on collision. Returns void; conflict detection is the caller's responsibility (UI calls `detectPresetConflicts` first). |
-| `apps/web/src/editor/store.ts` (test, new) → `apps/web/src/editor/store.preset.test.ts` | Vitest tests for the action: apply IN at startFrame; apply OUT anchored at endFrame; apply with `replaceConflicts: true` removes overlapping property keyframes; undo restores. |
+| `apps/web/tests/editor/store.preset.test.ts` (new) | Vitest tests for the action: apply IN at startFrame; apply OUT anchored at endFrame; apply with `replaceConflicts: true` removes overlapping property keyframes; undo restores. |
 
 ### NOT touched
 
@@ -62,13 +62,15 @@ Out of scope (deferred):
 
 ## Conventions
 
-- **Tests are co-located** next to the code being tested (`foo.ts` + `foo.test.ts`). Vitest auto-discovers from `vitest run` script in `apps/web/package.json`.
+- **Tests live under `apps/web/tests/`** (NOT co-located with source — see `CLAUDE.md` "Conventions"). Mirror the source path: code in `apps/web/src/editor/presets/foo.ts` → test in `apps/web/tests/editor/presets/foo.test.ts`. Vitest is configured workspace-wide; run with `npm test -w apps/web` from the repo root, or a single file with `npm test -w apps/web -- tests/editor/presets/build-keyframes.test.ts`.
 - **IDs**: use `newId()` from `apps/web/src/lib/ids.ts` for keyframe IDs (cuid2).
-- **Easing reuse**: import `Easing` type from `packages/shared-types/src/schemas/easing.ts`. Reuse `EasingEditor` from `apps/web/src/editor/components/inspector/EasingEditor.tsx` (props: `easing`, `onSave`).
-- **Layer / Keyframe types**: import from `packages/shared-types/src/schemas/{layer,keyframe}.ts`.
-- **Store mutation**: use the existing `mutateLayer(layerId, fn)` helper inside `useEditorStore` (same pattern as `addKeyframe` at store.ts:314).
+- **Easing reuse**: import `Easing` type from `@open-effects/shared-types` (or `packages/shared-types/src/schemas/easing.ts`). The `Easing` discriminated union is: `linear`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-bezier` with `params: [n,n,n,n]`, and `spring` with `params: { damping: number; stiffness: number; mass: number }`. **Spring `params` is a nested object — do not flatten it.** Reuse `EasingEditor` from `apps/web/src/editor/components/inspector/EasingEditor.tsx` (props: `easing`, `onSave`).
+- **Layer / Keyframe types**: import from `@open-effects/shared-types` (or `packages/shared-types/src/schemas/{layer,keyframe}.ts`).
+- **Property strings (CRITICAL)**: presets MUST emit only properties listed in `packages/runtime/src/keyframes/propertyRegistry.ts` (`PROPERTIES` map). The store rejects unknown properties. Available animatable keys for our presets: `opacity` (numeric, default `"1"`), `transform.translateX` (length-px, default `"0px"`), `transform.translateY` (length-px, default `"0px"`), `transform.scale` (numeric, default `"1"`), `transform.rotate` (angle-deg, default `"0deg"`). **Translate is in pixels, not percentages** — use values like `"-300px"` not `"-100%"`. Scale is dimensionless number-string. Rotate ends in `deg`.
+- **Store mutation**: use the existing `mutateLayer(layerId, fn)` helper inside `useEditorStore` (same pattern as `addKeyframe` at `apps/web/src/editor/store.ts:314`).
 - **Icons**: `Sparkles` from `lucide-react` (already used in `Topbar.tsx`).
-- **Dialog**: reuse `ConfirmDialog` at `apps/web/src/editor/components/ConfirmDialog.tsx`.
+- **Dialog**: reuse `ConfirmDialog` at `apps/web/src/editor/components/ConfirmDialog.tsx` for 2-button cases; use raw `Dialog` from `apps/web/src/components/ui/dialog.tsx` for the 3-button collision case in Task 9.
+- **Lint / typecheck**: `npm run lint -w apps/web` and `npm run typecheck -w apps/web` from repo root.
 
 ---
 
@@ -154,7 +156,7 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
 
 **Files:**
 - Create: `apps/web/src/editor/presets/build-keyframes.ts`
-- Create: `apps/web/src/editor/presets/build-keyframes.test.ts`
+- Create: `apps/web/tests/editor/presets/build-keyframes.test.ts`
 
 - [ ] **Step 1: Write failing test** covering:
   - IN preset → `anchorFrame === layer.startFrame`.
@@ -164,7 +166,7 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
   - EFFECT preset without explicit `anchorFrame` → midpoint `floor((startFrame + endFrame) / 2)`.
   - All keyframes returned have ids (via `newId()`) and `frame >= layer.startFrame && frame <= layer.endFrame`.
   Use a stub preset with a trivial `build` that returns `[{ frame: anchor, property: "opacity", value: "0", easingOut: { type: "linear" } }, { frame: anchor + duration, property: "opacity", value: "1", easingOut: { type: "linear" } }]` (no id).
-- [ ] **Step 2: Run test, confirm fail** with `npx vitest run apps/web/src/editor/presets/build-keyframes.test.ts`.
+- [ ] **Step 2: Run test, confirm fail** with `npm test -w apps/web -- tests/editor/presets/build-keyframes.test.ts`.
 - [ ] **Step 3: Implement** `buildPresetKeyframes`:
   1. Clamp duration: `const layerLen = layer.endFrame - layer.startFrame; const dur = Math.min(ctx.duration, layerLen);`.
   2. Resolve anchor per category (use rules in "Type contracts" section). For EFFECT, if caller passes `anchorFrame`, respect it; otherwise compute midpoint.
@@ -179,7 +181,7 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
 
 **Files:**
 - Create: `apps/web/src/editor/presets/detect-conflicts.ts`
-- Create: `apps/web/src/editor/presets/detect-conflicts.test.ts`
+- Create: `apps/web/tests/editor/presets/detect-conflicts.test.ts`
 
 - [ ] **Step 1: Write failing test** covering:
   - No existing keyframes → returns `[]`.
@@ -219,23 +221,23 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
 
 **Files:**
 - Modify: `apps/web/src/editor/presets/animation-presets.ts`
-- Modify: `apps/web/src/editor/presets/build-keyframes.test.ts` (add coverage)
+- Modify: `apps/web/tests/editor/presets/build-keyframes.test.ts` (add coverage)
 
 For each preset below, add to the catalog. **All `build` functions must produce keyframes with frames in `[anchorFrame, anchorFrame + duration]` and easingOut from `ctx.easing`.**
 
 | key | category | properties | params | build outline |
 |-----|----------|-----------|--------|---------------|
-| `slide-in-left` | in | `transform.translateX` | `fromX` (default `-100`, unit `%`) | kf at anchor `translateX(fromX%)` → kf at anchor+dur `translateX(0)` |
-| `slide-in-right` | in | `transform.translateX` | `fromX` (default `100`) | symmetric to above |
-| `scale-in` | in | `transform.scale` | `fromScale` (default `0.8`), `toScale` (default `1`) | scale at anchor → scale at anchor+dur |
-| `pop-in` | in | `transform.scale`, `opacity` | `fromScale` (default `0.6`) | scale 0.6→1 + opacity 0→1, both keyframes pairs |
-| `fade-out` | out | `opacity` | `fromOpacity`=1, `toOpacity`=0 | mirror of fade-in |
-| `slide-out-left` | out | `transform.translateX` | `toX` (default `-100`) | translateX(0) → translateX(toX%) |
-| `slide-out-right` | out | `transform.translateX` | `toX` (default `100`) | symmetric |
+| `slide-in-left` | in | `transform.translateX` | `fromX` (default `-300`, unit `px`) | kf at anchor `"-300px"` → kf at anchor+dur `"0px"` |
+| `slide-in-right` | in | `transform.translateX` | `fromX` (default `300`, unit `px`) | symmetric to above |
+| `scale-in` | in | `transform.scale` | `fromScale` (default `0.8`), `toScale` (default `1`) | scale string `"0.8"` → `"1"` at anchor and anchor+dur |
+| `pop-in` | in | `transform.scale`, `opacity` | `fromScale` (default `0.6`) | scale `"0.6"`→`"1"` + opacity `"0"`→`"1"`, both pairs at anchor and anchor+dur |
+| `fade-out` | out | `opacity` | `fromOpacity`=1, `toOpacity`=0 | opacity `"1"`→`"0"` |
+| `slide-out-left` | out | `transform.translateX` | `toX` (default `-300`, unit `px`) | translateX `"0px"` → `"-300px"` |
+| `slide-out-right` | out | `transform.translateX` | `toX` (default `300`, unit `px`) | symmetric |
 | `scale-out` | out | `transform.scale` | `fromScale`=1, `toScale`=0.8 | mirror of scale-in |
-| `pulse` | effect | `transform.scale` | `peakScale` (default `1.1`) | 3 keyframes: anchor scale 1, anchor+dur/2 scale peak, anchor+dur scale 1 |
-| `shake` | effect | `transform.translateX` | `amplitude` (default `8`, unit `px`) | 5 keyframes alternating ±amplitude across the range |
-| `wiggle` | effect | `transform.rotate` | `amplitude` (default `5`, unit `deg`) | 5 keyframes alternating ±amplitude across the range, like shake but rotation |
+| `pulse` | effect | `transform.scale` | `peakScale` (default `1.1`) | 3 keyframes: anchor `"1"`, anchor+dur/2 `String(peakScale)`, anchor+dur `"1"` |
+| `shake` | effect | `transform.translateX` | `amplitude` (default `8`, unit `px`) | 5 keyframes alternating `"+8px"/"-8px"` across the range |
+| `wiggle` | effect | `transform.rotate` | `amplitude` (default `5`, unit `deg`) | 5 keyframes alternating `"+5deg"/"-5deg"` across the range, like shake but rotation |
 
 **Property naming**: verify the property string format the runtime uses. Search for an existing keyframe in `packages/runtime/src/keyframes/` or in fixture data. If transform sub-properties like `transform.translateX` are not what the runtime parses, use whatever string the runtime already supports (e.g., `translateX`). Match the convention used by existing keyframes — do not invent a new one.
 
@@ -251,7 +253,7 @@ For each preset below, add to the catalog. **All `build` functions must produce 
 
 **Files:**
 - Modify: `apps/web/src/editor/presets/animation-presets.ts`
-- Modify: `apps/web/src/editor/presets/build-keyframes.test.ts` (existing iteration test will cover the new entries automatically)
+- Modify: `apps/web/tests/editor/presets/build-keyframes.test.ts` (existing iteration test will cover the new entries automatically)
 
 These 12 presets are inspired by recognizable animations from [animista.net](https://animista.net/) (its categories of "entrances", "exits", and "attention seekers"). Names are simplified to match our internal convention (kebab-case, no axis-direction suffixes when ambiguous). Add a top-of-file comment in `animation-presets.ts`: `// A subset of presets in this catalog is inspired by animista.net (entrances/exits/attention-seekers).`
 
@@ -259,28 +261,28 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 
 | key | category | source (animista) | properties | params (defaults) | build outline |
 |-----|----------|--------------------|-----------|-------------------|---------------|
-| `slide-in-up` | in | `slide-in-top` | `transform.translateY` | `fromY` (default `-100`, unit `%`) | translateY(fromY%) → translateY(0) |
-| `slide-in-down` | in | `slide-in-bottom` | `transform.translateY` | `fromY` (default `100`, unit `%`) | translateY(fromY%) → translateY(0) |
-| `rotate-in` | in | `rotate-in-center` | `transform.rotate`, `opacity` | `fromAngle` (default `-180`, unit `deg`) | 2 keyframes for rotate (fromAngle→0) and 2 for opacity (0→1) sharing anchor and anchor+duration |
-| `bounce-in` | in | `bounce-in-top` | `transform.scale`, `opacity` | `fromScale` (default `0.3`) | 5 keyframes for scale at fractions 0, 0.25, 0.5, 0.75, 1 of duration with values `[fromScale, 1.05, 0.9, 1.03, 1]`; 2 keyframes for opacity (0→1) |
-| `slide-out-up` | out | `slide-out-top` | `transform.translateY` | `toY` (default `-100`, unit `%`) | translateY(0) → translateY(toY%) |
-| `slide-out-down` | out | `slide-out-bottom` | `transform.translateY` | `toY` (default `100`, unit `%`) | translateY(0) → translateY(toY%) |
-| `rotate-out` | out | `rotate-out-center` | `transform.rotate`, `opacity` | `toAngle` (default `180`, unit `deg`) | rotate 0→toAngle, opacity 1→0 |
-| `bounce-out` | out | `bounce-out` | `transform.scale`, `opacity` | `toScale` (default `0.3`) | inverse of bounce-in (scale `[1, 0.9, 1.05, 0.95, toScale]`, opacity 1→0) |
-| `bounce` | effect | `bounce-top` | `transform.translateY` | `peak` (default `-30`, unit `px`) | 5 keyframes at fractions 0, 0.25, 0.5, 0.75, 1: `[0, peak, 0, peak/2, 0]` |
+| `slide-in-up` | in | `slide-in-top` | `transform.translateY` | `fromY` (default `-200`, unit `px`) | translateY `"-200px"` → `"0px"` |
+| `slide-in-down` | in | `slide-in-bottom` | `transform.translateY` | `fromY` (default `200`, unit `px`) | translateY `"200px"` → `"0px"` |
+| `rotate-in` | in | `rotate-in-center` | `transform.rotate`, `opacity` | `fromAngle` (default `-180`, unit `deg`) | rotate `"-180deg"`→`"0deg"`; opacity `"0"`→`"1"`, both pairs at anchor and anchor+dur |
+| `bounce-in` | in | `bounce-in-top` | `transform.scale`, `opacity` | `fromScale` (default `0.3`) | 5 scale keyframes at fractions 0, 0.25, 0.5, 0.75, 1 with values `[fromScale, 1.05, 0.9, 1.03, 1]` (as numeric strings); 2 opacity keyframes `"0"`→`"1"` |
+| `slide-out-up` | out | `slide-out-top` | `transform.translateY` | `toY` (default `-200`, unit `px`) | translateY `"0px"` → `"-200px"` |
+| `slide-out-down` | out | `slide-out-bottom` | `transform.translateY` | `toY` (default `200`, unit `px`) | translateY `"0px"` → `"200px"` |
+| `rotate-out` | out | `rotate-out-center` | `transform.rotate`, `opacity` | `toAngle` (default `180`, unit `deg`) | rotate `"0deg"`→`"180deg"`, opacity `"1"`→`"0"` |
+| `bounce-out` | out | `bounce-out` | `transform.scale`, `opacity` | `toScale` (default `0.3`) | inverse of bounce-in (scale `[1, 0.9, 1.05, 0.95, toScale]` at fractions 0, 0.25, 0.5, 0.75, 1; opacity `"1"`→`"0"`) |
+| `bounce` | effect | `bounce-top` | `transform.translateY` | `peak` (default `-30`, unit `px`) | 5 translateY keyframes at fractions 0, 0.25, 0.5, 0.75, 1: `["0px", "<peak>px", "0px", "<peak/2>px", "0px"]` |
 | `heart-beat` | effect | `heartbeat` | `transform.scale` | `peakScale` (default `1.3`) | 5 keyframes at fractions 0, 0.14, 0.28, 0.42, 1: `[1, peakScale, 1, peakScale, 1]` |
 | `swing` | effect | `swing-top-fwd` (Z-axis only) | `transform.rotate` | `amplitude` (default `15`, unit `deg`) | 5 keyframes: `[0, amplitude, -amplitude*0.6, amplitude*0.4, 0]` |
 | `flicker` | effect | `flicker-1` | `opacity` | `dimOpacity` (default `0.2`) | 7 keyframes oscillating opacity between `1` and `dimOpacity` at irregular fractions (0, 0.1, 0.15, 0.2, 0.4, 0.6, 1) |
 
 - [ ] **Step 1:** Add the 12 entries above to `ANIMATION_PRESETS`. Use the helpers from Task 5 (e.g., extract a `linearKeyframes(property, frames, values, easing)` helper if not already present — only if you find yourself duplicating across these multi-keyframe presets). Keep each preset's `build` function focused and short.
-- [ ] **Step 2:** Run the iteration test from Task 5: `npx vitest run apps/web/src/editor/presets/build-keyframes.test.ts`. It should now iterate over 24 presets and pass for all of them (every preset returns ≥2 keyframes with `easingOut === ctx.easing` and frames within `[anchor, anchor+duration]`). If a multi-keyframe preset hits the easing assertion (because intermediate keyframes might want their own easing), update the test to assert `easingOut` is some valid `Easing`, not strictly `ctx.easing`. **Default rule**: every keyframe a preset emits uses `ctx.easing`. Do not split easing per intermediate keyframe in v1 — keep it consistent.
+- [ ] **Step 2:** Run the iteration test from Task 5: `npm test -w apps/web -- tests/editor/presets/build-keyframes.test.ts`. It should now iterate over 24 presets and pass for all of them (every preset returns ≥2 keyframes with `easingOut === ctx.easing` and frames within `[anchor, anchor+duration]`). If a multi-keyframe preset hits the easing assertion (because intermediate keyframes might want their own easing), update the test to assert `easingOut` is some valid `Easing`, not strictly `ctx.easing`. **Default rule**: every keyframe a preset emits uses `ctx.easing`. Do not split easing per intermediate keyframe in v1 — keep it consistent.
 - [ ] **Step 3:** Add a focused test asserting `ANIMATION_PRESETS.length === 24` and counts per category: `9 IN`, `8 OUT`, `7 EFFECT`.
 - [ ] **Step 4: Run tests, confirm pass**.
 - [ ] **Step 5: Commit** `feat(presets): add 12 animista-inspired built-ins (24 total)`.
 
 > Note on `flicker`: 7 keyframes at irregular fractions is a stylistic choice that mimics animista's flicker; if you find the math gets messy, fall back to 5 evenly-spaced keyframes alternating `[1, dim, 1, dim, 1]` — recognizable enough.
 >
-> Note on `bounce-in` / `bounce-out`: animista uses cubic-bezier easing with overshoot; our `spring` easing achieves a similar feel. The default easing for these two should be `{ type: "spring", damping: 8, stiffness: 100, mass: 1 }` (verify field names against `packages/shared-types/src/schemas/easing.ts`) instead of linear, to match the bouncy character even if the user doesn't tweak easing.
+> Note on `bounce-in` / `bounce-out`: animista uses cubic-bezier easing with overshoot; our `spring` easing achieves a similar feel. The default easing for these two should be `{ type: "spring", params: { damping: 8, stiffness: 100, mass: 1 } }` (note the **nested `params` object** — confirmed against `packages/shared-types/src/schemas/easing.ts`). Use linear / `ease-out` defaults for the rest unless a more expressive default is obvious.
 
 ---
 
@@ -288,7 +290,7 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 
 **Files:**
 - Modify: `apps/web/src/editor/store.ts`
-- Create: `apps/web/src/editor/store.preset.test.ts`
+- Create: `apps/web/tests/editor/store.preset.test.ts`
 
 - [ ] **Step 1: Write failing test**:
   - Setup: create a minimal `useEditorStore` instance with a project containing a scene with one layer (`startFrame: 0`, `endFrame: 120`, `keyframes: []`).
@@ -319,7 +321,7 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 ### Task 7: Store action — collision replace mode
 
 **Files:**
-- Modify: `apps/web/src/editor/store.preset.test.ts`
+- Modify: `apps/web/tests/editor/store.preset.test.ts`
 - (Modify `store.ts` only if Task 6 didn't cover replace branch yet.)
 
 - [ ] **Step 1: Write failing test**:
