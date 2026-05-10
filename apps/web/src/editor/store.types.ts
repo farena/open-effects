@@ -4,6 +4,7 @@ import type {
   Eq,
   SavedComponentPayload,
 } from "@open-effects/shared-types";
+import type { AnimationPreset } from "./presets/types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -143,4 +144,15 @@ export interface EditorActions {
     transitionIn: Transition | null,
   ) => void;
   splitAudioTrack: (trackId: string, splitFrameLocal: number) => void;
+  applyAnimationPresetToLayer: (
+    layerId: string,
+    preset: AnimationPreset,
+    params: {
+      duration: number;
+      easing: Easing;
+      values: Record<string, number | string>;
+      anchorFrame?: number;
+      replaceConflicts?: boolean;
+    },
+  ) => void;
 }

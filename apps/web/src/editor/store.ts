@@ -8,6 +8,10 @@ import { defaultScene, defaultLayer } from "./defaults";
 import { ANIMATABLE_KEYS } from "@open-effects/runtime";
 import { newId } from "@/lib/ids";
 import { instantiatePayload } from "@/lib/components/instantiatePayload";
+import {
+  buildPresetKeyframes,
+  resolveAnchor,
+} from "@/editor/presets/build-keyframes";
 
 type StoreState = EditorState & EditorActions;
 
@@ -609,6 +613,54 @@ export const useEditorStore = create<StoreState>()(
             sc.audioTracks.splice(i + 1, 0, newTrack);
             return;
           }
+        }),
+
+      applyAnimationPresetToLayer: (layerId, preset, params) =>
+        set((s) => {
+          // Find the layer to build the context
+          let targetLayer: (typeof s.project.scenes)[number]["layers"][number] | undefined;
+          for (const sc of s.project.scenes) {
+            const l = sc.layers.find((x) => x.id === layerId);
+            if (l) {
+              targetLayer = l;
+              break;
+            }
+          }
+          if (!targetLayer) return;
+
+          // Build the context. anchorFrame=-1 is the sentinel for "compute default".
+          const ctx = {
+            layer: targetLayer,
+            duration: params.duration,
+            easing: params.easing,
+            anchorFrame: params.anchorFrame ?? -1,
+            values: params.values,
+          };
+
+          // Compute resolved anchor and clamped duration BEFORE entering mutator
+          // so we can use them in the replace filter (closure capture).
+          const layerLen = targetLayer.endFrame - targetLayer.startFrame;
+          const clampedDuration = Math.min(params.duration, layerLen);
+          const resolvedAnchor = resolveAnchor(preset, ctx, clampedDuration);
+
+          // Build the new keyframes (with ids assigned by buildPresetKeyframes)
+          const newKfs = buildPresetKeyframes(preset, ctx);
+
+          mutateLayer(s, layerId, (l) => {
+            if (params.replaceConflicts === true) {
+              // Remove existing keyframes that conflict: same property AND
+              // frame in [resolvedAnchor, resolvedAnchor + clampedDuration]
+              l.keyframes = l.keyframes.filter(
+                (k) =>
+                  !(
+                    preset.animatedProperties.includes(k.property) &&
+                    k.frame >= resolvedAnchor &&
+                    k.frame <= resolvedAnchor + clampedDuration
+                  ),
+              );
+            }
+            l.keyframes.push(...newKfs);
+          });
         }),
     })),
     {
