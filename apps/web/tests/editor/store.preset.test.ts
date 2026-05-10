@@ -187,4 +187,72 @@ describe("applyAnimationPresetToLayer — collision / replace branch", () => {
     // Existing keyframe at frame 15 should be gone
     expect(kfs.find((k) => k.frame === 15)).toBeUndefined();
   });
+
+  it("replaceConflicts: true — preserves opacity keyframe OUTSIDE [0, 30] range", () => {
+    // Add an opacity keyframe at frame 60 (outside the fade-in range [0,30])
+    useEditorStore.getState().applyAnimationPresetToLayer(LAYER_ID, fadeInPreset, {
+      duration: 30,
+      easing: { type: "linear" },
+      values: { fromOpacity: 0, toOpacity: 1 },
+      replaceConflicts: true,
+    });
+
+    // After apply we have 2 keyframes at [0, 30]. Now add one at frame 60 and re-apply.
+    useEditorStore.temporal.getState().clear();
+    const stateAfterFirst = useEditorStore.getState().project;
+    // Manually inject a keyframe at frame 60 into the current state
+    const proj = JSON.parse(JSON.stringify(stateAfterFirst)) as typeof stateAfterFirst;
+    proj.scenes[0]!.layers[0]!.keyframes.push({
+      id: "kf-outside",
+      frame: 60,
+      property: "opacity",
+      value: "0.9",
+      easingOut: { type: "linear" },
+    });
+    useEditorStore.setState({ project: proj });
+    useEditorStore.temporal.getState().clear();
+
+    // Re-apply with replace — should remove frames [0,30] opacity but keep frame 60
+    useEditorStore.getState().applyAnimationPresetToLayer(LAYER_ID, fadeInPreset, {
+      duration: 30,
+      easing: { type: "linear" },
+      values: { fromOpacity: 0, toOpacity: 1 },
+      replaceConflicts: true,
+    });
+
+    const kfs = getLayer().keyframes;
+    // 2 new from preset + 1 outside range = 3
+    expect(kfs).toHaveLength(3);
+    expect(kfs.find((k) => k.frame === 60)).toBeDefined();
+  });
+
+  it("replaceConflicts: true — preserves keyframe on a different property inside the range", () => {
+    // The existing keyframe at frame 15 is on 'opacity' (animatedProperties includes it),
+    // but a translateX keyframe at frame 15 is NOT in fade-in's animatedProperties.
+    const proj = JSON.parse(
+      JSON.stringify(useEditorStore.getState().project),
+    ) as typeof useEditorStore.getState.prototype.project;
+    proj.scenes[0]!.layers[0]!.keyframes.push({
+      id: "kf-translatex",
+      frame: 15,
+      property: "transform.translateX",
+      value: "50px",
+      easingOut: { type: "linear" },
+    });
+    useEditorStore.setState({ project: proj });
+    useEditorStore.temporal.getState().clear();
+
+    useEditorStore.getState().applyAnimationPresetToLayer(LAYER_ID, fadeInPreset, {
+      duration: 30,
+      easing: { type: "linear" },
+      values: { fromOpacity: 0, toOpacity: 1 },
+      replaceConflicts: true,
+    });
+
+    const kfs = getLayer().keyframes;
+    // opacity at frame 15 removed, translateX at frame 15 kept, 2 new opacity added
+    // = 1 (translateX) + 2 (new opacity) = 3 total
+    expect(kfs).toHaveLength(3);
+    expect(kfs.find((k) => k.property === "transform.translateX")).toBeDefined();
+  });
 });
