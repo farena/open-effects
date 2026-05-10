@@ -231,7 +231,7 @@ describe("applyAnimationPresetToLayer — collision / replace branch", () => {
     // but a translateX keyframe at frame 15 is NOT in fade-in's animatedProperties.
     const proj = JSON.parse(
       JSON.stringify(useEditorStore.getState().project),
-    ) as typeof useEditorStore.getState.prototype.project;
+    ) as Project;
     proj.scenes[0]!.layers[0]!.keyframes.push({
       id: "kf-translatex",
       frame: 15,
