@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildPresetKeyframes } from "@/editor/presets/build-keyframes";
+import { ANIMATION_PRESETS } from "@/editor/presets/animation-presets";
 import type { AnimationPreset, BuildContext } from "@/editor/presets/types";
 import type { Layer, Easing } from "@open-effects/shared-types";
 
@@ -175,5 +176,105 @@ describe("buildPresetKeyframes", () => {
       expect(kf.frame).toBeGreaterThanOrEqual(layer.startFrame);
       expect(kf.frame).toBeLessThanOrEqual(layer.endFrame);
     }
+  });
+});
+
+// ── Catalog smoke test (iterates ANIMATION_PRESETS) ───────────────────────────
+describe("ANIMATION_PRESETS catalog smoke", () => {
+  const layer = makeLayer(0, 120);
+  const EASING: Easing = { type: "ease-out" };
+
+  it("every preset produces ≥2 keyframes with default params on a 120-frame layer", () => {
+    for (const preset of ANIMATION_PRESETS) {
+      // Build default values from params
+      const values: Record<string, number | string> = {};
+      for (const p of preset.params) {
+        values[p.key] = p.default;
+      }
+
+      const ctx: BuildContext = {
+        layer,
+        duration: preset.defaultDuration,
+        easing: EASING,
+        anchorFrame: -1, // sentinel
+        values,
+      };
+
+      const kfs = buildPresetKeyframes(preset, ctx);
+      expect(kfs.length, `${preset.key}: expected ≥2 keyframes`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("every preset: all returned easingOut equal ctx.easing", () => {
+    for (const preset of ANIMATION_PRESETS) {
+      const values: Record<string, number | string> = {};
+      for (const p of preset.params) {
+        values[p.key] = p.default;
+      }
+
+      const ctx: BuildContext = {
+        layer,
+        duration: preset.defaultDuration,
+        easing: EASING,
+        anchorFrame: -1,
+        values,
+      };
+
+      const kfs = buildPresetKeyframes(preset, ctx);
+      for (const kf of kfs) {
+        expect(kf.easingOut, `${preset.key}: easingOut should equal ctx.easing`).toEqual(EASING);
+      }
+    }
+  });
+
+  it("every preset: all returned frames in range [startFrame, endFrame]", () => {
+    for (const preset of ANIMATION_PRESETS) {
+      const values: Record<string, number | string> = {};
+      for (const p of preset.params) {
+        values[p.key] = p.default;
+      }
+
+      const ctx: BuildContext = {
+        layer,
+        duration: preset.defaultDuration,
+        easing: EASING,
+        anchorFrame: -1,
+        values,
+      };
+
+      const kfs = buildPresetKeyframes(preset, ctx);
+      for (const kf of kfs) {
+        expect(kf.frame, `${preset.key}: frame ${kf.frame} out of range`).toBeGreaterThanOrEqual(layer.startFrame);
+        expect(kf.frame, `${preset.key}: frame ${kf.frame} out of range`).toBeLessThanOrEqual(layer.endFrame);
+      }
+    }
+  });
+
+  it("every preset: no id is undefined after buildPresetKeyframes", () => {
+    for (const preset of ANIMATION_PRESETS) {
+      const values: Record<string, number | string> = {};
+      for (const p of preset.params) {
+        values[p.key] = p.default;
+      }
+
+      const ctx: BuildContext = {
+        layer,
+        duration: preset.defaultDuration,
+        easing: EASING,
+        anchorFrame: -1,
+        values,
+      };
+
+      const kfs = buildPresetKeyframes(preset, ctx);
+      for (const kf of kfs) {
+        expect(kf.id, `${preset.key}: id should not be undefined`).toBeDefined();
+        expect(typeof kf.id).toBe("string");
+        expect(kf.id!.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("ANIMATION_PRESETS.length === 12 (after Task 5 additions)", () => {
+    expect(ANIMATION_PRESETS.length).toBe(12);
   });
 });
