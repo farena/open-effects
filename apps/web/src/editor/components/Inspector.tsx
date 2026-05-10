@@ -8,6 +8,7 @@ import {
   Film,
   ArrowRightLeft,
   Music,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
@@ -27,6 +28,7 @@ import { PropsTab } from "./inspector/PropsTab";
 import { HtmlTab } from "./inspector/HtmlTab";
 import { CssTab } from "./inspector/CssTab";
 import { KeyframesTab } from "./inspector/KeyframesTab";
+import { PresetsTab } from "./inspector/PresetsTab";
 import { SceneTab } from "./inspector/SceneTab";
 import { TransitionTab } from "./inspector/TransitionTab";
 import { AudioFxTab } from "./inspector/AudioFxTab";
@@ -105,6 +107,7 @@ const LAYER_TABS: readonly TabItem[] = [
   { value: "html", label: "HTML", Icon: Code2 },
   { value: "css", label: "CSS", Icon: Paintbrush },
   { value: "keyframes", label: "Keyframes", Icon: Diamond },
+  { value: "presets", label: "Presets", Icon: Sparkles },
 ];
 
 const SCENE_TABS: readonly TabItem[] = [
@@ -144,6 +147,7 @@ export function Inspector() {
           html: <HtmlTab />,
           css: <CssTab />,
           keyframes: <KeyframesTab />,
+          presets: <PresetsTab layer={layer} />,
         }}
       />
     );
