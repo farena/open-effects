@@ -31,6 +31,7 @@ import type { AnimationPreset, PresetCategory } from "@/editor/presets/types";
 import { detectPresetConflicts } from "@/editor/presets/detect-conflicts";
 import { resolveAnchor } from "@/editor/presets/build-keyframes";
 import { EasingEditor } from "./EasingEditor";
+import { PresetPreviewModal } from "./PresetPreviewModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,6 +123,7 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
 
   // --- Dialog state ---
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const layerLength = layer.endFrame - layer.startFrame;
   const durationClamped = duration > layerLength;
@@ -308,11 +310,33 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
           </div>
         )}
 
-        {/* Apply button */}
-        <Button size="sm" className="w-full" onClick={handleApply}>
-          Apply
-        </Button>
+        {/* Preview + Apply buttons */}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => setPreviewOpen(true)}
+          >
+            Preview
+          </Button>
+          <Button size="sm" className="flex-1" onClick={handleApply}>
+            Apply
+          </Button>
+        </div>
       </div>
+
+      {/* Preview modal */}
+      <PresetPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        layer={layer}
+        preset={preset}
+        duration={duration}
+        easing={easing}
+        values={values}
+        anchorFrame={anchorFrame}
+      />
 
       {/* Collision dialog */}
       <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
