@@ -606,7 +606,11 @@ function TimeRuler({ total, fps, widthPx }: TimeRulerProps) {
   return (
     <div
       className="relative shrink-0 border-b border-[#3a3a3a] bg-[#1e1e1e]"
-      style={{ height: RULER_H, width: widthPx, pointerEvents: "none" }}
+      style={{
+        height: RULER_H,
+        width: widthPx,
+        pointerEvents: "none",
+      }}
     >
       {ticks.map((f) => (
         <div
@@ -1155,20 +1159,32 @@ export function Timeline() {
     [rightRef, setCurrentFrame, timelineWidthPx, total],
   );
 
-  const onTracksPointerDown = useCallback(
+  const onRulerPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       seekFromClientX(e.clientX);
     },
     [seekFromClientX],
   );
 
-  const onTracksPointerMove = useCallback(
+  const onRulerPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.buttons !== 1) return;
       seekFromClientX(e.clientX);
     },
     [seekFromClientX],
+  );
+
+  const onRulerPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const el = e.currentTarget as HTMLElement;
+      if (el.hasPointerCapture(e.pointerId)) {
+        el.releasePointerCapture(e.pointerId);
+      }
+    },
+    [],
   );
 
   // Playhead position is driven imperatively via refs + a store subscription
@@ -1720,10 +1736,55 @@ export function Timeline() {
               <div
                 className="relative"
                 style={{ minHeight: RULER_H + ROW_H * trackRowCount }}
-                onPointerDown={onTracksPointerDown}
-                onPointerMove={onTracksPointerMove}
               >
-                <TimeRuler total={total} fps={fps} widthPx={timelineWidthPx} />
+                <div
+                  className="sticky top-0 z-[5] select-none"
+                  style={{
+                    height: RULER_H,
+                    width: timelineWidthPx,
+                    cursor: "ew-resize",
+                  }}
+                  onPointerDown={onRulerPointerDown}
+                  onPointerMove={onRulerPointerMove}
+                  onPointerUp={onRulerPointerUp}
+                  onPointerCancel={onRulerPointerUp}
+                >
+                  <TimeRuler
+                    total={total}
+                    fps={fps}
+                    widthPx={timelineWidthPx}
+                  />
+                  {total > 0 && (
+                    <button
+                      ref={playheadHandleRef}
+                      type="button"
+                      aria-label="Playhead"
+                      className="pointer-events-auto absolute top-0 z-[8] flex -translate-x-1/2 flex-col items-center bg-transparent p-0"
+                      style={{ left: 0 }}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        playheadDrag.current = true;
+                        (e.target as HTMLElement).setPointerCapture(
+                          e.pointerId,
+                        );
+                        seekFromClientX(e.clientX);
+                      }}
+                      onPointerMove={(e) => {
+                        if (!playheadDrag.current) return;
+                        seekFromClientX(e.clientX);
+                      }}
+                      onPointerUp={(e) => {
+                        playheadDrag.current = false;
+                        (e.target as HTMLElement).releasePointerCapture(
+                          e.pointerId,
+                        );
+                      }}
+                    >
+                      <span className="block h-0 w-0 border-x-[6px] border-x-transparent border-t-[8px] border-t-[#f5d742]" />
+                    </button>
+                  )}
+                </div>
 
                 {sorted.map((scene, si) => {
                   const expanded = expandedByScene[scene.id] !== false;
@@ -1859,7 +1920,7 @@ export function Timeline() {
                 <>
                   {hasLoopRange && loopRangeWidthPx > 0 && (
                     <div
-                      className="pointer-events-none absolute top-0 z-[1] border-x border-[#f5d742]/60 bg-[#f5d742]/15"
+                      className="pointer-events-none absolute top-0 z-[6] border-x border-[#f5d742]/60 bg-[#f5d742]/15"
                       style={{
                         left: loopRangeLeftPx,
                         width: loopRangeWidthPx,
@@ -1869,7 +1930,7 @@ export function Timeline() {
                   )}
                   <div
                     ref={playheadLineRef}
-                    className="pointer-events-none absolute top-0 z-[2]"
+                    className="pointer-events-none absolute top-0 z-[7]"
                     style={{
                       left: 0,
                       height: playheadTracksHeight,
@@ -1878,32 +1939,6 @@ export function Timeline() {
                   >
                     <div className="h-full w-px bg-[#e63946]" />
                   </div>
-                  <button
-                    ref={playheadHandleRef}
-                    type="button"
-                    aria-label="Playhead"
-                    className="pointer-events-auto absolute top-0 z-[3] flex -translate-x-1/2 flex-col items-center bg-transparent p-0"
-                    style={{ left: 0 }}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      playheadDrag.current = true;
-                      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-                      seekFromClientX(e.clientX);
-                    }}
-                    onPointerMove={(e) => {
-                      if (!playheadDrag.current) return;
-                      seekFromClientX(e.clientX);
-                    }}
-                    onPointerUp={(e) => {
-                      playheadDrag.current = false;
-                      (e.target as HTMLElement).releasePointerCapture(
-                        e.pointerId,
-                      );
-                    }}
-                  >
-                    <span className="block h-0 w-0 border-x-[6px] border-x-transparent border-t-[8px] border-t-[#f5d742]" />
-                  </button>
                 </>
               )}
             </div>
