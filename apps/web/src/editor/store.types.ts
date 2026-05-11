@@ -15,6 +15,9 @@ export interface EditorState {
   selectedAudioTrackId: string | null;
   currentFrame: number;
   isPlaying: boolean;
+  loopStart: number | null;
+  loopEnd: number | null;
+  volume: number;
   saveStatus: SaveStatus;
   lastSavedAt: number | null;
 }
@@ -27,6 +30,10 @@ export interface EditorActions {
   setCurrentFrame: (f: number) => void;
   play: () => void;
   pause: () => void;
+  setLoopStart: (f: number | null) => void;
+  setLoopEnd: (f: number | null) => void;
+  clearLoopRange: () => void;
+  setVolume: (v: number) => void;
   addScene: () => void;
   deleteScene: (sceneId: string) => void;
   reorderScenes: (orderedIds: string[]) => void;

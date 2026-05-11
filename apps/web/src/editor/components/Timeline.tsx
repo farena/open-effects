@@ -12,6 +12,12 @@ import {
 import {
   Eye,
   EyeOff,
+  Maximize,
+  Pause,
+  Play,
+  SkipBack,
+  Volume2,
+  VolumeX,
   ZoomIn,
   ZoomOut,
   ChevronDown,
@@ -20,6 +26,7 @@ import {
   ChevronsUpDown,
   Trash2,
 } from "lucide-react";
+import { playerControl } from "@/editor/playerControl";
 import { useEditorStore } from "@/editor/store";
 import { ConfirmDialog } from "./ConfirmDialog";
 import {
@@ -46,6 +53,21 @@ import {
 const DEFAULT_PX_PER_FRAME = 4;
 const MIN_PX_PER_FRAME = 0.35;
 const MAX_PX_PER_FRAME = 48;
+const ZOOM_SLIDER_RESOLUTION = 1000;
+const LN_PX_PER_FRAME_MIN = Math.log(MIN_PX_PER_FRAME);
+const LN_PX_PER_FRAME_MAX = Math.log(MAX_PX_PER_FRAME);
+const pxPerFrameToSlider = (px: number): number => {
+  const t =
+    (Math.log(px) - LN_PX_PER_FRAME_MIN) /
+    (LN_PX_PER_FRAME_MAX - LN_PX_PER_FRAME_MIN);
+  return Math.round(t * ZOOM_SLIDER_RESOLUTION);
+};
+const sliderToPxPerFrame = (slider: number): number => {
+  const t = slider / ZOOM_SLIDER_RESOLUTION;
+  return Math.exp(
+    LN_PX_PER_FRAME_MIN + t * (LN_PX_PER_FRAME_MAX - LN_PX_PER_FRAME_MIN),
+  );
+};
 const STORAGE_PX_PER_FRAME = "oe-timeline-px-per-frame";
 const STORAGE_LAYER_PANEL_W = "oe-timeline-layer-panel-w";
 const STORAGE_AUDIO_EXPANDED = "oe-timeline-audio-expanded";
@@ -455,8 +477,7 @@ function AudioPropertyLane({
   timelineWidthPx,
 }: AudioPropertyLaneProps) {
   const moveVolumeKeyframe = useEditorStore((s) => s.moveVolumeKeyframe);
-  const keyframes =
-    property === "volume" ? (track.volumeKeyframes ?? []) : [];
+  const keyframes = property === "volume" ? (track.volumeKeyframes ?? []) : [];
   const trackLocalSpan = Math.max(0, track.trimEnd - track.trimStart);
 
   const [dragFrames, setDragFrames] = useState<Record<number, number>>({});
@@ -505,12 +526,23 @@ function AudioPropertyLane({
       const globalOriginal = sceneOffset + track.startFrame + kfFrame;
       if (draggedGlobal === globalOriginal) return;
       const targetLocal = Math.round(
-        clamp(draggedGlobal - sceneOffset - track.startFrame, 0, trackLocalSpan),
+        clamp(
+          draggedGlobal - sceneOffset - track.startFrame,
+          0,
+          trackLocalSpan,
+        ),
       );
       if (targetLocal === kfFrame) return;
       moveVolumeKeyframe(track.id, kfFrame, targetLocal);
     },
-    [dragFrames, sceneOffset, track.id, track.startFrame, trackLocalSpan, moveVolumeKeyframe],
+    [
+      dragFrames,
+      sceneOffset,
+      track.id,
+      track.startFrame,
+      trackLocalSpan,
+      moveVolumeKeyframe,
+    ],
   );
 
   return (
@@ -888,6 +920,22 @@ function SceneBar({
   );
 }
 
+// Isolated readout for the header timecode. Subscribes to currentFrame so
+// the rest of Timeline doesn't re-render every rAF tick during playback.
+function TimecodeReadout({ fps, total }: { fps: number; total: number }) {
+  const currentFrame = useEditorStore((s) => s.currentFrame);
+  return (
+    <>
+      <span className="font-mono text-xs tabular-nums text-[hsl(var(--timeline-hi))]">
+        {formatTimecode(currentFrame, fps)}
+      </span>
+      <span className="text-[10px] text-muted-foreground">
+        {currentFrame} / {Math.max(0, total - 1)} · {total}f
+      </span>
+    </>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Timeline
 // ---------------------------------------------------------------------------
@@ -895,7 +943,20 @@ function SceneBar({
 export function Timeline() {
   const scenes = useEditorStore((s) => s.project.scenes);
   const fps = useEditorStore((s) => s.project.fps);
-  const currentFrame = useEditorStore((s) => s.currentFrame);
+  // Do NOT subscribe to currentFrame here — see TimecodeReadout and the
+  // playhead refs below. During playback the rAF loop fires setCurrentFrame
+  // ~30 times/s; if Timeline subscribed to it, the entire tree would
+  // re-render every frame and make playback choppy.
+  const isPlaying = useEditorStore((s) => s.isPlaying);
+  const play = useEditorStore((s) => s.play);
+  const pause = useEditorStore((s) => s.pause);
+  const loopStart = useEditorStore((s) => s.loopStart);
+  const loopEnd = useEditorStore((s) => s.loopEnd);
+  const setLoopStart = useEditorStore((s) => s.setLoopStart);
+  const setLoopEnd = useEditorStore((s) => s.setLoopEnd);
+  const clearLoopRange = useEditorStore((s) => s.clearLoopRange);
+  const volume = useEditorStore((s) => s.volume);
+  const setVolume = useEditorStore((s) => s.setVolume);
   const selectedSceneId = useEditorStore((s) => s.selectedSceneId);
   const selectScene = useEditorStore((s) => s.selectScene);
   const setCurrentFrame = useEditorStore((s) => s.setCurrentFrame);
@@ -1110,15 +1171,50 @@ export function Timeline() {
     [seekFromClientX],
   );
 
-  const playheadLeftPx =
-    total > 0 ? (currentFrame / total) * timelineWidthPx : 0;
+  // Playhead position is driven imperatively via refs + a store subscription
+  // (see effect below) so the rAF-driven frame updates during playback don't
+  // re-render Timeline. The initial paint just leaves left:0; the effect
+  // applies the correct position synchronously after mount and on every
+  // currentFrame change thereafter.
+  const playheadLineRef = useRef<HTMLDivElement | null>(null);
+  const playheadHandleRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const apply = (frame: number) => {
+      if (total <= 0) return;
+      const px = (frame / total) * timelineWidthPx;
+      if (playheadLineRef.current) {
+        playheadLineRef.current.style.left = `${px}px`;
+      }
+      if (playheadHandleRef.current) {
+        playheadHandleRef.current.style.left = `${px}px`;
+      }
+    };
+    apply(useEditorStore.getState().currentFrame);
+    const unsubscribe = useEditorStore.subscribe((state, prev) => {
+      if (state.currentFrame === prev.currentFrame) return;
+      apply(state.currentFrame);
+    });
+    return unsubscribe;
+  }, [total, timelineWidthPx]);
+
+  // Active loop range overlay coordinates. If neither bound is set, no
+  // overlay is rendered (the entire timeline is the active range). When
+  // only one bound is set, the other defaults to the timeline edge.
+  const hasLoopRange = total > 0 && (loopStart !== null || loopEnd !== null);
+  const loopRangeStartFrame = loopStart ?? 0;
+  const loopRangeEndFrame = loopEnd ?? Math.max(0, total - 1);
+  const loopRangeLeftPx =
+    total > 0 ? (loopRangeStartFrame / total) * timelineWidthPx : 0;
+  const loopRangeWidthPx =
+    total > 0
+      ? ((loopRangeEndFrame - loopRangeStartFrame) / total) * timelineWidthPx
+      : 0;
 
   const showLayerKeyframeLanes =
     activeLayer !== null && animatedProps.length > 0 && total > 0;
   const showAudioKeyframeLanes =
-    activeAudioTrack !== null &&
-    audioAnimatedProps.length > 0 &&
-    total > 0;
+    activeAudioTrack !== null && audioAnimatedProps.length > 0 && total > 0;
   const showSceneKeyframeLanes =
     activeLayer === null &&
     activeAudioTrack === null &&
@@ -1185,16 +1281,140 @@ export function Timeline() {
 
   return (
     <div className="flex h-full flex-col bg-[#232323] text-[#e8e8e8]">
-      {/* Header: timecode + zoom */}
+      {/* Header: timecode + transport + zoom */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[#3a3a3a] bg-[#2a2a2a] px-2 py-1">
-        <span className="font-mono text-xs tabular-nums text-[hsl(var(--timeline-hi))]">
-          {formatTimecode(currentFrame, fps)}
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          {currentFrame} / {Math.max(0, total - 1)} · {total}f
-        </span>
+        <div className="me-auto flex items-baseline gap-2">
+          <TimecodeReadout fps={fps} total={total} />
+        </div>
         <div
-          className="ml-auto flex shrink-0 items-center gap-1 rounded border border-[#444] bg-[#333] px-1 py-0.5"
+          className="flex shrink-0 items-center gap-1 rounded border border-[#444] bg-[#333] px-1 py-0.5"
+          title="Playback"
+        >
+          <button
+            type="button"
+            className="rounded p-0.5 text-[#ccc] hover:bg-[#444] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent"
+            aria-label="Skip to start"
+            disabled={total === 0}
+            onClick={() => {
+              pause();
+              setCurrentFrame(0);
+            }}
+          >
+            <SkipBack className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            className="rounded p-0.5 text-[#ccc] hover:bg-[#444] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent"
+            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-pressed={isPlaying}
+            disabled={total === 0}
+            onClick={() => (isPlaying ? pause() : play())}
+          >
+            {isPlaying ? (
+              <Pause className="size-3.5" />
+            ) : (
+              <Play className="size-3.5" />
+            )}
+          </button>
+        </div>
+        <div
+          className="flex shrink-0 items-center gap-1 rounded border border-[#444] bg-[#333] px-1 py-0.5"
+          title="Loop range — [ sets start, ] sets end. Click an active marker to clear."
+        >
+          <button
+            type="button"
+            className={`rounded px-1 py-0.5 font-mono text-xs leading-none hover:bg-[#444] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent ${
+              loopStart !== null ? "text-[#f5d742]" : "text-[#ccc]"
+            }`}
+            aria-label={
+              loopStart !== null
+                ? `Clear loop start (frame ${loopStart})`
+                : "Set loop start"
+            }
+            aria-pressed={loopStart !== null}
+            disabled={total === 0}
+            onClick={() =>
+              setLoopStart(
+                loopStart !== null
+                  ? null
+                  : useEditorStore.getState().currentFrame,
+              )
+            }
+          >
+            [
+          </button>
+          <button
+            type="button"
+            className={`rounded px-1 py-0.5 font-mono text-xs leading-none hover:bg-[#444] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent ${
+              loopEnd !== null ? "text-[#f5d742]" : "text-[#ccc]"
+            }`}
+            aria-label={
+              loopEnd !== null
+                ? `Clear loop end (frame ${loopEnd})`
+                : "Set loop end"
+            }
+            aria-pressed={loopEnd !== null}
+            disabled={total === 0}
+            onClick={() =>
+              setLoopEnd(
+                loopEnd !== null
+                  ? null
+                  : useEditorStore.getState().currentFrame,
+              )
+            }
+          >
+            ]
+          </button>
+          {(loopStart !== null || loopEnd !== null) && (
+            <button
+              type="button"
+              className="rounded px-1 py-0.5 text-[10px] leading-none text-[#8a8a8a] hover:bg-[#444] hover:text-white"
+              aria-label="Clear loop range"
+              onClick={clearLoopRange}
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <div
+          className="flex shrink-0 items-center gap-1 rounded border border-[#444] bg-[#333] px-1 py-0.5"
+          title="Volume"
+        >
+          <button
+            type="button"
+            className="rounded p-0.5 text-[#ccc] hover:bg-[#444] hover:text-white"
+            aria-label={volume === 0 ? "Unmute" : "Mute"}
+            onClick={() => setVolume(volume === 0 ? 1 : 0)}
+          >
+            {volume === 0 ? (
+              <VolumeX className="size-3.5" />
+            ) : (
+              <Volume2 className="size-3.5" />
+            )}
+          </button>
+          <input
+            aria-label="Volume"
+            className="h-1 w-16 cursor-pointer accent-[hsl(var(--primary))]"
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+          />
+        </div>
+        <button
+          type="button"
+          className="shrink-0 rounded border border-[#444] bg-[#333] p-1 text-[#ccc] hover:bg-[#444] hover:text-white disabled:opacity-40 disabled:hover:bg-[#333]"
+          aria-label="Fullscreen"
+          disabled={total === 0}
+          onClick={() => playerControl.requestFullscreen()}
+          title="Fullscreen"
+        >
+          <Maximize className="size-3.5" />
+        </button>
+        <div
+          className="flex shrink-0 items-center gap-1 rounded border border-[#444] bg-[#333] px-1 py-0.5"
           title="Horizontal zoom"
         >
           <button
@@ -1207,21 +1427,22 @@ export function Timeline() {
           </button>
           <input
             aria-label="Timeline zoom"
-            className="h-1 w-16 cursor-pointer accent-[hsl(var(--primary))]"
+            className="h-1 w-32 cursor-pointer accent-[hsl(var(--primary))]"
             type="range"
-            min={MIN_PX_PER_FRAME}
-            max={MAX_PX_PER_FRAME}
-            step={0.05}
-            value={pxPerFrame}
+            min={0}
+            max={ZOOM_SLIDER_RESOLUTION}
+            step={1}
+            value={pxPerFrameToSlider(pxPerFrame)}
             onChange={(e) =>
               setPxPerFrame(
                 clamp(
-                  parseFloat(e.target.value),
+                  sliderToPxPerFrame(parseFloat(e.target.value)),
                   MIN_PX_PER_FRAME,
                   MAX_PX_PER_FRAME,
                 ),
               )
             }
+            title={`${(pxPerFrame * fps).toFixed(1)} px/s`}
           />
           <button
             type="button"
@@ -1361,76 +1582,78 @@ export function Timeline() {
                           activeLayer?.id === layer.id;
                         return (
                           <Fragment key={layer.id}>
-                          <div
-                            className={[
-                              "flex items-center gap-1 border-b border-[#2d2d2d] px-2 text-[11px]",
-                              selected ? "bg-[#3d4a5c]" : "hover:bg-[#2f2f2f]",
-                            ].join(" ")}
-                            style={{ height: ROW_H }}
-                            onClick={() => selectLayer(layer.id)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                selectLayer(layer.id);
-                              }
-                            }}
-                          >
-                            <button
-                              type="button"
-                              className="flex size-6 shrink-0 items-center justify-center rounded text-[#aaa] hover:bg-[#3a3a3a] hover:text-white"
-                              aria-label={
-                                layer.visible ? "Hide layer" : "Show layer"
-                              }
-                              title={
-                                layer.visible ? "Hide layer" : "Show layer"
-                              }
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleLayerVisible(layer.id);
+                            <div
+                              className={[
+                                "flex items-center gap-1 border-b border-[#2d2d2d] px-2 text-[11px]",
+                                selected
+                                  ? "bg-[#3d4a5c]"
+                                  : "hover:bg-[#2f2f2f]",
+                              ].join(" ")}
+                              style={{ height: ROW_H }}
+                              onClick={() => selectLayer(layer.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  selectLayer(layer.id);
+                                }
                               }}
                             >
-                              {layer.visible ? (
-                                <Eye className="size-3.5" />
-                              ) : (
-                                <EyeOff className="size-3.5 opacity-60" />
-                              )}
-                            </button>
-                            <span className="w-5 shrink-0 text-center font-mono text-[10px] text-[#9a9a9a]">
-                              {revIndex}
-                            </span>
-                            <span
-                              className="size-2.5 shrink-0 rounded-sm border border-black/30"
-                              style={{ backgroundColor: color }}
-                              title="Label"
-                            />
-                            <span className="min-w-0 flex-1 truncate">
-                              {layer.name}
-                            </span>
-                            <button
-                              type="button"
-                              className="shrink-0 rounded p-0.5 text-[#aaa] hover:bg-[#5c2b2b] hover:text-white"
-                              aria-label={`Remove layer ${layer.name}`}
-                              title="Remove layer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLayerPendingDelete({
-                                  id: layer.id,
-                                  name: layer.name,
-                                });
-                              }}
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          </div>
-                          {layerKeyframesHere && activeLayer && (
-                            <KeyframeSidebarBlock
-                              title={`Keyframes · ${activeLayer.name}`}
-                              properties={animatedProps}
-                              labelFor={propertyDisplayLabel}
-                            />
-                          )}
+                              <button
+                                type="button"
+                                className="flex size-6 shrink-0 items-center justify-center rounded text-[#aaa] hover:bg-[#3a3a3a] hover:text-white"
+                                aria-label={
+                                  layer.visible ? "Hide layer" : "Show layer"
+                                }
+                                title={
+                                  layer.visible ? "Hide layer" : "Show layer"
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleLayerVisible(layer.id);
+                                }}
+                              >
+                                {layer.visible ? (
+                                  <Eye className="size-3.5" />
+                                ) : (
+                                  <EyeOff className="size-3.5 opacity-60" />
+                                )}
+                              </button>
+                              <span className="w-5 shrink-0 text-center font-mono text-[10px] text-[#9a9a9a]">
+                                {revIndex}
+                              </span>
+                              <span
+                                className="size-2.5 shrink-0 rounded-sm border border-black/30"
+                                style={{ backgroundColor: color }}
+                                title="Label"
+                              />
+                              <span className="min-w-0 flex-1 truncate">
+                                {layer.name}
+                              </span>
+                              <button
+                                type="button"
+                                className="shrink-0 rounded p-0.5 text-[#aaa] hover:bg-[#5c2b2b] hover:text-white"
+                                aria-label={`Remove layer ${layer.name}`}
+                                title="Remove layer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLayerPendingDelete({
+                                    id: layer.id,
+                                    name: layer.name,
+                                  });
+                                }}
+                              >
+                                <Trash2 className="size-3" />
+                              </button>
+                            </div>
+                            {layerKeyframesHere && activeLayer && (
+                              <KeyframeSidebarBlock
+                                title={`Keyframes · ${activeLayer.name}`}
+                                properties={animatedProps}
+                                labelFor={propertyDisplayLabel}
+                              />
+                            )}
                           </Fragment>
                         );
                       })}
@@ -1447,8 +1670,7 @@ export function Timeline() {
               {audioExpanded &&
                 allAudioTracks.map(({ track, sceneId, sceneOffset }) => {
                   const audioKeyframesHere =
-                    showAudioKeyframeLanes &&
-                    activeAudioTrack?.id === track.id;
+                    showAudioKeyframeLanes && activeAudioTrack?.id === track.id;
                   return (
                     <Fragment key={track.id}>
                       <AudioLaneRow
@@ -1635,10 +1857,21 @@ export function Timeline() {
 
               {total > 0 && (
                 <>
+                  {hasLoopRange && loopRangeWidthPx > 0 && (
+                    <div
+                      className="pointer-events-none absolute top-0 z-[1] border-x border-[#f5d742]/60 bg-[#f5d742]/15"
+                      style={{
+                        left: loopRangeLeftPx,
+                        width: loopRangeWidthPx,
+                        height: playheadTracksHeight,
+                      }}
+                    />
+                  )}
                   <div
+                    ref={playheadLineRef}
                     className="pointer-events-none absolute top-0 z-[2]"
                     style={{
-                      left: playheadLeftPx,
+                      left: 0,
                       height: playheadTracksHeight,
                       transform: "translateX(-50%)",
                     }}
@@ -1646,10 +1879,11 @@ export function Timeline() {
                     <div className="h-full w-px bg-[#e63946]" />
                   </div>
                   <button
+                    ref={playheadHandleRef}
                     type="button"
                     aria-label="Playhead"
                     className="pointer-events-auto absolute top-0 z-[3] flex -translate-x-1/2 flex-col items-center bg-transparent p-0"
-                    style={{ left: playheadLeftPx }}
+                    style={{ left: 0 }}
                     onPointerDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

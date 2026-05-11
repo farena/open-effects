@@ -68,6 +68,9 @@ export const useEditorStore = create<StoreState>()(
       selectedAudioTrackId: null,
       currentFrame: 0,
       isPlaying: false,
+      loopStart: null,
+      loopEnd: null,
+      volume: 1,
       saveStatus: "idle",
       lastSavedAt: null,
 
@@ -134,6 +137,41 @@ export const useEditorStore = create<StoreState>()(
       pause: () =>
         set((s) => {
           s.isPlaying = false;
+        }),
+
+      setLoopStart: (f) =>
+        set((s) => {
+          s.loopStart = f;
+          if (
+            s.loopStart !== null &&
+            s.loopEnd !== null &&
+            s.loopEnd <= s.loopStart
+          ) {
+            s.loopEnd = null;
+          }
+        }),
+
+      setLoopEnd: (f) =>
+        set((s) => {
+          s.loopEnd = f;
+          if (
+            s.loopStart !== null &&
+            s.loopEnd !== null &&
+            s.loopEnd <= s.loopStart
+          ) {
+            s.loopStart = null;
+          }
+        }),
+
+      clearLoopRange: () =>
+        set((s) => {
+          s.loopStart = null;
+          s.loopEnd = null;
+        }),
+
+      setVolume: (v) =>
+        set((s) => {
+          s.volume = Math.max(0, Math.min(1, v));
         }),
 
       addScene: () =>

@@ -1,9 +1,10 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import type { PlayerRef } from "@remotion/player";
 import { useEditorStore } from "@/editor/store";
 import { selectTotalDuration } from "@/editor/selectors";
+import { playerControl } from "@/editor/playerControl";
 import { OpenEffectsComposition } from "@open-effects/runtime";
 
 const Player = dynamic(() => import("@remotion/player").then((m) => m.Player), {
@@ -20,48 +21,120 @@ export function PreviewPane() {
   const project = useEditorStore((s) => s.project);
   const totalFrames = useEditorStore(selectTotalDuration);
   const setCurrentFrame = useEditorStore((s) => s.setCurrentFrame);
-  const currentFrame = useEditorStore((s) => s.currentFrame);
-  const playerRef = useRef<PlayerRef>(null);
-  // Tracks the last frame value pushed by Player → store so the reverse
-  // sync (store → Player) can short-circuit and avoid feedback echoes.
-  const lastPlayerFrameRef = useRef<number | null>(null);
+  // NOTE: we intentionally do NOT subscribe to `currentFrame` here. During
+  // playback the rAF loop updates it ~30 times/s; subscribing would cause
+  // PreviewPane (and the Remotion Player inside) to re-render at that rate,
+  // making the video look choppy. External seeks are wired via store.subscribe
+  // below instead, so PreviewPane only re-renders on real prop changes.
+  const isPlaying = useEditorStore((s) => s.isPlaying);
+  const loopStart = useEditorStore((s) => s.loopStart);
+  const loopEnd = useEditorStore((s) => s.loopEnd);
+  const volume = useEditorStore((s) => s.volume);
 
-  // Remotion's Player computes the scrubber position as
-  //   currentFrame / (durationInFrames - 1)
-  // and feeds it into a CSS `width: ${pct}%`. With no scenes that's
-  // 0 / 0 = NaN, which React then logs as an invalid style. Render a
-  // placeholder until there's at least one frame of content.
+  // Player is loaded via next/dynamic (ssr:false), so its ref is only set
+  // after the import resolves. A plain useRef holds the instance; a boolean
+  // state flips on mount/unmount to re-trigger the effects below without
+  // ever passing the (possibly unstable) ref into setState directly.
+  const playerRef = useRef<PlayerRef | null>(null);
+  const [playerMounted, setPlayerMounted] = useState(false);
+  const setPlayerRef = useCallback((instance: PlayerRef | null) => {
+    playerRef.current = instance;
+    playerControl.bind(instance);
+    setPlayerMounted((prev) => {
+      const next = instance !== null;
+      return prev === next ? prev : next;
+    });
+  }, []);
+
   const hasContent = project.scenes.length > 0 && totalFrames > 0;
 
-  // Re-attach the frameupdate listener whenever the Player remounts
-  // (project switch, or content toggling between empty/non-empty).
+  // Drive play/pause from the store and animate the playhead by polling
+  // getCurrentFrame() via requestAnimationFrame while playing. Looping is
+  // always on — when the frame reaches the effective end of the active
+  // range, we seek back to the start of that range.
   useEffect(() => {
-    if (!hasContent) return;
+    if (!hasContent || !playerMounted) return;
     const player = playerRef.current;
     if (!player) return;
-    const handler = (e: { detail: { frame: number } }) => {
-      lastPlayerFrameRef.current = e.detail.frame;
-      setCurrentFrame(e.detail.frame);
-    };
-    player.addEventListener("frameupdate", handler);
-    return () => {
-      player.removeEventListener("frameupdate", handler);
-    };
-  }, [setCurrentFrame, project.id, hasContent]);
 
-  // Propagate store → Player when currentFrame is changed from a non-Player
-  // source (e.g., Timeline click, Inspector input). The lastPlayerFrameRef
-  // guard short-circuits when the store update was itself produced by the
-  // Player → store listener above, eliminating any seek-loop risk even if
-  // the Player's getCurrentFrame() lags after a programmatic seek.
+    if (!isPlaying) {
+      player.pause();
+      return;
+    }
+
+    const lastFrameIdx = Math.max(0, totalFrames - 1);
+    const effStart = Math.max(
+      0,
+      Math.min(loopStart ?? 0, lastFrameIdx),
+    );
+    const effEndExclusive = Math.max(
+      effStart + 1,
+      Math.min((loopEnd ?? lastFrameIdx) + 1, totalFrames),
+    );
+
+    // Snap into the active range before starting playback.
+    const at = player.getCurrentFrame();
+    if (at < effStart || at >= effEndExclusive) {
+      player.seekTo(effStart);
+    }
+    player.play();
+
+    let rafId = 0;
+    let lastFrame = -1;
+    const tick = () => {
+      const p = playerRef.current;
+      if (p) {
+        let f = p.getCurrentFrame();
+        if (f >= effEndExclusive - 1 || f >= lastFrameIdx) {
+          p.seekTo(effStart);
+          f = effStart;
+        }
+        if (f !== lastFrame) {
+          lastFrame = f;
+          setCurrentFrame(f);
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [
+    isPlaying,
+    hasContent,
+    playerMounted,
+    setCurrentFrame,
+    totalFrames,
+    loopStart,
+    loopEnd,
+  ]);
+
+  // Propagate store → Player when currentFrame is changed from a non-playback
+  // source (Timeline click, Inspector input). We use store.subscribe (instead
+  // of a reactive effect dep on currentFrame) so that the high-frequency
+  // updates fired by the rAF loop during playback don't re-render PreviewPane.
   useEffect(() => {
-    if (!hasContent) return;
+    if (!hasContent || !playerMounted) return;
+    const unsubscribe = useEditorStore.subscribe((state, prev) => {
+      if (state.isPlaying) return;
+      if (state.currentFrame === prev.currentFrame) return;
+      const player = playerRef.current;
+      if (!player) return;
+      if (player.getCurrentFrame() === state.currentFrame) return;
+      player.seekTo(state.currentFrame);
+    });
+    return unsubscribe;
+  }, [hasContent, playerMounted]);
+
+  // Push volume changes into the Player.
+  useEffect(() => {
+    if (!playerMounted) return;
     const player = playerRef.current;
     if (!player) return;
-    if (lastPlayerFrameRef.current === currentFrame) return;
-    if (player.getCurrentFrame() === currentFrame) return;
-    player.seekTo(currentFrame);
-  }, [currentFrame, hasContent]);
+    player.setVolume(volume);
+  }, [volume, playerMounted]);
 
   if (!project.id) return null;
 
@@ -70,14 +143,13 @@ export function PreviewPane() {
       <div className="aspect-video w-full" style={{ maxHeight: "100%" }}>
         {hasContent ? (
           <Player
-            ref={playerRef}
+            ref={setPlayerRef}
             component={RemotionComp}
             inputProps={{ project }}
             durationInFrames={totalFrames}
             compositionWidth={project.width}
             compositionHeight={project.height}
             fps={project.fps}
-            controls
             style={{ width: "100%", height: "100%" }}
           />
         ) : (
