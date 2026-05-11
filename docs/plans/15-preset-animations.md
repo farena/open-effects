@@ -144,9 +144,9 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
 **Files:**
 - Create: `apps/web/src/editor/presets/types.ts`
 
-- [ ] **Step 1:** Define `PresetCategory`, `PresetParam`, `BuildContext`, `AnimationPreset`, `PresetConflict` exactly as specified in the "Type contracts" section above. Import `Easing`, `Layer`, `Keyframe` from `@open-effects/shared-types`.
-- [ ] **Step 2:** Run `npx tsc --noEmit` from `apps/web` and confirm no errors.
-- [ ] **Step 3:** Commit with message: `feat(presets): add animation preset type contracts`.
+- [x] **Step 1:** Define `PresetCategory`, `PresetParam`, `BuildContext`, `AnimationPreset`, `PresetConflict` exactly as specified in the "Type contracts" section above. Import `Easing`, `Layer`, `Keyframe` from `@open-effects/shared-types`.
+- [x] **Step 2:** Run `npx tsc --noEmit` from `apps/web` and confirm no errors.
+- [x] **Step 3:** Commit with message: `feat(presets): add animation preset type contracts`.
 
 > No tests in this task — pure type definitions.
 
@@ -158,7 +158,7 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
 - Create: `apps/web/src/editor/presets/build-keyframes.ts`
 - Create: `apps/web/tests/editor/presets/build-keyframes.test.ts`
 
-- [ ] **Step 1: Write failing test** covering:
+- [x] **Step 1: Write failing test** covering:
   - IN preset → `anchorFrame === layer.startFrame`.
   - OUT preset with `duration <= endFrame - startFrame` → `anchorFrame === layer.endFrame - duration`.
   - OUT preset with `duration > endFrame - startFrame` → duration clamped, `anchorFrame === layer.startFrame`.
@@ -166,14 +166,14 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
   - EFFECT preset without explicit `anchorFrame` → midpoint `floor((startFrame + endFrame) / 2)`.
   - All keyframes returned have ids (via `newId()`) and `frame >= layer.startFrame && frame <= layer.endFrame`.
   Use a stub preset with a trivial `build` that returns `[{ frame: anchor, property: "opacity", value: "0", easingOut: { type: "linear" } }, { frame: anchor + duration, property: "opacity", value: "1", easingOut: { type: "linear" } }]` (no id).
-- [ ] **Step 2: Run test, confirm fail** with `npm test -w apps/web -- tests/editor/presets/build-keyframes.test.ts`.
-- [ ] **Step 3: Implement** `buildPresetKeyframes`:
+- [x] **Step 2: Run test, confirm fail** with `npm test -w apps/web -- tests/editor/presets/build-keyframes.test.ts`.
+- [x] **Step 3: Implement** `buildPresetKeyframes`:
   1. Clamp duration: `const layerLen = layer.endFrame - layer.startFrame; const dur = Math.min(ctx.duration, layerLen);`.
   2. Resolve anchor per category (use rules in "Type contracts" section). For EFFECT, if caller passes `anchorFrame`, respect it; otherwise compute midpoint.
   3. Call `preset.build({ ...ctx, duration: dur, anchorFrame: resolvedAnchor })`.
   4. Map each returned keyframe to `{ ...kf, id: newId() }`.
-- [ ] **Step 4: Run test, confirm pass**.
-- [ ] **Step 5: Commit** `feat(presets): add buildPresetKeyframes with category-aware anchors and clamping`.
+- [x] **Step 4: Run test, confirm pass**.
+- [x] **Step 5: Commit** `feat(presets): add buildPresetKeyframes with category-aware anchors and clamping`.
 
 ---
 
@@ -183,18 +183,18 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
 - Create: `apps/web/src/editor/presets/detect-conflicts.ts`
 - Create: `apps/web/tests/editor/presets/detect-conflicts.test.ts`
 
-- [ ] **Step 1: Write failing test** covering:
+- [x] **Step 1: Write failing test** covering:
   - No existing keyframes → returns `[]`.
   - Existing keyframe on same property outside `[anchor, anchor+duration]` → returns `[]`.
   - Existing keyframe on same property inside the range → returns one `PresetConflict` with that frame.
   - Multiple existing keyframes on different properties (some in `preset.animatedProperties`, some not) inside the range → returns conflicts only for properties listed in `animatedProperties`.
-- [ ] **Step 2: Run test, confirm fail**.
-- [ ] **Step 3: Implement** `detectPresetConflicts(layer, preset, ctx) → PresetConflict[]`:
+- [x] **Step 2: Run test, confirm fail**.
+- [x] **Step 3: Implement** `detectPresetConflicts(layer, preset, ctx) → PresetConflict[]`:
   - Resolve `anchor` and `duration` exactly as in Task 2 (extract a small private helper or share via module).
   - Filter `layer.keyframes` to those whose `property ∈ preset.animatedProperties` and `frame ∈ [anchor, anchor+duration]`.
   - Group by property, return one entry per property with sorted `existingFrames`.
-- [ ] **Step 4: Run test, confirm pass**.
-- [ ] **Step 5: Commit** `feat(presets): add preset conflict detection`.
+- [x] **Step 4: Run test, confirm pass**.
+- [x] **Step 5: Commit** `feat(presets): add preset conflict detection`.
 
 > If you find yourself duplicating the anchor/clamp logic across `build-keyframes.ts` and `detect-conflicts.ts`, extract a small helper `resolveAnchor(layer, preset, ctx)` into a shared module. Don't duplicate.
 
@@ -205,15 +205,15 @@ Conflict detection range is `[anchorFrame, anchorFrame + duration]` inclusive.
 **Files:**
 - Create: `apps/web/src/editor/presets/animation-presets.ts`
 
-- [ ] **Step 1:** Define `ANIMATION_PRESETS: readonly AnimationPreset[]` containing **only `fade-in`** for now (rest added in Task 5). `fade-in`:
+- [x] **Step 1:** Define `ANIMATION_PRESETS: readonly AnimationPreset[]` containing **only `fade-in`** for now (rest added in Task 5). `fade-in`:
   - `key: "fade-in"`, `name: "Fade In"`, `category: "in"`, `iconKey: "fade"`.
   - `defaultDuration: 30`.
   - `defaultEasing: { type: "ease-out" }` (or `{ type: "linear" }` if `ease-out` is not in the Easing schema — verify against `packages/shared-types/src/schemas/easing.ts` and pick the closest valid).
   - `params: [{ kind: "number", key: "fromOpacity", label: "From", default: 0, min: 0, max: 1 }, { kind: "number", key: "toOpacity", label: "To", default: 1, min: 0, max: 1 }]`.
   - `animatedProperties: ["opacity"]`.
   - `build`: returns 2 keyframes for property `"opacity"` at `anchorFrame` and `anchorFrame + duration` with values `String(values.fromOpacity)` and `String(values.toOpacity)`, both with `easingOut: ctx.easing`.
-- [ ] **Step 2:** Run `npx tsc --noEmit`, confirm no errors.
-- [ ] **Step 3: Commit** `feat(presets): scaffold built-in catalog with fade-in`.
+- [x] **Step 2:** Run `npx tsc --noEmit`, confirm no errors.
+- [x] **Step 3: Commit** `feat(presets): scaffold built-in catalog with fade-in`.
 
 ---
 
@@ -241,11 +241,11 @@ For each preset below, add to the catalog. **All `build` functions must produce 
 
 **Property naming**: verify the property string format the runtime uses. Search for an existing keyframe in `packages/runtime/src/keyframes/` or in fixture data. If transform sub-properties like `transform.translateX` are not what the runtime parses, use whatever string the runtime already supports (e.g., `translateX`). Match the convention used by existing keyframes — do not invent a new one.
 
-- [ ] **Step 1: Write a failing test** in `build-keyframes.test.ts` that iterates `ANIMATION_PRESETS` and asserts: each preset produces ≥2 keyframes with `default` params on a sample 120-frame layer; all returned `easingOut` equal `ctx.easing`; all returned frames are in range; no `id` is `undefined` after `buildPresetKeyframes` wraps them.
-- [ ] **Step 2: Run test, confirm fail** (preset entries missing).
-- [ ] **Step 3:** Add the 11 presets above following the existing fade-in pattern. Keep each preset minimal — no extra params, no special cases.
-- [ ] **Step 4: Run test, confirm pass**. Also verify total count: `ANIMATION_PRESETS.length === 12`.
-- [ ] **Step 5: Commit** `feat(presets): add 11 built-in animations across in/out/effect`.
+- [x] **Step 1: Write a failing test** in `build-keyframes.test.ts` that iterates `ANIMATION_PRESETS` and asserts: each preset produces ≥2 keyframes with `default` params on a sample 120-frame layer; all returned `easingOut` equal `ctx.easing`; all returned frames are in range; no `id` is `undefined` after `buildPresetKeyframes` wraps them.
+- [x] **Step 2: Run test, confirm fail** (preset entries missing).
+- [x] **Step 3:** Add the 11 presets above following the existing fade-in pattern. Keep each preset minimal — no extra params, no special cases.
+- [x] **Step 4: Run test, confirm pass**. Also verify total count: `ANIMATION_PRESETS.length === 12`.
+- [x] **Step 5: Commit** `feat(presets): add 11 built-in animations across in/out/effect`.
 
 ---
 
@@ -274,11 +274,11 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 | `swing` | effect | `swing-top-fwd` (Z-axis only) | `transform.rotate` | `amplitude` (default `15`, unit `deg`) | 5 keyframes: `[0, amplitude, -amplitude*0.6, amplitude*0.4, 0]` |
 | `flicker` | effect | `flicker-1` | `opacity` | `dimOpacity` (default `0.2`) | 7 keyframes oscillating opacity between `1` and `dimOpacity` at irregular fractions (0, 0.1, 0.15, 0.2, 0.4, 0.6, 1) |
 
-- [ ] **Step 1:** Add the 12 entries above to `ANIMATION_PRESETS`. Use the helpers from Task 5 (e.g., extract a `linearKeyframes(property, frames, values, easing)` helper if not already present — only if you find yourself duplicating across these multi-keyframe presets). Keep each preset's `build` function focused and short.
-- [ ] **Step 2:** Run the iteration test from Task 5: `npm test -w apps/web -- tests/editor/presets/build-keyframes.test.ts`. It should now iterate over 24 presets and pass for all of them (every preset returns ≥2 keyframes with `easingOut === ctx.easing` and frames within `[anchor, anchor+duration]`). If a multi-keyframe preset hits the easing assertion (because intermediate keyframes might want their own easing), update the test to assert `easingOut` is some valid `Easing`, not strictly `ctx.easing`. **Default rule**: every keyframe a preset emits uses `ctx.easing`. Do not split easing per intermediate keyframe in v1 — keep it consistent.
-- [ ] **Step 3:** Add a focused test asserting `ANIMATION_PRESETS.length === 24` and counts per category: `9 IN`, `8 OUT`, `7 EFFECT`.
-- [ ] **Step 4: Run tests, confirm pass**.
-- [ ] **Step 5: Commit** `feat(presets): add 12 animista-inspired built-ins (24 total)`.
+- [x] **Step 1:** Add the 12 entries above to `ANIMATION_PRESETS`. Use the helpers from Task 5 (e.g., extract a `linearKeyframes(property, frames, values, easing)` helper if not already present — only if you find yourself duplicating across these multi-keyframe presets). Keep each preset's `build` function focused and short.
+- [x] **Step 2:** Run the iteration test from Task 5: `npm test -w apps/web -- tests/editor/presets/build-keyframes.test.ts`. It should now iterate over 24 presets and pass for all of them (every preset returns ≥2 keyframes with `easingOut === ctx.easing` and frames within `[anchor, anchor+duration]`). If a multi-keyframe preset hits the easing assertion (because intermediate keyframes might want their own easing), update the test to assert `easingOut` is some valid `Easing`, not strictly `ctx.easing`. **Default rule**: every keyframe a preset emits uses `ctx.easing`. Do not split easing per intermediate keyframe in v1 — keep it consistent.
+- [x] **Step 3:** Add a focused test asserting `ANIMATION_PRESETS.length === 24` and counts per category: `9 IN`, `8 OUT`, `7 EFFECT`.
+- [x] **Step 4: Run tests, confirm pass**.
+- [x] **Step 5: Commit** `feat(presets): add 12 animista-inspired built-ins (24 total)`.
 
 > Note on `flicker`: 7 keyframes at irregular fractions is a stylistic choice that mimics animista's flicker; if you find the math gets messy, fall back to 5 evenly-spaced keyframes alternating `[1, dim, 1, dim, 1]` — recognizable enough.
 >
@@ -292,13 +292,13 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 - Modify: `apps/web/src/editor/store.ts`
 - Create: `apps/web/tests/editor/store.preset.test.ts`
 
-- [ ] **Step 1: Write failing test**:
+- [x] **Step 1: Write failing test**:
   - Setup: create a minimal `useEditorStore` instance with a project containing a scene with one layer (`startFrame: 0`, `endFrame: 120`, `keyframes: []`).
   - Call `applyAnimationPresetToLayer(layerId, fadeInPreset, { duration: 30, easing: { type: "linear" }, values: { fromOpacity: 0, toOpacity: 1 } })`.
   - Assert: `layer.keyframes.length === 2`, both for property `"opacity"`, frames `[0, 30]`, both have ids.
   - Assert: zundo `pastStates` length increased by 1 (call `useEditorStore.temporal.getState().undo()` and verify `layer.keyframes.length === 0`).
-- [ ] **Step 2: Run test, confirm fail**.
-- [ ] **Step 3: Implement** action signature:
+- [x] **Step 2: Run test, confirm fail**.
+- [x] **Step 3: Implement** action signature:
   ```ts
   applyAnimationPresetToLayer(
     layerId: string,
@@ -313,8 +313,8 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
   4. Inside `mutateLayer(layerId, l => { ... })`:
      - If `params.replaceConflicts === true`: filter out existing keyframes whose `property ∈ preset.animatedProperties` and `frame ∈ [resolvedAnchor, resolvedAnchor + clampedDuration]`. Re-resolve anchor inside the mutator OR compute it before and pass in via closure.
      - Push `newKfs` into `l.keyframes`.
-- [ ] **Step 4: Run test, confirm pass**.
-- [ ] **Step 5: Commit** `feat(store): add applyAnimationPresetToLayer action with undo support`.
+- [x] **Step 4: Run test, confirm pass**.
+- [x] **Step 5: Commit** `feat(store): add applyAnimationPresetToLayer action with undo support`.
 
 ---
 
@@ -324,14 +324,14 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 - Modify: `apps/web/tests/editor/store.preset.test.ts`
 - (Modify `store.ts` only if Task 6 didn't cover replace branch yet.)
 
-- [ ] **Step 1: Write failing test**:
+- [x] **Step 1: Write failing test**:
   - Layer with one existing keyframe `{ frame: 15, property: "opacity", value: "0.5", easingOut: { type: "linear" } }`.
   - Apply fade-in (props `["opacity"]`, range `[0, 30]`) with `replaceConflicts: false` → assert layer now has 3 keyframes (existing + 2 new).
   - Reset, apply with `replaceConflicts: true` → assert layer has 2 keyframes (existing one removed).
-- [ ] **Step 2: Run test, confirm fail** (or pass if Task 6 already implemented both branches).
-- [ ] **Step 3: Implement** the missing branch if needed.
-- [ ] **Step 4: Run test, confirm pass**.
-- [ ] **Step 5: Commit** `test(store): cover replace-conflicts branch of applyAnimationPresetToLayer`.
+- [x] **Step 2: Run test, confirm fail** (or pass if Task 6 already implemented both branches).
+- [x] **Step 3: Implement** the missing branch if needed.
+- [x] **Step 4: Run test, confirm pass**.
+- [x] **Step 5: Commit** `test(store): cover replace-conflicts branch of applyAnimationPresetToLayer`.
 
 ---
 
@@ -340,14 +340,14 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 **Files:**
 - Create: `apps/web/src/editor/components/inspector/PresetsTab.tsx`
 
-- [ ] **Step 1:** Implement `<PresetsTab layer={Layer} />` showing only the catalog state:
+- [x] **Step 1:** Implement `<PresetsTab layer={Layer} />` showing only the catalog state:
   - `useState<PresetCategory>("in")` for chip selector.
   - Three chips (IN / OUT / EFFECT) styled like existing chip selectors in the codebase (search `KeyframesTab.tsx` for chip pattern; reuse classnames).
   - Filter `ANIMATION_PRESETS` by current category.
   - Render a 2-column grid of cards. Each card: icon (resolve `iconKey` to a `lucide-react` icon — for v1, a simple mapping `{ fade: Eye, "slide-left": ArrowLeft, ... }` is fine; fall back to `Sparkles`), name, click handler stub `onSelect(preset)`.
   - Card click sets local `selectedPreset` state but renders nothing yet (Task 9 builds the configuration view).
-- [ ] **Step 2:** Manually verify by importing it in `Inspector.tsx` (Task 10) — postpone or do a quick local mount in dev to sanity-check rendering. Skip if not feasible.
-- [ ] **Step 3: Commit** `feat(presets): scaffold PresetsTab catalog grid`.
+- [x] **Step 2:** Manually verify by importing it in `Inspector.tsx` (Task 10) — postpone or do a quick local mount in dev to sanity-check rendering. Skip if not feasible.
+- [x] **Step 3: Commit** `feat(presets): scaffold PresetsTab catalog grid`.
 
 ---
 
@@ -356,7 +356,7 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 **Files:**
 - Modify: `apps/web/src/editor/components/inspector/PresetsTab.tsx`
 
-- [ ] **Step 1:** When `selectedPreset` is set, render the configuration view instead of the grid:
+- [x] **Step 1:** When `selectedPreset` is set, render the configuration view instead of the grid:
   - Header: back chevron (`<` icon, click → clear `selectedPreset`) + preset name.
   - **Duration** input: `<Input type="number" min={1} value={duration} onChange=... />` initialized to `selectedPreset.defaultDuration`.
   - **Easing** editor: `<EasingEditor easing={easing} onSave={setEasing} />` initialized to `selectedPreset.defaultEasing`.
@@ -365,7 +365,7 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
   - Inline warning when `duration > endFrame - startFrame` ("Duration clamped to layer length").
   - Inline note when `easing.type === "spring" && duration < 15` ("Spring may not be visible at this duration").
   - **Apply** button at the bottom.
-- [ ] **Step 2:** Apply button handler:
+- [x] **Step 2:** Apply button handler:
   1. Build `ctx`-shaped params: `{ duration, easing, values, anchorFrame: category === "effect" ? anchorFrame : undefined }`.
   2. Call `detectPresetConflicts(layer, selectedPreset, { ...ctx, anchorFrame: resolved })` (resolve anchor with the same logic — extract a small helper if not done).
   3. If conflicts non-empty: open `ConfirmDialog` with message listing conflicting properties and three actions:
@@ -373,7 +373,7 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
      - **Keep both** → call action with `replaceConflicts: false`, then close.
      - **Cancel** → close, no action.
   4. If no conflicts: call action with `replaceConflicts: false`, reset to catalog.
-- [ ] **Step 3:** Commit `feat(presets): add configuration panel and apply flow with collision dialog`.
+- [x] **Step 3:** Commit `feat(presets): add configuration panel and apply flow with collision dialog`.
 
 > The `ConfirmDialog` component at `apps/web/src/editor/components/ConfirmDialog.tsx` may only support a 2-button confirm/cancel. If so, use raw `Dialog` from `apps/web/src/components/ui/dialog.tsx` to render 3 buttons. **Do not extend `ConfirmDialog` for this** — keep it focused.
 
@@ -384,11 +384,11 @@ Only properties our runtime interpolates are used: `opacity`, `transform.transla
 **Files:**
 - Modify: `apps/web/src/editor/components/Inspector.tsx`
 
-- [ ] **Step 1:** Import `Sparkles` from `lucide-react` and `PresetsTab` from `./inspector/PresetsTab`.
-- [ ] **Step 2:** Add `{ value: "presets", label: "Presets", Icon: Sparkles }` to `LAYER_TABS` (line ~103). Place after `keyframes`.
-- [ ] **Step 3:** Add the `presets` key to the contents map (around lines 142–148) rendering `<PresetsTab layer={activeLayer} />`. Make sure the tab is gated by the same `activeLayer != null` condition that already gates the layer tabs (verify the existing render flow — likely `LAYER_TABS` is only rendered when `activeLayer` exists).
-- [ ] **Step 4:** Run `npx tsc --noEmit` and `npm run lint` (if a lint script exists at apps/web).
-- [ ] **Step 5: Commit** `feat(inspector): add Presets tab to LAYER_TABS`.
+- [x] **Step 1:** Import `Sparkles` from `lucide-react` and `PresetsTab` from `./inspector/PresetsTab`.
+- [x] **Step 2:** Add `{ value: "presets", label: "Presets", Icon: Sparkles }` to `LAYER_TABS` (line ~103). Place after `keyframes`.
+- [x] **Step 3:** Add the `presets` key to the contents map (around lines 142–148) rendering `<PresetsTab layer={activeLayer} />`. Make sure the tab is gated by the same `activeLayer != null` condition that already gates the layer tabs (verify the existing render flow — likely `LAYER_TABS` is only rendered when `activeLayer` exists).
+- [x] **Step 4:** Run `npx tsc --noEmit` and `npm run lint` (if a lint script exists at apps/web).
+- [x] **Step 5: Commit** `feat(inspector): add Presets tab to LAYER_TABS`.
 
 ---
 
