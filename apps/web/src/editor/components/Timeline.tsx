@@ -180,9 +180,27 @@ function labelColorForLayerId(id: string): string {
   return LABEL_COLORS[h]!;
 }
 
+/**
+ * Frames that scene `i` (i ≥ 1) eats from the preceding scene's tail because
+ * of its incoming transition. Mirrors `runtime/lib/offset.ts` so the Timeline
+ * lays out scenes the same way `TransitionSeries` renders them.
+ */
+function sceneTransitionOverlap(sc: Scene, index: number): number {
+  if (index === 0) return 0;
+  const t = sc.transitionIn;
+  if (!t || t.type === "none") return 0;
+  return t.durationFrames;
+}
+
 function computeSceneStarts(sorted: Scene[]): number[] {
-  return sorted.reduce<number[]>((acc, _sc, i) => {
-    acc.push(i === 0 ? 0 : acc[i - 1]! + sorted[i - 1]!.durationFrames);
+  return sorted.reduce<number[]>((acc, sc, i) => {
+    if (i === 0) {
+      acc.push(0);
+      return acc;
+    }
+    const prevStart = acc[i - 1]!;
+    const prevDur = sorted[i - 1]!.durationFrames;
+    acc.push(prevStart + prevDur - sceneTransitionOverlap(sc, i));
     return acc;
   }, []);
 }
@@ -821,6 +839,13 @@ function SceneBar({
   const leftPx = total > 0 ? (globalStart / total) * timelineWidthPx : 0;
   const widthPx = total > 0 ? (span / total) * timelineWidthPx : 0;
 
+  // Width (in px) of the overlap with the previous scene caused by this scene's
+  // incoming transition. The overlap region spans the first `transitionDur`
+  // frames of this scene AND the last `transitionDur` frames of the previous.
+  const transitionDurFrames = sceneTransitionOverlap(scene, sceneIndex);
+  const transitionWidthPx =
+    total > 0 ? (transitionDurFrames / total) * timelineWidthPx : 0;
+
   const dragRef = useRef<{
     mode: "in" | "out";
     startX: number;
@@ -883,6 +908,22 @@ function SceneBar({
       className="relative flex items-center border-b border-[#2d2d2d]"
       style={{ height: ROW_H, width: timelineWidthPx }}
     >
+      {transitionWidthPx > 0 ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-1.5 h-[calc(100%-12px)] rounded-sm"
+          style={{
+            left: leftPx - transitionWidthPx / 2,
+            width: transitionWidthPx,
+            backgroundImage:
+              "repeating-linear-gradient(45deg, rgba(245,215,66,0.55) 0 4px, rgba(245,215,66,0) 4px 8px)",
+            borderLeft: "1px solid rgba(245,215,66,0.6)",
+            borderRight: "1px solid rgba(245,215,66,0.6)",
+            zIndex: 1,
+          }}
+          title={`Transition: ${scene.transitionIn?.type ?? ""} · ${transitionDurFrames}f`}
+        />
+      ) : null}
       <div
         className={[
           "absolute top-1.5 flex h-[calc(100%-12px)] min-w-[8px] cursor-default items-stretch rounded-sm border border-black/50 shadow-sm",

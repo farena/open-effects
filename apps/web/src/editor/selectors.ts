@@ -1,12 +1,27 @@
+import type { Scene } from "@open-effects/shared-types";
 import type { EditorState } from "./store.types";
 
 function sortedScenes(s: EditorState) {
   return [...s.project.scenes].sort((a, b) => a.order - b.order);
 }
 
+/**
+ * Frames that scene `i` (i ≥ 1) eats from the preceding scene's tail because
+ * of its incoming transition. The first scene cannot have an incoming overlap.
+ */
+function sceneTransitionOverlap(sc: Scene, index: number): number {
+  if (index === 0) return 0;
+  const t = sc.transitionIn;
+  if (!t || t.type === "none") return 0;
+  return t.durationFrames;
+}
+
 export function sceneGlobalStartFrame(s: EditorState, sceneId: string): number {
   let acc = 0;
-  for (const sc of sortedScenes(s)) {
+  const sorted = sortedScenes(s);
+  for (let i = 0; i < sorted.length; i++) {
+    const sc = sorted[i]!;
+    acc -= sceneTransitionOverlap(sc, i);
     if (sc.id === sceneId) return acc;
     acc += sc.durationFrames;
   }
@@ -84,8 +99,13 @@ export const selectActiveLayer = (s: EditorState) => {
   return null;
 };
 
-export const selectTotalDuration = (s: EditorState) =>
-  s.project.scenes.reduce((acc, sc) => acc + sc.durationFrames, 0);
+export const selectTotalDuration = (s: EditorState) => {
+  const sorted = sortedScenes(s);
+  return sorted.reduce(
+    (acc, sc, i) => acc + sc.durationFrames - sceneTransitionOverlap(sc, i),
+    0,
+  );
+};
 
 export const selectAnimatedProperties = (s: EditorState): string[] => {
   const l = selectActiveLayer(s);
