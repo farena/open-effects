@@ -6,6 +6,7 @@ import { useEditorStore } from "@/editor/store";
 import { selectActiveLayer, selectActiveScene } from "@/editor/selectors";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
 import { Button } from "@/components/ui/button";
 import { SaveComponentDialog } from "@/editor/components/SaveComponentDialog";
 // Inline form schema for the props fields we expose in this tab.
@@ -140,9 +141,8 @@ export function PropsTab() {
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="layer-start-frame">Start Frame</Label>
-          <Input
+          <DraggableNumberInput
             id="layer-start-frame"
-            type="number"
             min={0}
             value={layer.startFrame}
             onChange={handleStartFrameChange}
@@ -156,9 +156,8 @@ export function PropsTab() {
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="layer-end-frame">End Frame</Label>
-          <Input
+          <DraggableNumberInput
             id="layer-end-frame"
-            type="number"
             min={0}
             max={maxFrame}
             value={layer.endFrame}

@@ -5,6 +5,7 @@ import { useEditorStore } from "@/editor/store";
 import { selectActiveScene } from "@/editor/selectors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
 import { Label } from "@/components/ui/label";
 import { ColorPicker } from "./ColorPicker";
 
@@ -79,9 +80,8 @@ export function SceneTab() {
           Duration ({unit === "frames" ? "frames" : "seconds"})
         </Label>
         <div className="flex items-center gap-2">
-          <Input
+          <DraggableNumberInput
             id="scene-duration"
-            type="number"
             min={unit === "frames" ? 1 : 1 / fps}
             step={unit === "frames" ? 1 : 0.001}
             value={draft}

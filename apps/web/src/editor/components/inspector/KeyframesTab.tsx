@@ -21,6 +21,7 @@ import {
 import { PropertyPicker } from "./PropertyPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -175,9 +176,8 @@ function KeyframeRow({ target, property, keyframe }: KeyframeRowProps) {
     <div className="flex items-center gap-2 py-1">
       <div className="flex w-16 shrink-0 flex-col gap-0.5">
         <Label className="text-xs text-muted-foreground">Frame</Label>
-        <Input
+        <DraggableNumberInput
           id={frameId}
-          type="number"
           min={0}
           max={maxKeyframeFrameForTarget(target)}
           className="h-7 px-1.5 text-xs"

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PopoverClose } from "@/components/ui/popover";
@@ -189,8 +189,7 @@ export function EasingEditor({ easing, onSave }: EasingEditorProps) {
                 <span className="text-xs text-muted-foreground text-center">
                   {label}
                 </span>
-                <Input
-                  type="number"
+                <DraggableNumberInput
                   step={0.01}
                   min={i === 0 || i === 2 ? 0 : undefined}
                   max={i === 0 || i === 2 ? 1 : undefined}
@@ -220,8 +219,7 @@ export function EasingEditor({ easing, onSave }: EasingEditorProps) {
                 <span className="text-xs text-muted-foreground text-center capitalize">
                   {key}
                 </span>
-                <Input
-                  type="number"
+                <DraggableNumberInput
                   step={key === "mass" ? 0.1 : 1}
                   min={0.01}
                   className="h-7 text-xs px-1 text-center"

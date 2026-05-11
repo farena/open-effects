@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import { selectActiveScene } from "@/editor/selectors";
-import { Input } from "@/components/ui/input";
+import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -120,9 +120,8 @@ export function TransitionTab() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="transition-duration">Duration (frames)</Label>
-        <Input
+        <DraggableNumberInput
           id="transition-duration"
-          type="number"
           min={1}
           max={maxDuration}
           step={1}

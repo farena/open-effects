@@ -34,6 +34,7 @@ import { EasingEditor } from "./EasingEditor";
 import { PresetPreviewModal } from "./PresetPreviewModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -211,8 +212,7 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
           <Label className="text-xs text-muted-foreground">
             Duration (frames)
           </Label>
-          <Input
-            type="number"
+          <DraggableNumberInput
             min={1}
             className="h-8 text-xs"
             value={duration}
@@ -259,24 +259,32 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
             {preset.params.map((param) => (
               <div key={param.key} className="flex flex-col gap-0.5">
                 <Label className="text-xs">{param.label}</Label>
-                <Input
-                  type={param.kind === "number" ? "number" : "text"}
-                  className="h-8 text-xs"
-                  value={values[param.key] ?? param.default}
-                  min={param.kind === "number" ? param.min : undefined}
-                  max={param.kind === "number" ? param.max : undefined}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (param.kind === "number") {
-                      const parsed = parseFloat(raw);
+                {param.kind === "number" ? (
+                  <DraggableNumberInput
+                    className="h-8 text-xs"
+                    value={values[param.key] ?? param.default}
+                    min={param.min}
+                    max={param.max}
+                    onChange={(e) => {
+                      const parsed = parseFloat(e.target.value);
                       if (!isNaN(parsed)) {
                         setValues((prev) => ({ ...prev, [param.key]: parsed }));
                       }
-                    } else {
-                      setValues((prev) => ({ ...prev, [param.key]: raw }));
+                    }}
+                  />
+                ) : (
+                  <Input
+                    type="text"
+                    className="h-8 text-xs"
+                    value={values[param.key] ?? param.default}
+                    onChange={(e) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        [param.key]: e.target.value,
+                      }))
                     }
-                  }}
-                />
+                  />
+                )}
                 {param.kind === "number" && param.unit && (
                   <span className="text-xs text-muted-foreground">
                     Unit: {param.unit}
@@ -293,8 +301,7 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
             <Label className="text-xs text-muted-foreground">
               Anchor frame
             </Label>
-            <Input
-              type="number"
+            <DraggableNumberInput
               min={layer.startFrame}
               max={layer.endFrame}
               className="h-8 text-xs"
