@@ -576,6 +576,17 @@ components:
           type: integer
           enum: [24, 30, 60]
           description: Frames per second.
+        css:
+          type: string
+          default: ""
+          description: |
+            Project-level (global) CSS shared across every scene and layer.
+            Injected as a single `<style>` tag at the top of the composition,
+            so it is the right place for `@import url(...)` font declarations
+            (e.g. Google Fonts), `@font-face`, `@keyframes` shared by multiple
+            layers, and utility classes you want available everywhere. Unlike
+            per-layer CSS this is **not** scoped — selectors here apply to
+            elements inside any layer.
         scenes:
           type: array
           items:
@@ -587,6 +598,7 @@ components:
         width: 1280
         height: 720
         fps: 30
+        css: "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');"
         scenes:
           - id: "scene_01"
             order: 0

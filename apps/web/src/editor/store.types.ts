@@ -40,6 +40,7 @@ export interface EditorActions {
   setSceneDuration: (sceneId: string, durationFrames: number) => void;
   updateSceneName: (sceneId: string, name: string) => void;
   updateSceneBackground: (sceneId: string, background: string) => void;
+  updateProjectCss: (css: string) => void;
   adjustSceneBoundaryAt: (sceneId: string, deltaFrames: number) => void;
   addLayer: (sceneId: string) => void;
   deleteLayer: (layerId: string) => void;

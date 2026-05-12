@@ -71,6 +71,10 @@ Layers are arbitrary user HTML+CSS. The runtime defends the editor chrome via th
 
 Don't bypass any of these when adding layer features.
 
+**Project CSS (global stylesheet)**
+
+`project.css` (string on `ProjectSchema`, `Project.css` `TEXT` column) is a project-wide stylesheet edited from the "Project CSS" sidebar tab (`apps/web/src/editor/components/ProjectCssPanel.tsx`). `OpenEffectsComposition` injects it as a single `<style data-open-effects-project-css>` tag at the top of the composition, before any `<Sequence>`. Unlike per-layer CSS it is **NOT** scoped — selectors apply to elements inside any layer. This is the right place for `@import url(...)` font declarations (e.g. Google Fonts), `@font-face`, shared `@keyframes`, and utility classes meant to be reusable across scenes/layers. It flows through the normal Zustand `updateProjectCss` → autosave PATCH path, and the render endpoint receives it via `toProjectJson`, so preview and render stay in parity.
+
 **Animation engine**
 
 - Animatable property whitelist + metadata lives in `packages/runtime/src/keyframes/propertyRegistry.ts`, exported as `ANIMATABLE_KEYS` / `PROPERTIES`. The store rejects keyframes for unknown properties (custom properties go through `isCustomProperty`).

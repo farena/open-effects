@@ -18,6 +18,7 @@ export async function persistProjectJson(
           width: validated.width,
           height: validated.height,
           fps: validated.fps,
+          css: validated.css ?? "",
         },
       });
 

@@ -14,6 +14,7 @@ model Project {
   width       Int
   height      Int
   fps         Int      @default(30)
+  css         String   @default("") @db.Text
   videoScript Json     @default("[]")
   scenes      Scene[]
   createdAt   DateTime @default(now())

@@ -31,6 +31,7 @@ export async function toProjectJson(projectId: string): Promise<Project> {
     width: p.width,
     height: p.height,
     fps: p.fps as 24 | 30 | 60,
+    css: p.css ?? "",
     scenes: p.scenes.map((s) => ({
       id: s.id,
       order: s.order,

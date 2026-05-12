@@ -6,6 +6,7 @@ import {
   Image as ImageIcon,
   Boxes,
   FileText,
+  Code2,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -19,6 +20,7 @@ import { LayersPanel } from "./LayersPanel";
 import { AssetsPanel } from "./AssetsPanel";
 import { ComponentsPanel } from "./ComponentsPanel";
 import { VideoScriptPanel } from "./VideoScriptPanel";
+import { ProjectCssPanel } from "./ProjectCssPanel";
 
 const TAB_ITEMS = [
   { value: "scenes", label: "Scenes", Icon: Film },
@@ -26,6 +28,7 @@ const TAB_ITEMS = [
   { value: "assets", label: "Assets", Icon: ImageIcon },
   { value: "components", label: "Components", Icon: Boxes },
   { value: "script", label: "Video script", Icon: FileText },
+  { value: "project-css", label: "Project CSS", Icon: Code2 },
 ] as const;
 
 export function Sidebar() {
@@ -72,6 +75,12 @@ export function Sidebar() {
           </TabsContent>
           <TabsContent value="script" className="h-full overflow-hidden mt-0">
             <VideoScriptPanel />
+          </TabsContent>
+          <TabsContent
+            value="project-css"
+            className="h-full overflow-hidden mt-0"
+          >
+            <ProjectCssPanel />
           </TabsContent>
         </div>
       </Tabs>

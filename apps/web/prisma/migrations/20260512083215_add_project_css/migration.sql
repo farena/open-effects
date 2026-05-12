@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Project` ADD COLUMN `css` TEXT NOT NULL DEFAULT '';

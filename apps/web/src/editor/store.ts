@@ -61,6 +61,7 @@ export const useEditorStore = create<StoreState>()(
         width: 1920,
         height: 1080,
         fps: 30,
+        css: "",
         scenes: [],
       },
       selectedSceneId: null,
@@ -228,6 +229,11 @@ export const useEditorStore = create<StoreState>()(
             sc.background = background;
           }),
         ),
+
+      updateProjectCss: (css) =>
+        set((s) => {
+          s.project.css = css;
+        }),
 
       adjustSceneBoundaryAt: (sceneId, deltaFrames) =>
         set((s) => {

@@ -106,6 +106,7 @@ Schema invariants worth double-checking before sending:
 | `volumeKeyframe.value` | number, `0..1` |
 | `keyframe.frame` | scene-local (or layer-local) frame index, `≥ 0` |
 | `transitionIn.type` | `none \| fade \| slide-{left,right,up,down}` |
+| `project.css` | optional string; global CSS shared across all scenes/layers (good place for `@import` font declarations, `@font-face`, shared `@keyframes`, utility classes). Unlike per-layer CSS it is NOT scoped. |
 
 Easing is a discriminated union on `type`:
 `linear`, `ease-in`, `ease-out`, `ease-in-out`,

@@ -15,9 +15,17 @@ function hasAnyTransition(project: Project): boolean {
 export const OpenEffectsComposition: React.FC<{ project: Project }> = ({
   project,
 }) => {
+  const projectCss = project.css?.trim() ? project.css : null;
+
   if (!hasAnyTransition(project)) {
     return (
       <AbsoluteFill style={{ backgroundColor: "transparent" }}>
+        {projectCss && (
+          <style
+            data-open-effects-project-css
+            dangerouslySetInnerHTML={{ __html: projectCss }}
+          />
+        )}
         {project.scenes.map((scene, i) => (
           <Sequence
             key={scene.id}
@@ -33,6 +41,12 @@ export const OpenEffectsComposition: React.FC<{ project: Project }> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: "transparent" }}>
+      {projectCss && (
+        <style
+          data-open-effects-project-css
+          dangerouslySetInnerHTML={{ __html: projectCss }}
+        />
+      )}
       <TransitionSeries>
         {project.scenes.map((scene, i) => {
           const preset =

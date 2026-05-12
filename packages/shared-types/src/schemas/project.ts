@@ -7,6 +7,13 @@ export const ProjectSchema = z.object({
   width: z.number().int().positive().max(7680),
   height: z.number().int().positive().max(7680),
   fps: z.union([z.literal(24), z.literal(30), z.literal(60)]),
+  /**
+   * Global stylesheet applied across every scene/layer. Injected as one
+   * `<style>` tag at the top of the composition — NOT scoped. Use for shared
+   * `@import` font declarations, `@font-face`, shared `@keyframes`, and
+   * utility classes.
+   */
+  css: z.string().optional(),
   scenes: z.array(SceneSchema).default([]),
 });
 
