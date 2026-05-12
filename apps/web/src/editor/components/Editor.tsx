@@ -23,10 +23,22 @@ const DEFAULT_INSPECTOR_WIDTH = 340;
 const MIN_INSPECTOR_WIDTH = 290;
 const MAX_INSPECTOR_WIDTH = 720;
 
+const SIDEBAR_WIDTH_KEY = "oe-editor-sidebar-width";
+const DEFAULT_SIDEBAR_WIDTH = 260;
+const MIN_SIDEBAR_WIDTH = 260;
+const MAX_SIDEBAR_WIDTH = 500;
+
 function clampInspectorWidth(n: number): number {
   return Math.min(
     MAX_INSPECTOR_WIDTH,
     Math.max(MIN_INSPECTOR_WIDTH, Math.round(n)),
+  );
+}
+
+function clampSidebarWidth(n: number): number {
+  return Math.min(
+    MAX_SIDEBAR_WIDTH,
+    Math.max(MIN_SIDEBAR_WIDTH, Math.round(n)),
   );
 }
 
@@ -36,6 +48,11 @@ export function Editor({ initialProject }: { initialProject: Project }) {
   const inspectorWidthRef = useRef(DEFAULT_INSPECTOR_WIDTH);
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(DEFAULT_INSPECTOR_WIDTH);
+
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const sidebarWidthRef = useRef(DEFAULT_SIDEBAR_WIDTH);
+  const sidebarDragStartXRef = useRef(0);
+  const sidebarDragStartWidthRef = useRef(DEFAULT_SIDEBAR_WIDTH);
 
   // Timeline height state
   const [timelineH, setTimelineH] = useState(TIMELINE_DEFAULT);
@@ -59,6 +76,21 @@ export function Editor({ initialProject }: { initialProject: Project }) {
       const w = clampInspectorWidth(parsed);
       setInspectorWidth(w);
       inspectorWidthRef.current = w;
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Hydrate sidebar width from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+      if (raw == null) return;
+      const parsed = Number.parseInt(raw, 10);
+      if (!Number.isFinite(parsed)) return;
+      const w = clampSidebarWidth(parsed);
+      setSidebarWidth(w);
+      sidebarWidthRef.current = w;
     } catch {
       // ignore
     }
@@ -130,26 +162,64 @@ export function Editor({ initialProject }: { initialProject: Project }) {
     [],
   );
 
+  const onSidebarResizePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      sidebarDragStartXRef.current = e.clientX;
+      sidebarDragStartWidthRef.current = sidebarWidth;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [sidebarWidth],
+  );
+
+  const onSidebarResizePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+      const delta = e.clientX - sidebarDragStartXRef.current;
+      const next = clampSidebarWidth(sidebarDragStartWidthRef.current + delta);
+      sidebarWidthRef.current = next;
+      setSidebarWidth(next);
+    },
+    [],
+  );
+
+  const onSidebarResizePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      try {
+        localStorage.setItem(
+          SIDEBAR_WIDTH_KEY,
+          String(sidebarWidthRef.current),
+        );
+      } catch {
+        // ignore
+      }
+    },
+    [],
+  );
+
   // Grid layout:
   //   row 1 — topbar (full width)
-  //   row 2 — assets | preview | resizer | properties
-  //   row 3 — timelineResizer (cols 1-2) | resizer | properties
-  //   row 4 — timeline (cols 1-2) | resizer | properties
+  //   row 2 — assets | leftResizer | preview | resizer | properties
+  //   row 3 — timelineResizer (cols 1-3) | resizer | properties
+  //   row 4 — timeline (cols 1-3) | resizer | properties
   //
-  // The inspector vertical resizer (col 3) spans rows 2-4.
-  // The timeline horizontal resizer occupies cols 1-2 of row 3 only,
-  // so the two resizers never overlap.
+  // The inspector vertical resizer (col 4) spans rows 2-4.
+  // The sidebar vertical resizer (col 2) only occupies row 2.
+  // The timeline horizontal resizer occupies cols 1-3 of row 3 only,
+  // so the resizers never overlap.
   return (
     <div
       className="grid h-screen overflow-hidden"
       style={{
-        gridTemplateColumns: `260px minmax(0, 1fr) 6px ${inspectorWidth}px`,
+        gridTemplateColumns: `${sidebarWidth}px 6px minmax(0, 1fr) 6px ${inspectorWidth}px`,
         gridTemplateRows: `auto 1fr 4px ${timelineH}px`,
         gridTemplateAreas: `
-          "topbar           topbar           topbar     topbar"
-          "assets           preview          resizer    properties"
-          "timelineResizer  timelineResizer  resizer    properties"
-          "timeline         timeline         resizer    properties"
+          "topbar           topbar           topbar           topbar     topbar"
+          "assets           leftResizer      preview          resizer    properties"
+          "timelineResizer  timelineResizer  timelineResizer  resizer    properties"
+          "timeline         timeline         timeline         resizer    properties"
         `,
       }}
     >
@@ -158,6 +228,19 @@ export function Editor({ initialProject }: { initialProject: Project }) {
       </div>
       <div style={{ gridArea: "assets" }} className="overflow-hidden">
         <Sidebar />
+      </div>
+      <div
+        style={{ gridArea: "leftResizer" }}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar panel"
+        className="group relative z-10 cursor-col-resize border-l border-r border-border/60 bg-muted/50 hover:bg-accent/40 touch-none select-none"
+        onPointerDown={onSidebarResizePointerDown}
+        onPointerMove={onSidebarResizePointerMove}
+        onPointerUp={onSidebarResizePointerUp}
+        onPointerCancel={onSidebarResizePointerUp}
+      >
+        <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border group-hover:bg-primary/60" />
       </div>
       <div style={{ gridArea: "preview" }} className="overflow-hidden">
         <PreviewPane />
