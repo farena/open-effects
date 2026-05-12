@@ -3,6 +3,7 @@ import { AbsoluteFill, Sequence } from "remotion";
 import { TransitionSeries } from "@remotion/transitions";
 import type { Project } from "@open-effects/shared-types";
 import { SceneRenderer } from "./components/SceneRenderer";
+import { ProjectCssLoader } from "./components/ProjectCssLoader";
 import { sceneStartFrame } from "./lib/offset";
 import { mapTransitionToPreset } from "./components/transitions";
 
@@ -20,12 +21,7 @@ export const OpenEffectsComposition: React.FC<{ project: Project }> = ({
   if (!hasAnyTransition(project)) {
     return (
       <AbsoluteFill style={{ backgroundColor: "transparent" }}>
-        {projectCss && (
-          <style
-            data-open-effects-project-css
-            dangerouslySetInnerHTML={{ __html: projectCss }}
-          />
-        )}
+        {projectCss && <ProjectCssLoader css={projectCss} />}
         {project.scenes.map((scene, i) => (
           <Sequence
             key={scene.id}
@@ -41,12 +37,7 @@ export const OpenEffectsComposition: React.FC<{ project: Project }> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: "transparent" }}>
-      {projectCss && (
-        <style
-          data-open-effects-project-css
-          dangerouslySetInnerHTML={{ __html: projectCss }}
-        />
-      )}
+      {projectCss && <ProjectCssLoader css={projectCss} />}
       <TransitionSeries>
         {project.scenes.map((scene, i) => {
           const preset =
