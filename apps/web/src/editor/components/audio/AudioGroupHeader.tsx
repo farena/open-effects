@@ -24,8 +24,19 @@ export function AudioGroupHeader({
     e.preventDefault();
     const raw = e.dataTransfer.getData("application/x-asset");
     if (!raw) return;
-    const { id, path } = JSON.parse(raw) as { id: string; path: string };
-    onAssetDrop({ id, path });
+    try {
+      const payload = JSON.parse(raw) as {
+        id: string;
+        path: string;
+        type?: string;
+      };
+      // Backwards-compat: payload without `type` (old audio-only producers)
+      // is still treated as audio.
+      if (payload.type !== undefined && payload.type !== "audio") return;
+      onAssetDrop({ id: payload.id, path: payload.path });
+    } catch {
+      /* malformed payload — ignore */
+    }
   }
 
   if (side === "left") {

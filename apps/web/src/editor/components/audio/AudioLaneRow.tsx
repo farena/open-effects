@@ -165,11 +165,15 @@ export function AudioLaneRow({
               const raw = e.dataTransfer.getData("application/x-asset");
               if (!raw) return;
               try {
-                const { id, path } = JSON.parse(raw) as {
+                const payload = JSON.parse(raw) as {
                   id: string;
                   path: string;
+                  type?: string;
                 };
-                onAssetDrop({ id, path });
+                if (payload.type !== undefined && payload.type !== "audio") {
+                  return;
+                }
+                onAssetDrop({ id: payload.id, path: payload.path });
               } catch {
                 /* malformed payload — ignore */
               }

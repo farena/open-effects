@@ -1,11 +1,13 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { X } from "lucide-react";
 import type { PlayerRef } from "@remotion/player";
 import { useEditorStore } from "@/editor/store";
 import { selectTotalDuration } from "@/editor/selectors";
 import { playerControl } from "@/editor/playerControl";
 import { OpenEffectsComposition } from "@open-effects/runtime";
+import { AssetPreview } from "./AssetPreview";
 
 const Player = dynamic(() => import("@remotion/player").then((m) => m.Player), {
   ssr: false,
@@ -30,6 +32,8 @@ export function PreviewPane() {
   const loopStart = useEditorStore((s) => s.loopStart);
   const loopEnd = useEditorStore((s) => s.loopEnd);
   const volume = useEditorStore((s) => s.volume);
+  const previewedAsset = useEditorStore((s) => s.previewedAsset);
+  const setPreviewedAsset = useEditorStore((s) => s.setPreviewedAsset);
 
   // Player is loaded via next/dynamic (ssr:false), so its ref is only set
   // after the import resolves. A plain useRef holds the instance; a boolean
@@ -137,6 +141,23 @@ export function PreviewPane() {
   }, [volume, playerMounted]);
 
   if (!project.id) return null;
+
+  if (previewedAsset) {
+    return (
+      <div className="relative flex h-full w-full items-center justify-center bg-black/90 p-4">
+        <button
+          type="button"
+          aria-label="Close asset preview"
+          title="Close preview"
+          onClick={() => setPreviewedAsset(null)}
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white/90 ring-1 ring-white/20 transition hover:bg-black/80 hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <AssetPreview asset={previewedAsset} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-black/90 p-4">

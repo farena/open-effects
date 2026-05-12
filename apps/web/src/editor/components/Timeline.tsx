@@ -819,6 +819,12 @@ interface SceneBarProps {
   isSelected: boolean;
   pxPerFrame: number;
   onSelect: () => void;
+  onMediaDrop?: (asset: {
+    id: string;
+    path: string;
+    filename: string;
+    type: "image" | "video";
+  }) => void;
 }
 
 function SceneBar({
@@ -830,6 +836,7 @@ function SceneBar({
   isSelected,
   pxPerFrame,
   onSelect,
+  onMediaDrop,
 }: SceneBarProps) {
   const setSceneDuration = useEditorStore((s) => s.setSceneDuration);
   const adjustSceneBoundaryAt = useEditorStore((s) => s.adjustSceneBoundaryAt);
@@ -903,6 +910,52 @@ function SceneBar({
     }
   }, []);
 
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!onMediaDrop) return;
+      // Only accept our own asset drag payload.
+      if (!e.dataTransfer.types.includes("application/x-asset")) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!dragOver) setDragOver(true);
+    },
+    [onMediaDrop, dragOver],
+  );
+
+  const handleDragLeave = useCallback(() => {
+    if (dragOver) setDragOver(false);
+  }, [dragOver]);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!onMediaDrop) return;
+      e.preventDefault();
+      setDragOver(false);
+      const raw = e.dataTransfer.getData("application/x-asset");
+      if (!raw) return;
+      try {
+        const payload = JSON.parse(raw) as {
+          id: string;
+          path: string;
+          filename?: string;
+          type?: string;
+        };
+        if (payload.type !== "image" && payload.type !== "video") return;
+        onMediaDrop({
+          id: payload.id,
+          path: payload.path,
+          filename: payload.filename ?? payload.path.split("/").pop() ?? "",
+          type: payload.type,
+        });
+      } catch {
+        /* malformed payload — ignore */
+      }
+    },
+    [onMediaDrop],
+  );
+
   return (
     <div
       className="relative flex items-center border-b border-[#2d2d2d]"
@@ -925,9 +978,11 @@ function SceneBar({
         />
       ) : null}
       <div
+        data-testid="scene-bar"
         className={[
           "absolute top-1.5 flex h-[calc(100%-12px)] min-w-[8px] cursor-default items-stretch rounded-sm border border-black/50 shadow-sm",
           isSelected ? "ring-1 ring-violet-300/60" : "",
+          dragOver ? "ring-2 ring-amber-300/80" : "",
         ].join(" ")}
         style={{
           left: leftPx,
@@ -939,6 +994,9 @@ function SceneBar({
           e.stopPropagation();
           onSelect();
         }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         title={`${scene.name}: ${scene.durationFrames} frames`}
       >
         {sceneIndex > 0 ? (
@@ -1017,6 +1075,7 @@ export function Timeline() {
   const activeAudioTrackSceneId = useEditorStore(selectActiveAudioTrackSceneId);
   const audioAnimatedProps = useEditorStore(selectAudioAnimatedProperties);
   const addLayer = useEditorStore((s) => s.addLayer);
+  const addMediaLayer = useEditorStore((s) => s.addMediaLayer);
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
   const removeAudioTrack = useEditorStore((s) => s.removeAudioTrack);
@@ -1334,6 +1393,25 @@ export function Timeline() {
       });
     },
     [sorted, addAudioTrack],
+  );
+
+  const handleSceneMediaDrop = useCallback(
+    (
+      sceneId: string,
+      asset: {
+        id: string;
+        path: string;
+        filename: string;
+        type: "image" | "video";
+      },
+    ) => {
+      addMediaLayer(sceneId, {
+        kind: asset.type,
+        path: asset.path,
+        filename: asset.filename,
+      });
+    },
+    [addMediaLayer],
   );
 
   return (
@@ -1846,6 +1924,9 @@ export function Timeline() {
                         }
                         pxPerFrame={pxPerFrame}
                         onSelect={() => selectScene(scene.id)}
+                        onMediaDrop={(asset) =>
+                          handleSceneMediaDrop(scene.id, asset)
+                        }
                       />
                       {sceneKeyframesHere && activeScene && (
                         <KeyframeTimelineBlock

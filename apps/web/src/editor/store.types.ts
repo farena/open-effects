@@ -8,6 +8,14 @@ import type { AnimationPreset } from "./presets/types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+export interface PreviewedAsset {
+  id: string;
+  path: string;
+  filename: string;
+  mimeType: string;
+  type: string;
+}
+
 export interface EditorState {
   project: Project;
   selectedSceneId: string | null;
@@ -20,6 +28,7 @@ export interface EditorState {
   volume: number;
   saveStatus: SaveStatus;
   lastSavedAt: number | null;
+  previewedAsset: PreviewedAsset | null;
 }
 
 export interface EditorActions {
@@ -43,6 +52,10 @@ export interface EditorActions {
   updateProjectCss: (css: string) => void;
   adjustSceneBoundaryAt: (sceneId: string, deltaFrames: number) => void;
   addLayer: (sceneId: string) => void;
+  addMediaLayer: (
+    sceneId: string,
+    media: { kind: "image" | "video"; path: string; filename: string },
+  ) => void;
   deleteLayer: (layerId: string) => void;
   reorderLayers: (sceneId: string, orderedIds: string[]) => void;
   updateLayerHtml: (layerId: string, html: string) => void;
@@ -60,6 +73,7 @@ export interface EditorActions {
   ) => void;
   setSaveStatus: (s: SaveStatus) => void;
   markSaved: () => void;
+  setPreviewedAsset: (asset: PreviewedAsset | null) => void;
   addKeyframe: (
     layerId: string,
     property: string,

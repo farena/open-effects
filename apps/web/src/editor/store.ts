@@ -74,6 +74,7 @@ export const useEditorStore = create<StoreState>()(
       volume: 1,
       saveStatus: "idle",
       lastSavedAt: null,
+      previewedAsset: null,
 
       setProject: (p) =>
         set((s) => {
@@ -270,6 +271,29 @@ export const useEditorStore = create<StoreState>()(
           sc.layers.push(defaultLayer(sc.layers.length, sc.durationFrames));
         }),
 
+      addMediaLayer: (sceneId, media) =>
+        set((s) => {
+          const sc = s.project.scenes.find((x) => x.id === sceneId);
+          if (!sc) return;
+          const order = sc.layers.length;
+          const baseName = media.filename.replace(/\.[^./]+$/, "");
+          const tag =
+            media.kind === "video"
+              ? `<video class="media" src="${media.path}" autoplay muted loop playsinline></video>`
+              : `<img class="media" src="${media.path}" alt="${baseName}" />`;
+          sc.layers.push({
+            id: newId(),
+            order,
+            name: baseName || (media.kind === "video" ? "Video" : "Image"),
+            html: tag,
+            css: ".media { width: 100%; height: 100%; object-fit: contain; display: block; }",
+            startFrame: 0,
+            endFrame: sc.durationFrames,
+            visible: true,
+            keyframes: [],
+          });
+        }),
+
       deleteLayer: (layerId) =>
         set((s) => {
           for (const sc of s.project.scenes) {
@@ -357,6 +381,11 @@ export const useEditorStore = create<StoreState>()(
         set((s) => {
           s.saveStatus = "saved";
           s.lastSavedAt = Date.now();
+        }),
+
+      setPreviewedAsset: (asset) =>
+        set((s) => {
+          s.previewedAsset = asset;
         }),
 
       addKeyframe: (layerId, property, frame, value, easingOut) =>

@@ -1,10 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Music, ImageIcon, Video, Type, Upload } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Music,
+  ImageIcon,
+  Video,
+  Type,
+  Upload,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
 import { UploadButton } from "./UploadButton";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { LoadingSkeleton, ErrorBlock } from "@/components/ui/feedback";
 import { EmptyState } from "./EmptyState";
+import { useEditorStore } from "@/editor/store";
 
 interface Asset {
   id: string;
@@ -40,6 +51,14 @@ function AssetIcon({ type }: { type: string }) {
 export function AssetsPanel() {
   const [phase, setPhase] = useState<Phase>({ status: "loading" });
   const [filter, setFilter] = useState<FilterType>("all");
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(
+    null,
+  );
+  const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const previewedAsset = useEditorStore((s) => s.previewedAsset);
+  const setPreviewedAsset = useEditorStore((s) => s.setPreviewedAsset);
 
   const load = useCallback(() => {
     setPhase({ status: "loading" });
@@ -61,12 +80,98 @@ export function AssetsPanel() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (renaming) renameInputRef.current?.select();
+  }, [renaming]);
+
   function addAsset(asset: Asset) {
     setPhase((p) =>
       p.status === "ready"
         ? { status: "ready", assets: [asset, ...p.assets] }
         : { status: "ready", assets: [asset] },
     );
+  }
+
+  function applyAssetUpdate(updated: Asset) {
+    setPhase((p) =>
+      p.status === "ready"
+        ? {
+            status: "ready",
+            assets: p.assets.map((a) => (a.id === updated.id ? updated : a)),
+          }
+        : p,
+    );
+    if (previewedAsset && previewedAsset.id === updated.id) {
+      setPreviewedAsset({
+        id: updated.id,
+        path: updated.path,
+        filename: updated.filename,
+        mimeType: updated.mimeType,
+        type: updated.type,
+      });
+    }
+  }
+
+  function removeAssetLocal(id: string) {
+    setPhase((p) =>
+      p.status === "ready"
+        ? { status: "ready", assets: p.assets.filter((a) => a.id !== id) }
+        : p,
+    );
+    if (previewedAsset && previewedAsset.id === id) setPreviewedAsset(null);
+  }
+
+  async function commitRename(id: string, value: string) {
+    const trimmed = value.trim();
+    setRenaming(null);
+    if (!trimmed) return;
+    try {
+      const res = await fetch(`/api/assets/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: trimmed }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const updated: Asset = await res.json();
+      applyAssetUpdate(updated);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error("Rename failed", { description: message });
+    }
+  }
+
+  async function performDelete(asset: Asset) {
+    try {
+      const res = await fetch(`/api/assets/${asset.id}`, { method: "DELETE" });
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}));
+        const refs = typeof body?.refs === "number" ? body.refs : undefined;
+        toast.error("Cannot delete asset", {
+          description:
+            refs != null
+              ? `Asset is referenced by ${refs} audio track${refs === 1 ? "" : "s"}.`
+              : "Asset is in use.",
+        });
+        return;
+      }
+      if (!res.ok) throw new Error(await res.text());
+      removeAssetLocal(asset.id);
+      toast.success("Deleted");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error("Delete failed", { description: message });
+    }
+  }
+
+  function handleSelect(asset: Asset) {
+    if (renaming?.id === asset.id) return;
+    setPreviewedAsset({
+      id: asset.id,
+      path: asset.path,
+      filename: asset.filename,
+      mimeType: asset.mimeType,
+      type: asset.type,
+    });
   }
 
   const assets = phase.status === "ready" ? phase.assets : [];
@@ -115,39 +220,142 @@ export function AssetsPanel() {
           />
         ) : (
           phase.status === "ready" &&
-          visible.map((asset) => (
-            <div
-              key={asset.id}
-              draggable={asset.type === "audio"}
-              onDragStart={
-                asset.type === "audio"
-                  ? (e) => {
-                      e.dataTransfer.setData(
-                        "application/x-asset",
-                        JSON.stringify({ id: asset.id, path: asset.path }),
-                      );
+          visible.map((asset) => {
+            const draggable =
+              asset.type === "audio" ||
+              asset.type === "image" ||
+              asset.type === "video";
+            const isPreviewed = previewedAsset?.id === asset.id;
+            const isRenaming = renaming?.id === asset.id;
+            return (
+              <div
+                key={asset.id}
+                data-testid="asset-row"
+                draggable={draggable && !isRenaming}
+                onDragStart={
+                  draggable
+                    ? (e) => {
+                        e.dataTransfer.setData(
+                          "application/x-asset",
+                          JSON.stringify({
+                            id: asset.id,
+                            path: asset.path,
+                            type: asset.type,
+                            filename: asset.filename,
+                            mimeType: asset.mimeType,
+                          }),
+                        );
+                        e.dataTransfer.effectAllowed = "copy";
+                      }
+                    : undefined
+                }
+                onClick={() => handleSelect(asset)}
+                onKeyDown={(e) => {
+                  if (isRenaming) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleSelect(asset);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className={[
+                  "group flex items-center gap-2 rounded px-2 py-1.5 text-sm",
+                  draggable && !isRenaming
+                    ? "cursor-grab active:cursor-grabbing"
+                    : "cursor-pointer",
+                  isPreviewed ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+                ]
+                  .join(" ")
+                  .trim()}
+              >
+                <AssetIcon type={asset.type} />
+                {isRenaming ? (
+                  <input
+                    ref={renameInputRef}
+                    value={renaming!.value}
+                    onChange={(e) =>
+                      setRenaming({ id: asset.id, value: e.target.value })
                     }
-                  : undefined
-              }
-              className={[
-                "flex items-center gap-2 rounded px-2 py-1.5 text-sm",
-                asset.type === "audio"
-                  ? "cursor-grab active:cursor-grabbing"
-                  : "",
-                "hover:bg-muted",
-              ]
-                .join(" ")
-                .trim()}
-            >
-              <AssetIcon type={asset.type} />
-              <span className="flex-1 truncate min-w-0">{asset.filename}</span>
-              <span className="text-xs text-muted-foreground shrink-0">
-                {formatSize(asset.size)}
-              </span>
-            </div>
-          ))
+                    onBlur={() => commitRename(asset.id, renaming!.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        commitRename(asset.id, renaming!.value);
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        setRenaming(null);
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-1 min-w-0 rounded border border-input bg-background px-1 py-0.5 text-xs text-foreground"
+                  />
+                ) : (
+                  <span
+                    className="flex-1 truncate min-w-0"
+                    title={asset.filename}
+                  >
+                    {asset.filename}
+                  </span>
+                )}
+                {!isRenaming && (
+                  <>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {formatSize(asset.size)}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Rename asset"
+                      title="Rename"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenaming({ id: asset.id, value: asset.filename });
+                      }}
+                      className="invisible shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground group-hover:visible"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Delete asset"
+                      title="Delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPendingDelete(asset);
+                      }}
+                      className="invisible shrink-0 rounded p-0.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive group-hover:visible"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingDelete(null);
+        }}
+        title={
+          pendingDelete
+            ? `Delete “${pendingDelete.filename}”?`
+            : "Delete asset?"
+        }
+        description="The asset file will be removed. Tracks using this asset cannot be removed and will block deletion."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete) {
+            const asset = pendingDelete;
+            setPendingDelete(null);
+            void performDelete(asset);
+          }
+        }}
+      />
     </div>
   );
 }

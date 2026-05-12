@@ -31,6 +31,7 @@ const makeState = (partial: Partial<EditorState> = {}): EditorState => ({
   volume: 1,
   saveStatus: "idle",
   lastSavedAt: null,
+  previewedAsset: null,
   ...partial,
 });
 
