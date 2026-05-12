@@ -231,6 +231,12 @@ export const useEditorStore = create<StoreState>()(
           }),
         ),
 
+      updateProjectName: (name) =>
+        set((s) => {
+          const t = name.trim();
+          if (t.length > 0) s.project.name = t;
+        }),
+
       updateProjectCss: (css) =>
         set((s) => {
           s.project.css = css;

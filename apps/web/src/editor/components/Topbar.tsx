@@ -2,9 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Undo2, Redo2, Film, ArrowLeft, Sparkles } from "lucide-react";
+import { Undo2, Redo2, Film, ArrowLeft, Sparkles, Pencil } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -122,12 +131,75 @@ function SaveIndicator({
   );
 }
 
+function RenameProjectDialog({
+  open,
+  onOpenChange,
+  currentName,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentName: string;
+  onSave: (name: string) => void;
+}) {
+  const [value, setValue] = useState(currentName);
+
+  useEffect(() => {
+    if (open) setValue(currentName);
+  }, [open, currentName]);
+
+  const trimmed = value.trim();
+  const canSave = trimmed.length > 0 && trimmed !== currentName;
+
+  const handleSave = () => {
+    if (!canSave) return;
+    onSave(trimmed);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Rename project</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="project-name">Name</Label>
+          <Input
+            id="project-name"
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSave();
+              }
+            }}
+            placeholder="Project name"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={!canSave}>
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Topbar() {
   const project = useEditorStore((s) => s.project);
   const saveStatus = useEditorStore((s) => s.saveStatus);
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
   const setSaveStatus = useEditorStore((s) => s.setSaveStatus);
+  const updateProjectName = useEditorStore((s) => s.updateProjectName);
   const [chatOpen, setChatOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
 
   return (
     <div className="flex h-12 items-center justify-between border-b bg-background px-4">
@@ -152,9 +224,29 @@ export function Topbar() {
             </Tooltip>
           </TooltipProvider>
         )}
-        <span className="text-sm font-medium">
-          {project.name || "Untitled"}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-sm font-medium">
+            {project.name || "Untitled"}
+          </span>
+          {project.id && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground"
+                    onClick={() => setRenameOpen(true)}
+                    aria-label="Rename project"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Rename project</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
         <UndoRedoButtons />
       </div>
 
@@ -204,6 +296,15 @@ export function Topbar() {
           projectName={project.name || "Untitled"}
           open={chatOpen}
           onClose={() => setChatOpen(false)}
+        />
+      )}
+
+      {project.id && (
+        <RenameProjectDialog
+          open={renameOpen}
+          onOpenChange={setRenameOpen}
+          currentName={project.name || ""}
+          onSave={updateProjectName}
         />
       )}
     </div>
