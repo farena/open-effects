@@ -123,21 +123,29 @@ Detalle de cómo procesar y derivar tokens → `references/brand-tokens.md`.
 
 ---
 
-## Estructura narrativa canónica (30 segundos) — del video analizado
+## Estructura narrativa — tres plantillas según el producto
 
-Esta es la GRAMÁTICA narrativa del video analizado. Aplícala siempre:
+El skill soporta **tres plantillas de guion** calibradas sobre un corpus de 3 spots reales (mismo cliente, distintos productos). Elige UNA según el tipo de producto:
 
-| Acto | Duración | Función | Tono visual |
-|------|----------|---------|-------------|
-| **1. Hook / Problema** | 0:00 – 0:04 | Frase que pone el dedo en la llaga + caos visual | Fondo claro de marca, elementos desordenados invadiendo |
-| **2. Transición de marca** | 0:04 – 0:07 | Lockup del logo. Respira. Sin texto narrativo. | Logo central, fondo limpio |
-| **3. Solución + Features** | 0:07 – 0:22 | "Deja que [producto] haga X, Y, Z" — 3 a 5 features | Alterna fondo claro y saturado de marca |
-| **4. Stats / Beneficios concretos** | 0:22 – 0:26 | Datos puntuales, cifras, garantías | Píldoras con icono circular, fondo claro |
-| **5. CTA + Logo final** | 0:26 – 0:30 | Frase aspiracional + lockup final del logo | Fondo saturado de marca, logo en blanco |
+| Plantilla | Duración | Cuándo usarla | Hook característico |
+|-----------|----------|---------------|---------------------|
+| **A — Aspiracional / Tutorial** | 40–43 s | Productos creadores/transformadores (builders, IA generativa, no-code) | "¿Tienes [aspiración]? Ahora puedes hacerla realidad con [marca]." |
+| **B — Dolor / Pain-led** | 28–32 s | Productos que reemplazan algo doloroso (productividad, gestión, reemplazo de manual) | "Si tu [objeto] se te hace [adjetivo de fricción], pásate a [marca]." |
+| **C — Promesa directa / Spec-led** | 36–42 s | Infraestructura, dev tools, hardware-near, productos técnicos con specs y prueba social | "Obtén [valor cuantificable] con [producto] de [marca]." |
 
-**Ritmo objetivo**: cada escena dura entre 1.5s y 3s.
+**Defaults orientativos por plantilla** (detalle completo en `references/script-formula.md`):
 
-Detalle completo de la fórmula del guion → `references/script-formula.md`.
+| Plantilla | Bloques | Pausa silente acto 2 | Densidad voz |
+|-----------|---------|----------------------|--------------|
+| A | Hook → 3 pasos del flujo → feature extra → barrera-eliminada + síntesis → CTA + tagline | No | ~2.6 wps |
+| B | Hook de dolor → (opcional silencio) → regla de 3 con "Deja que…" → stats con cifras → cierre emocional o CTA | Opcional (omitir si ≤30 s) | ~2.2 wps |
+| C | Hook promesa → 4–6 features paralelas "Con X, Y" → prueba social → CTA URL completo | No | ~2.6 wps |
+
+**Ritmo visual**: cada escena dura entre 1.5 s y 3 s en cualquier plantilla. El ritmo de voiceover varía por plantilla (tabla anterior).
+
+**Importante**: la "transición de marca silente" en el segundo 4–7 que aparecía en versiones anteriores de este skill **NO es obligatoria**; ninguno de los 3 spots de referencia la usa. Es un recurso opcional, válido solo en B cuando hay margen (>30 s).
+
+Detalle completo de las plantillas, plantillas rellenables y recursos lingüísticos transversales → `references/script-formula.md`.
 
 ---
 
@@ -253,7 +261,10 @@ No intentes implementar las 14 escenas en una sola pasada — empieza por las es
 - ❌ **No uses fondo blanco puro** (`#FFFFFF`). Siempre el tinte derivado del primario de la marca en `scene.background`.
 - ❌ **No uses gradientes multicolor estilo Stripe/Linear** en los fondos principales. Bicolor + un acento.
 - ❌ **No uses serif ni display fonts decorativas** salvo que la marca lo exija fuertemente.
-- ❌ **No hagas voiceover de más de ~75 palabras** para 30 s. El video analizado tiene ~70.
+- ❌ **No excedas la densidad de palabras de tu plantilla**. B: ≤75 palabras / 30 s (2.0–2.3 wps). A y C: ≤115 palabras / 40–43 s (2.5–2.7 wps). Pasarse satura al espectador y rompe el ritmo visual.
+- ❌ **No mezcles plantillas**. Elige A, B o C en el briefing y mantenla todo el guion. Hook de dolor + cuerpo aspiracional + prueba social técnica suena schizofrénico.
+- ❌ **No incluyas prueba social falsa o inflada** ("recomendado por expertos" sin fuente, "millones de usuarios" sin cifra). Si no tienes prueba social real, usa la plantilla B en lugar de C.
+- ❌ **No metas la "transición silente" del acto 2 por defecto**. Es opcional, solo válida en B cuando hay margen (>30 s). Ninguno de los 3 spots del corpus de referencia la usa.
 - ❌ **No describas el video en prosa larga.** Entrega los bloques estructurados.
 - ❌ **No saltes el briefing.** Si faltan los 8 datos, pregúntalos antes de escribir.
 - ❌ **No produzcas video sin el skill `open-effects-video` cargado** si vas a generar ProjectJson. Lee `references/open-effects-integration.md` primero.
