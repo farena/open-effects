@@ -299,37 +299,39 @@ export function VideoScriptPanel() {
             {lines.map((line) => (
               <li
                 key={line.id}
-                className="group flex items-start gap-2 rounded-md border border-border/40 bg-background p-2 hover:border-border"
+                className="group flex flex-col gap-2 rounded-md border border-border/40 bg-background p-2 hover:border-border"
               >
-                <input
-                  type="text"
-                  value={line.timestamp}
-                  onChange={(e) =>
-                    updateLine(line.id, { timestamp: e.target.value })
-                  }
-                  placeholder="00:00"
-                  className="w-16 shrink-0 rounded border border-border bg-background px-1.5 py-1 text-xs font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-ring"
-                  aria-label="Line timestamp"
-                />
+                <div className="flex items-center justify-between gap-2">
+                  <input
+                    type="text"
+                    value={line.timestamp}
+                    onChange={(e) =>
+                      updateLine(line.id, { timestamp: e.target.value })
+                    }
+                    placeholder="00:00"
+                    className="w-16 shrink-0 rounded border border-border bg-background px-1.5 py-1 text-xs font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-ring"
+                    aria-label="Line timestamp"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => deleteLine(line.id)}
+                    className="invisible group-hover:visible shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                    aria-label="Delete line"
+                    title="Delete line"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
                 <textarea
                   value={line.text}
                   onChange={(e) =>
                     updateLine(line.id, { text: e.target.value })
                   }
                   placeholder="Voice-over text…"
-                  rows={2}
-                  className="flex-1 min-w-0 rounded border border-border bg-background px-2 py-1 text-xs leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+                  rows={4}
+                  className="w-full min-w-0 rounded border border-border bg-background px-2 py-1 text-xs leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-ring"
                   aria-label="Line text"
                 />
-                <button
-                  type="button"
-                  onClick={() => deleteLine(line.id)}
-                  className="invisible group-hover:visible shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                  aria-label="Delete line"
-                  title="Delete line"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
               </li>
             ))}
           </ul>
