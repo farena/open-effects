@@ -110,6 +110,23 @@ model SavedComponent {
   @@index([category])
 }
 
+model AnimationPreset {
+  id                 String   @id @default(cuid())
+  key                String   @unique
+  name               String
+  category           String   // "in" | "out" | "effect"
+  iconKey            String
+  defaultDuration    Int
+  defaultEasing      Json
+  params             Json
+  animatedProperties Json
+  tracks             Json
+  isBuiltIn          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  @@index([category])
+}
+
 model BusinessContext {
   id                Int      @id @default(1)
   companyName       String   @default("") @db.Text

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Eye,
   EyeOff,
@@ -22,16 +22,20 @@ import {
   Minimize2,
   Star,
   ChevronLeft,
+  Plus,
+  Pencil,
   type LucideIcon,
 } from "lucide-react";
-import type { Layer } from "@open-effects/shared-types";
+import type { Layer, StoredPreset } from "@open-effects/shared-types";
 import type { Easing } from "@open-effects/shared-types";
-import { ANIMATION_PRESETS } from "@/editor/presets/animation-presets";
 import type { AnimationPreset, PresetCategory } from "@/editor/presets/types";
 import { detectPresetConflicts } from "@/editor/presets/detect-conflicts";
 import { resolveAnchor } from "@/editor/presets/build-keyframes";
+import { animationPresetFromDefinition } from "@/editor/presets/from-definition";
+import { usePresets } from "@/editor/presets/use-presets";
 import { EasingEditor } from "./EasingEditor";
 import { PresetPreviewModal } from "./PresetPreviewModal";
+import { PresetEditorModal } from "./PresetEditorModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
@@ -50,6 +54,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useEditorStore } from "@/editor/store";
+import { LoadingSkeleton, ErrorBlock } from "@/components/ui/feedback";
 
 // ---------------------------------------------------------------------------
 // Icon mapping
@@ -92,7 +97,7 @@ const CATEGORIES: { value: PresetCategory; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Configuration view (Task 9)
+// Configuration view
 // ---------------------------------------------------------------------------
 
 interface ConfigViewProps {
@@ -106,11 +111,9 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
     (s) => s.applyAnimationPresetToLayer,
   );
 
-  // --- Local state ---
   const [duration, setDuration] = useState<number>(preset.defaultDuration);
   const [easing, setEasing] = useState<Easing>(preset.defaultEasing);
 
-  // Initialize values from param defaults
   const [values, setValues] = useState<Record<string, number | string>>(() => {
     const init: Record<string, number | string> = {};
     for (const param of preset.params) {
@@ -122,7 +125,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
   const midpoint = Math.floor((layer.startFrame + layer.endFrame) / 2);
   const [anchorFrame, setAnchorFrame] = useState<number>(midpoint);
 
-  // --- Dialog state ---
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -130,7 +132,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
   const durationClamped = duration > layerLength;
   const springShortWarning = easing.type === "spring" && duration < 15;
 
-  // Compute resolved anchor for conflict detection
   const ctxAnchor = preset.category === "effect" ? anchorFrame : -1;
   const clampedDur = Math.min(duration, layerLength);
   const resolvedAnchor = resolveAnchor(
@@ -146,7 +147,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
     values,
   });
 
-  // --- Apply handler ---
   function handleApply() {
     if (conflicts.length > 0) {
       setConflictDialogOpen(true);
@@ -192,7 +192,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Header with back button */}
       <div className="flex shrink-0 items-center gap-1 border-b px-2 py-1">
         <Button
           size="icon"
@@ -207,7 +206,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
-        {/* Duration */}
         <div className="flex flex-col gap-1">
           <Label className="text-xs text-muted-foreground">
             Duration (frames)
@@ -233,7 +231,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
           )}
         </div>
 
-        {/* Easing */}
         <div className="flex flex-col gap-1">
           <Label className="text-xs text-muted-foreground">Easing</Label>
           <Popover>
@@ -252,7 +249,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
           </Popover>
         </div>
 
-        {/* Params */}
         {preset.params.length > 0 && (
           <div className="flex flex-col gap-2">
             <Label className="text-xs text-muted-foreground">Parameters</Label>
@@ -295,7 +291,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
           </div>
         )}
 
-        {/* Anchor frame (effect only) */}
         {preset.category === "effect" && (
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-muted-foreground">
@@ -317,7 +312,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
           </div>
         )}
 
-        {/* Preview + Apply buttons */}
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -333,7 +327,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
         </div>
       </div>
 
-      {/* Preview modal */}
       <PresetPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
@@ -345,7 +338,6 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
         anchorFrame={anchorFrame}
       />
 
-      {/* Collision dialog */}
       <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -386,33 +378,49 @@ function ConfigView({ layer, preset, onBack }: ConfigViewProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Catalog view (Task 8)
+// Catalog view
 // ---------------------------------------------------------------------------
 
 interface CatalogViewProps {
   category: PresetCategory;
   onCategoryChange: (c: PresetCategory) => void;
-  onSelect: (preset: AnimationPreset) => void;
+  onSelect: (stored: StoredPreset) => void;
+  onEdit: (stored: StoredPreset) => void;
+  onCreate: () => void;
+  stored: StoredPreset[];
+  isLoading: boolean;
+  error: string | null;
 }
 
 function CatalogView({
   category,
   onCategoryChange,
   onSelect,
+  onEdit,
+  onCreate,
+  stored,
+  isLoading,
+  error,
 }: CatalogViewProps) {
-  const filtered = ANIMATION_PRESETS.filter((p) => p.category === category);
+  const filtered = stored.filter((p) => p.category === category);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Header */}
       <div className="flex shrink-0 items-center justify-between gap-2 border-b px-2 py-1">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">
           Presets
         </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-xs"
+          onClick={onCreate}
+        >
+          <Plus className="mr-1 h-3 w-3" /> New
+        </Button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-        {/* Category chip selector */}
         <div className="flex gap-1">
           {CATEGORIES.map(({ value, label }) => (
             <button
@@ -430,24 +438,51 @@ function CatalogView({
           ))}
         </div>
 
-        {/* 2-column card grid */}
-        <div className="grid grid-cols-2 gap-2">
-          {filtered.map((preset) => {
-            const Icon = resolveIcon(preset.iconKey);
-            return (
-              <button
-                key={preset.key}
-                onClick={() => onSelect(preset)}
-                className="flex flex-col items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-3 text-center transition-colors hover:bg-accent hover:text-accent-foreground"
-              >
-                <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <span className="text-xs font-medium leading-tight">
-                  {preset.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {isLoading && <LoadingSkeleton />}
+        {error && <ErrorBlock message={error} />}
+
+        {!isLoading && !error && (
+          <div className="grid grid-cols-2 gap-2">
+            {filtered.map((preset) => {
+              const Icon = resolveIcon(preset.iconKey);
+              return (
+                <div key={preset.id} className="group relative">
+                  <button
+                    onClick={() => onSelect(preset)}
+                    className="flex w-full flex-col items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-3 text-center transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <span className="text-xs font-medium leading-tight">
+                      {preset.name}
+                    </span>
+                    {!preset.isBuiltIn && (
+                      <span className="text-[9px] uppercase text-muted-foreground">
+                        custom
+                      </span>
+                    )}
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Edit ${preset.name}`}
+                    className="absolute right-1 top-1 h-5 w-5 opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(preset);
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <p className="col-span-2 text-center text-xs text-muted-foreground">
+                No presets in this category.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -459,24 +494,55 @@ function CatalogView({
 
 export function PresetsTab({ layer }: { layer: Layer }) {
   const [category, setCategory] = useState<PresetCategory>("in");
-  const [selectedPreset, setSelectedPreset] =
-    useState<AnimationPreset | null>(null);
+  const [selectedStored, setSelectedStored] = useState<StoredPreset | null>(
+    null,
+  );
+  const [editingPreset, setEditingPreset] = useState<StoredPreset | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
 
-  if (selectedPreset) {
+  const { presets, isLoading, error, refresh } = usePresets();
+
+  const runtimePreset = useMemo<AnimationPreset | null>(() => {
+    if (!selectedStored) return null;
+    return animationPresetFromDefinition(selectedStored);
+  }, [selectedStored]);
+
+  if (runtimePreset && selectedStored) {
     return (
       <ConfigView
         layer={layer}
-        preset={selectedPreset}
-        onBack={() => setSelectedPreset(null)}
+        preset={runtimePreset}
+        onBack={() => setSelectedStored(null)}
       />
     );
   }
 
   return (
-    <CatalogView
-      category={category}
-      onCategoryChange={setCategory}
-      onSelect={setSelectedPreset}
-    />
+    <>
+      <CatalogView
+        category={category}
+        onCategoryChange={setCategory}
+        onSelect={setSelectedStored}
+        onEdit={(p) => {
+          setEditingPreset(p);
+          setEditorOpen(true);
+        }}
+        onCreate={() => {
+          setEditingPreset(null);
+          setEditorOpen(true);
+        }}
+        stored={presets}
+        isLoading={isLoading}
+        error={error}
+      />
+      <PresetEditorModal
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        preset={editingPreset}
+        onSaved={() => {
+          refresh();
+        }}
+      />
+    </>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, type ComponentType } from "react";
+import type { PlayerRef } from "@remotion/player";
 import type {
   Easing,
   Keyframe,
@@ -51,6 +52,7 @@ export function PresetPreviewModal({
   anchorFrame,
 }: PresetPreviewModalProps) {
   const project = useEditorStore((s) => s.project);
+  const playerRef = useRef<PlayerRef>(null);
 
   const preview = useMemo(() => {
     if (!open) return null;
@@ -89,6 +91,25 @@ export function PresetPreviewModal({
     };
   }, [open, project, layer, preset, duration, easing, values, anchorFrame]);
 
+  // Start playback only after the dialog finishes its open animation. Calling
+  // play() inside the same tick as mount (or via `autoPlay`) leaves the Player
+  // in a "playing" state whose frame loop never starts, because the dialog is
+  // still animating in. Two RAFs are enough to land after the transition.
+  useEffect(() => {
+    if (!open || !preview) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        playerRef.current?.seekTo(0);
+        playerRef.current?.play();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, [open, preview]);
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl">
@@ -112,6 +133,7 @@ export function PresetPreviewModal({
         <div className="aspect-video w-full overflow-hidden rounded bg-black/90">
           {preview ? (
             <Player
+              ref={playerRef}
               component={RemotionComp}
               inputProps={{ project: preview.project }}
               durationInFrames={preview.durationInFrames}
@@ -119,7 +141,6 @@ export function PresetPreviewModal({
               compositionHeight={preview.project.height}
               fps={preview.project.fps}
               loop
-              autoPlay
               controls
               style={{ width: "100%", height: "100%" }}
             />
