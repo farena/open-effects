@@ -82,7 +82,7 @@ export function AssetsPanel() {
 
   useEffect(() => {
     if (renaming) renameInputRef.current?.select();
-  }, [renaming]);
+  }, [renaming?.id]);
 
   function addAsset(asset: Asset) {
     setPhase((p) =>
