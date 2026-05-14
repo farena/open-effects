@@ -214,12 +214,17 @@ export function AudioStrip({
         const nextStart = Math.max(0, d.initialStartFrame + dFrames);
         moveAudioTrack(track.id, nextStart);
       } else if (d.mode === "trimLeft") {
-        const newTrimStart = clamp(
-          d.initialTrimStart + dFrames,
-          0,
-          d.initialTrimEnd - 1,
-        );
-        trimAudioTrack(track.id, newTrimStart, track.trimEnd);
+        // Anchor the right edge: move startFrame by the same delta as trimStart
+        // so the strip's right edge stays put while the left edge follows the
+        // cursor (DAW convention). Clamp so neither trimStart nor startFrame
+        // can go below 0, and so trimStart stays below trimEnd.
+        const minDelta = Math.max(-d.initialTrimStart, -d.initialStartFrame);
+        const maxDelta = d.initialTrimEnd - 1 - d.initialTrimStart;
+        const trimDelta = clamp(dFrames, minDelta, maxDelta);
+        const newTrimStart = d.initialTrimStart + trimDelta;
+        const newStartFrame = d.initialStartFrame + trimDelta;
+        trimAudioTrack(track.id, newTrimStart, d.initialTrimEnd);
+        moveAudioTrack(track.id, newStartFrame);
       } else if (d.mode === "trimRight") {
         const maxTrimEnd = probedDurationFrames ?? Number.MAX_SAFE_INTEGER;
         const newTrimEnd = clamp(

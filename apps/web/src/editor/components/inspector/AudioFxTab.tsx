@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEditorStore } from "@/editor/store";
 import {
   selectActiveAudioTrack,
@@ -12,6 +12,7 @@ import type { Easing, VolumeKeyframe } from "@open-effects/shared-types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { DraggableNumberInput } from "@/components/ui/draggable-number-input";
 import {
   Popover,
   PopoverTrigger,
@@ -177,11 +178,23 @@ export function AudioFxTab() {
   const fps = useEditorStore((s) => s.project.fps);
   const volumeKeyframes = useEditorStore(selectVolumeKeyframes);
   const addVolumeKeyframe = useEditorStore((s) => s.addVolumeKeyframe);
+  const trimAudioTrack = useEditorStore((s) => s.trimAudioTrack);
   const animatedProps = useEditorStore(selectAudioAnimatedProperties);
   const localFrame = useEditorStore(selectLocalFrameInActiveAudioTrack);
 
   const [selectedProperty, setSelectedProperty] =
     useState<AudioPropertyKey | null>(null);
+
+  const [trimStartDraft, setTrimStartDraft] = useState<string>("");
+  const [trimEndDraft, setTrimEndDraft] = useState<string>("");
+
+  // Re-sync drafts when the track or its trim values change from outside
+  // (e.g. drag handles on the timeline strip, undo/redo, track switch).
+  useEffect(() => {
+    if (!track) return;
+    setTrimStartDraft(String(track.trimStart));
+    setTrimEndDraft(String(track.trimEnd));
+  }, [track?.id, track?.trimStart, track?.trimEnd]);
 
   if (!track) return null;
 
@@ -195,6 +208,30 @@ export function AudioFxTab() {
       addVolumeKeyframe(track.id, localFrame, 1, LINEAR_EASING);
     }
     // future: pan, pitch handlers go here
+  }
+
+  function commitTrimStart(raw: string) {
+    if (!track) return;
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) {
+      setTrimStartDraft(String(track.trimStart));
+      return;
+    }
+    const next = Math.max(0, Math.min(parsed, track.trimEnd - 1));
+    trimAudioTrack(track.id, next, track.trimEnd);
+    setTrimStartDraft(String(next));
+  }
+
+  function commitTrimEnd(raw: string) {
+    if (!track) return;
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) {
+      setTrimEndDraft(String(track.trimEnd));
+      return;
+    }
+    const next = Math.max(track.trimStart + 1, parsed);
+    trimAudioTrack(track.id, track.trimStart, next);
+    setTrimEndDraft(String(next));
   }
 
   const trimStartSeconds = track.trimStart / fps;
@@ -213,31 +250,56 @@ export function AudioFxTab() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {/* Original-asset clip range — read-only DESDE/HASTA */}
+        {/* Original-asset clip range — editable DESDE/HASTA (frames) */}
         <section
           className="grid grid-cols-2 gap-2 rounded-md border border-border bg-muted/30 p-3"
           aria-label="Audio clip range in original asset"
         >
-          <div className="flex flex-col gap-0.5">
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Desde
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="audio-trim-start"
+              className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            >
+              Desde (frames)
             </Label>
-            <span className="font-mono text-xs tabular-nums">
+            <DraggableNumberInput
+              id="audio-trim-start"
+              min={0}
+              max={track.trimEnd - 1}
+              step={1}
+              value={trimStartDraft}
+              onChange={(e) => setTrimStartDraft(e.target.value)}
+              onBlur={(e) => commitTrimStart(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitTrimStart(trimStartDraft);
+              }}
+              className="h-7 text-xs"
+            />
+            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
               {formatSeconds(trimStartSeconds)}
             </span>
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              {track.trimStart} f
-            </span>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Hasta
+          <div className="flex flex-col gap-1">
+            <Label
+              htmlFor="audio-trim-end"
+              className="text-[10px] uppercase tracking-wide text-muted-foreground"
+            >
+              Hasta (frames)
             </Label>
-            <span className="font-mono text-xs tabular-nums">
+            <DraggableNumberInput
+              id="audio-trim-end"
+              min={track.trimStart + 1}
+              step={1}
+              value={trimEndDraft}
+              onChange={(e) => setTrimEndDraft(e.target.value)}
+              onBlur={(e) => commitTrimEnd(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitTrimEnd(trimEndDraft);
+              }}
+              className="h-7 text-xs"
+            />
+            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
               {formatSeconds(trimEndSeconds)}
-            </span>
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              {track.trimEnd} f
             </span>
           </div>
         </section>
