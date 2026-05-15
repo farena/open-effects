@@ -41,6 +41,7 @@ export function PreviewPane() {
   // ever passing the (possibly unstable) ref into setState directly.
   const playerRef = useRef<PlayerRef | null>(null);
   const [playerMounted, setPlayerMounted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const setPlayerRef = useCallback((instance: PlayerRef | null) => {
     playerRef.current = instance;
     playerControl.bind(instance);
@@ -49,6 +50,22 @@ export function PreviewPane() {
       return prev === next ? prev : next;
     });
   }, []);
+
+  // Show Remotion's built-in controls only while the player is fullscreen —
+  // outside of fullscreen the editor's own Timeline provides play/seek/volume,
+  // and we don't want a redundant control bar overlaying the preview.
+  useEffect(() => {
+    if (!playerMounted) return;
+    const player = playerRef.current;
+    if (!player) return;
+    const onFullscreenChange = (e: { detail: { isFullscreen: boolean } }) => {
+      setIsFullscreen(e.detail.isFullscreen);
+    };
+    player.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      player.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, [playerMounted]);
 
   const hasContent = project.scenes.length > 0 && totalFrames > 0;
 
@@ -172,6 +189,11 @@ export function PreviewPane() {
             compositionHeight={project.height}
             fps={project.fps}
             style={{ width: "100%", height: "100%" }}
+            controls={isFullscreen}
+            clickToPlay={isFullscreen}
+            doubleClickToFullscreen
+            spaceKeyToPlayOrPause={isFullscreen}
+            allowFullscreen
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-muted-foreground/30 text-sm text-muted-foreground">
