@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Undo2, Redo2, Film, ArrowLeft, Sparkles, Pencil } from "lucide-react";
+import { Undo2, Redo2, Film, ArrowLeft, Sparkles, Pencil, Save } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
+import { saveProjectNow } from "@/editor/useAutosave";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -278,6 +279,19 @@ export function Topbar() {
               <Film className="h-4 w-4" />
               Renders
             </Link>
+          </Button>
+        )}
+        {project.id && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void saveProjectNow()}
+            disabled={saveStatus === "saving"}
+            className="flex items-center gap-1.5"
+            aria-label="Save project"
+          >
+            <Save className="h-4 w-4" />
+            {saveStatus === "saving" ? "Saving…" : "Save"}
           </Button>
         )}
         <RenderModal
