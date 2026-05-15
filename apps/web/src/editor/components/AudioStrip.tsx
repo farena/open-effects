@@ -293,7 +293,7 @@ export function AudioStrip({
         left: leftPx,
         width: widthPx,
         backgroundColor: "#3aa89b",
-        opacity: 0.92,
+        opacity: track.muted ? 0.55 : 0.92,
       }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

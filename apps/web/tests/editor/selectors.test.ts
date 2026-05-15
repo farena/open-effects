@@ -77,6 +77,7 @@ const makeAudioTrack = (
   startFrame: 0,
   trimStart: 0,
   trimEnd: 100,
+  muted: false,
   eq: null,
   volumeKeyframes,
 });

@@ -162,6 +162,7 @@ export interface EditorActions {
     easingOut: Easing,
   ) => void;
   setAudioTrackEq: (trackId: string, eq: Eq | null) => void;
+  toggleAudioTrackMute: (trackId: string) => void;
   setSceneTransition: (
     sceneId: string,
     transitionIn: Transition | null,

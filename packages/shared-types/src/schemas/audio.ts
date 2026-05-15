@@ -29,6 +29,7 @@ export const AudioTrackSchema = z
     startFrame: z.number().int().min(0),
     trimStart: z.number().int().min(0),
     trimEnd: z.number().int().min(0),
+    muted: z.boolean().default(false),
     eq: EqSchema.nullable().optional(),
     volumeKeyframes: z.array(VolumeKeyframeSchema).default([]),
   })

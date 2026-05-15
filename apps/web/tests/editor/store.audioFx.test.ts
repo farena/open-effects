@@ -29,6 +29,7 @@ const makeProject = (): Project => ({
           startFrame: 0,
           trimStart: 0,
           trimEnd: 90,
+          muted: false,
           eq: null,
           volumeKeyframes: [],
         },

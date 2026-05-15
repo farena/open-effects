@@ -32,6 +32,7 @@ function makeProject(numTracks = 0): Project {
     startFrame: i * 10,
     trimStart: 0,
     trimEnd: 60,
+    muted: false,
     eq: null as null,
     volumeKeyframes: [] as [],
   }));

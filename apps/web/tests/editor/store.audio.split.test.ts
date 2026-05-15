@@ -28,6 +28,7 @@ function makeProject(): Project {
             startFrame: 10,
             trimStart: 0,
             trimEnd: 60,
+            muted: false,
             eq: { low: 2, mid: 0, high: -1, presence: 3 },
             volumeKeyframes: [],
           },

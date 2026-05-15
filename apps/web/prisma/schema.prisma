@@ -71,6 +71,7 @@ model AudioTrack {
   startFrame      Int
   trimStart       Int              @default(0)
   trimEnd         Int
+  muted           Boolean          @default(false)
   eq              Json?
   volumeKeyframes VolumeKeyframe[]
   @@index([sceneId])

@@ -25,6 +25,7 @@ export const AudioTrackPlayer: React.FC<{
 }> = ({ track, globalOffsetFrames = 0 }) => {
   const { fps } = useVideoConfig();
   const duration = Math.max(1, track.trimEnd - track.trimStart);
+  if (track.muted) return null;
   return (
     <Sequence
       from={globalOffsetFrames + track.startFrame}

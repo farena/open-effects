@@ -67,6 +67,7 @@ export async function persistProjectJson(
                 startFrame: t.startFrame,
                 trimStart: t.trimStart,
                 trimEnd: t.trimEnd,
+                muted: t.muted,
                 // eq is Json? with no @default — same pattern as transitionIn
                 eq: t.eq ?? Prisma.JsonNull,
                 volumeKeyframes: {

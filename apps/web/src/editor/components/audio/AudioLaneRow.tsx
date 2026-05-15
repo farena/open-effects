@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Music, Scissors, Trash2 } from "lucide-react";
+import { Music, Scissors, Trash2, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import type { AudioTrack } from "@open-effects/shared-types";
 import { AudioStrip } from "../AudioStrip";
@@ -42,6 +42,7 @@ export function AudioLaneRow({
   const selectAudioTrack = useEditorStore((s) => s.selectAudioTrack);
   const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
   const splitAudioTrack = useEditorStore((s) => s.splitAudioTrack);
+  const toggleAudioTrackMute = useEditorStore((s) => s.toggleAudioTrackMute);
   const currentFrame = useEditorStore((s) => s.currentFrame);
   const fps = useEditorStore((s) => s.project.fps);
   const isSelected = selectedAudioTrackId === track.id;
@@ -110,6 +111,25 @@ export function AudioLaneRow({
         >
           {trackLabel ?? "Audio"}
         </span>
+        {/* Mute toggle — sits to the LEFT of scissors. */}
+        <button
+          type="button"
+          data-testid="audio-lane-mute"
+          className="shrink-0 rounded p-0.5 text-[#aaa] hover:bg-[#3a3a3a] hover:text-white"
+          aria-label={track.muted ? "Unmute audio track" : "Mute audio track"}
+          aria-pressed={track.muted}
+          title={track.muted ? "Unmute" : "Mute"}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleAudioTrackMute(track.id);
+          }}
+        >
+          {track.muted ? (
+            <VolumeX className="size-3" />
+          ) : (
+            <Volume2 className="size-3" />
+          )}
+        </button>
         {/* Scissors button — split at playhead. Sits to the LEFT of trash. */}
         <button
           type="button"

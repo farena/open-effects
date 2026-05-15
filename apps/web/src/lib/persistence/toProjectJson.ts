@@ -67,6 +67,7 @@ export async function toProjectJson(projectId: string): Promise<Project> {
         startFrame: t.startFrame,
         trimStart: t.trimStart,
         trimEnd: t.trimEnd,
+        muted: t.muted,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         eq: (t.eq as any) ?? null,
         volumeKeyframes: t.volumeKeyframes.map((k) => ({

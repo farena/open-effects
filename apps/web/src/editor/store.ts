@@ -545,6 +545,7 @@ export const useEditorStore = create<StoreState>()(
             startFrame: s.currentFrame,
             trimStart: 0,
             trimEnd: asset.durationFrames,
+            muted: false,
             eq: null,
             volumeKeyframes: [],
           });
@@ -641,6 +642,13 @@ export const useEditorStore = create<StoreState>()(
         set((s) =>
           mutateAudioTrack(s, trackId, (t) => {
             t.eq = eq;
+          }),
+        ),
+
+      toggleAudioTrackMute: (trackId) =>
+        set((s) =>
+          mutateAudioTrack(s, trackId, (t) => {
+            t.muted = !t.muted;
           }),
         ),
 

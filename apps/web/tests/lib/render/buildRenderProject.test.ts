@@ -54,6 +54,7 @@ function makeFixtureProject(overrides?: Partial<Project>): Project {
             startFrame: 0,
             trimStart: 0,
             trimEnd: 60,
+            muted: false,
             volumeKeyframes: [],
           },
         ],
