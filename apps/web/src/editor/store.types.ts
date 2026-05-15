@@ -136,6 +136,7 @@ export interface EditorActions {
     asset: { id: string; path: string; durationFrames: number },
   ) => void;
   removeAudioTrack: (trackId: string) => void;
+  reorderAudioTracks: (sceneId: string, orderedIds: string[]) => void;
   moveAudioTrack: (trackId: string, startFrame: number) => void;
   trimAudioTrack: (trackId: string, trimStart: number, trimEnd: number) => void;
   selectAudioTrack: (id: string | null) => void;

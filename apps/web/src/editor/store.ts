@@ -558,6 +558,18 @@ export const useEditorStore = create<StoreState>()(
           }
         }),
 
+      reorderAudioTracks: (sceneId, orderedIds) =>
+        set((s) => {
+          const sc = s.project.scenes.find((x) => x.id === sceneId);
+          if (!sc) return;
+          const map = new Map(sc.audioTracks.map((t) => [t.id, t]));
+          const next = orderedIds
+            .map((id) => map.get(id))
+            .filter((t): t is NonNullable<typeof t> => Boolean(t));
+          if (next.length !== sc.audioTracks.length) return;
+          sc.audioTracks = next;
+        }),
+
       moveAudioTrack: (trackId, startFrame) =>
         set((s) => {
           mutateAudioTrack(s, trackId, (t) => {

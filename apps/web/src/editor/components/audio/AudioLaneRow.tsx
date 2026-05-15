@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Music, Scissors, Trash2, Volume2, VolumeX } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  GripVertical,
+  Music,
+  Scissors,
+  Trash2,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { AudioTrack } from "@open-effects/shared-types";
 import { AudioStrip } from "../AudioStrip";
@@ -44,6 +53,21 @@ export function AudioLaneRow({
   const splitAudioTrack = useEditorStore((s) => s.splitAudioTrack);
   const toggleAudioTrackMute = useEditorStore((s) => s.toggleAudioTrackMute);
   const currentFrame = useEditorStore((s) => s.currentFrame);
+
+  const {
+    attributes: sortableAttributes,
+    listeners: sortableListeners,
+    setNodeRef: setSortableNodeRef,
+    transform: sortableTransform,
+    transition: sortableTransition,
+    isDragging: sortableIsDragging,
+  } = useSortable({ id: track.id });
+
+  const sortableStyle: React.CSSProperties = {
+    transform: CSS.Transform.toString(sortableTransform),
+    transition: sortableTransition,
+    opacity: sortableIsDragging ? 0.5 : 1,
+  };
   const fps = useEditorStore((s) => s.project.fps);
   const isSelected = selectedAudioTrackId === track.id;
 
@@ -84,14 +108,24 @@ export function AudioLaneRow({
   if (side === "left") {
     return (
       <div
+        ref={setSortableNodeRef}
         data-testid="audio-lane-row"
         className={[
           "flex items-center gap-1 border-b border-[#2d2d2d] px-2 text-[11px]",
           isSelected ? "bg-[#3d4a5c] text-white" : "text-[#8a8a8a] hover:bg-[#2f2f2f]",
         ].join(" ")}
-        style={{ height: ROW_H }}
+        style={{ ...sortableStyle, height: ROW_H }}
       >
-        {/* Placeholder for caret column alignment (matches scene/layer rows) */}
+        <span
+          {...sortableAttributes}
+          {...sortableListeners}
+          className="flex size-5 shrink-0 cursor-grab items-center justify-center rounded text-[#888] hover:bg-[#3a3a3a] hover:text-white active:cursor-grabbing"
+          aria-label="Drag to reorder audio track"
+          title="Drag to reorder"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="size-3" />
+        </span>
         <span className="flex size-6 shrink-0 items-center justify-center">
           <Music className="size-3.5 opacity-40" />
         </span>

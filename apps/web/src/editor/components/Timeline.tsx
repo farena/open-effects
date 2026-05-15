@@ -45,6 +45,20 @@ import { PROPERTIES } from "@open-effects/runtime";
 import type { AudioTrack, Layer, Scene } from "@open-effects/shared-types";
 import { AudioGroupHeader } from "./audio/AudioGroupHeader";
 import { AudioLaneRow } from "./audio/AudioLaneRow";
+import { SortableLayerRow } from "./timeline/SortableLayerRow";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import {
   probeAudioDuration,
   secondsToFrames,
@@ -1079,6 +1093,40 @@ export function Timeline() {
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
   const removeAudioTrack = useEditorStore((s) => s.removeAudioTrack);
+  const reorderLayers = useEditorStore((s) => s.reorderLayers);
+  const reorderAudioTracks = useEditorStore((s) => s.reorderAudioTracks);
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  const handleReorderLayersEnd = useCallback(
+    (sceneId: string, orderedIds: string[]) =>
+      (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = orderedIds.indexOf(active.id as string);
+        const newIndex = orderedIds.indexOf(over.id as string);
+        if (oldIndex < 0 || newIndex < 0) return;
+        const next = arrayMove(orderedIds, oldIndex, newIndex);
+        reorderLayers(sceneId, next);
+      },
+    [reorderLayers],
+  );
+
+  const handleReorderAudioEnd = useCallback(
+    (sceneId: string, orderedIds: string[]) =>
+      (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = orderedIds.indexOf(active.id as string);
+        const newIndex = orderedIds.indexOf(over.id as string);
+        if (oldIndex < 0 || newIndex < 0) return;
+        const next = arrayMove(orderedIds, oldIndex, newIndex);
+        reorderAudioTracks(sceneId, next);
+      },
+    [reorderAudioTracks],
+  );
 
   const [expandedByScene, setExpandedByScene] = useState<
     Record<string, boolean>
@@ -1221,6 +1269,17 @@ export function Timeline() {
           sceneOffset: sceneStarts[si]!,
         })),
       ),
+    [sorted, sceneStarts],
+  );
+
+  const audioSceneGroups = useMemo(
+    () =>
+      sorted.map((sc, si) => ({
+        sceneId: sc.id,
+        sceneOffset: sceneStarts[si]!,
+        trackIds: sc.audioTracks.map((t) => t.id),
+        tracks: sc.audioTracks,
+      })),
     [sorted, sceneStarts],
   );
 
@@ -1707,91 +1766,58 @@ export function Timeline() {
                         labelFor={propertyDisplayLabel}
                       />
                     )}
-                    {expanded &&
-                      layersInScene.map((layer, i) => {
-                        const revIndex = layersInScene.length - i;
-                        const selected = selectedLayerId === layer.id;
-                        const color = labelColorForLayerId(layer.id);
-                        const layerKeyframesHere =
-                          showLayerKeyframeLanes &&
-                          activeLayer?.id === layer.id;
-                        return (
-                          <Fragment key={layer.id}>
-                            <div
-                              className={[
-                                "flex items-center gap-1 border-b border-[#2d2d2d] px-2 text-[11px]",
-                                selected
-                                  ? "bg-[#3d4a5c]"
-                                  : "hover:bg-[#2f2f2f]",
-                              ].join(" ")}
-                              style={{ height: ROW_H }}
-                              onClick={() => selectLayer(layer.id)}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  selectLayer(layer.id);
+                    {expanded && (
+                      <DndContext
+                        sensors={dndSensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleReorderLayersEnd(
+                          scene.id,
+                          layersInScene.map((l) => l.id),
+                        )}
+                      >
+                        <SortableContext
+                          items={layersInScene.map((l) => l.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {layersInScene.map((layer, i) => {
+                            const revIndex = layersInScene.length - i;
+                            const selected = selectedLayerId === layer.id;
+                            const color = labelColorForLayerId(layer.id);
+                            const layerKeyframesHere =
+                              showLayerKeyframeLanes &&
+                              activeLayer?.id === layer.id;
+                            return (
+                              <SortableLayerRow
+                                key={layer.id}
+                                layer={layer}
+                                revIndex={revIndex}
+                                isSelected={selected}
+                                labelColor={color}
+                                onSelect={() => selectLayer(layer.id)}
+                                onToggleVisible={() =>
+                                  toggleLayerVisible(layer.id)
                                 }
-                              }}
-                            >
-                              <button
-                                type="button"
-                                className="flex size-6 shrink-0 items-center justify-center rounded text-[#aaa] hover:bg-[#3a3a3a] hover:text-white"
-                                aria-label={
-                                  layer.visible ? "Hide layer" : "Show layer"
-                                }
-                                title={
-                                  layer.visible ? "Hide layer" : "Show layer"
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleLayerVisible(layer.id);
-                                }}
-                              >
-                                {layer.visible ? (
-                                  <Eye className="size-3.5" />
-                                ) : (
-                                  <EyeOff className="size-3.5 opacity-60" />
-                                )}
-                              </button>
-                              <span className="w-5 shrink-0 text-center font-mono text-[10px] text-[#9a9a9a]">
-                                {revIndex}
-                              </span>
-                              <span
-                                className="size-2.5 shrink-0 rounded-sm border border-black/30"
-                                style={{ backgroundColor: color }}
-                                title="Label"
-                              />
-                              <span className="min-w-0 flex-1 truncate">
-                                {layer.name}
-                              </span>
-                              <button
-                                type="button"
-                                className="shrink-0 rounded p-0.5 text-[#aaa] hover:bg-[#5c2b2b] hover:text-white"
-                                aria-label={`Remove layer ${layer.name}`}
-                                title="Remove layer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                                onRequestDelete={() =>
                                   setLayerPendingDelete({
                                     id: layer.id,
                                     name: layer.name,
-                                  });
-                                }}
-                              >
-                                <Trash2 className="size-3" />
-                              </button>
-                            </div>
-                            {layerKeyframesHere && activeLayer && (
-                              <KeyframeSidebarBlock
-                                title={`Keyframes · ${activeLayer.name}`}
-                                properties={animatedProps}
-                                labelFor={propertyDisplayLabel}
+                                  })
+                                }
+                                trailing={
+                                  layerKeyframesHere && activeLayer ? (
+                                    <KeyframeSidebarBlock
+                                      title={`Keyframes · ${activeLayer.name}`}
+                                      properties={animatedProps}
+                                      labelFor={propertyDisplayLabel}
+                                    />
+                                  ) : null
+                                }
                               />
-                            )}
-                          </Fragment>
-                        );
-                      })}
+                            );
+                          })}
+                        </SortableContext>
+                      </DndContext>
+                    )}
                   </Fragment>
                 );
               })}
@@ -1803,32 +1829,54 @@ export function Timeline() {
                 onAssetDrop={handleAudioAssetDrop}
               />
               {audioExpanded &&
-                allAudioTracks.map(({ track, sceneId, sceneOffset }) => {
-                  const audioKeyframesHere =
-                    showAudioKeyframeLanes && activeAudioTrack?.id === track.id;
+                audioSceneGroups.map((group) => {
+                  if (group.trackIds.length === 0) return null;
                   return (
-                    <Fragment key={track.id}>
-                      <AudioLaneRow
-                        track={track}
-                        sceneId={sceneId}
-                        sceneOffsetFrames={sceneOffset}
-                        total={total}
-                        timelineWidthPx={timelineWidthPx}
-                        pxPerFrame={pxPerFrame}
-                        side="left"
-                        onDelete={() => removeAudioTrack(track.id)}
-                      />
-                      {audioKeyframesHere && activeAudioTrack && (
-                        <KeyframeSidebarBlock
-                          title={`Audio keyframes · ${
-                            activeAudioTrack.assetPath?.split("/").pop() ??
-                            "Audio"
-                          }`}
-                          properties={audioAnimatedProps}
-                          labelFor={audioPropertyDisplayLabel}
-                        />
+                    <DndContext
+                      key={`audio-dnd-${group.sceneId}`}
+                      sensors={dndSensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleReorderAudioEnd(
+                        group.sceneId,
+                        group.trackIds,
                       )}
-                    </Fragment>
+                    >
+                      <SortableContext
+                        items={group.trackIds}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {group.tracks.map((track) => {
+                          const audioKeyframesHere =
+                            showAudioKeyframeLanes &&
+                            activeAudioTrack?.id === track.id;
+                          return (
+                            <Fragment key={track.id}>
+                              <AudioLaneRow
+                                track={track}
+                                sceneId={group.sceneId}
+                                sceneOffsetFrames={group.sceneOffset}
+                                total={total}
+                                timelineWidthPx={timelineWidthPx}
+                                pxPerFrame={pxPerFrame}
+                                side="left"
+                                onDelete={() => removeAudioTrack(track.id)}
+                              />
+                              {audioKeyframesHere && activeAudioTrack && (
+                                <KeyframeSidebarBlock
+                                  title={`Audio keyframes · ${
+                                    activeAudioTrack.assetPath
+                                      ?.split("/")
+                                      .pop() ?? "Audio"
+                                  }`}
+                                  properties={audioAnimatedProps}
+                                  labelFor={audioPropertyDisplayLabel}
+                                />
+                              )}
+                            </Fragment>
+                          );
+                        })}
+                      </SortableContext>
+                    </DndContext>
                   );
                 })}
             </div>
