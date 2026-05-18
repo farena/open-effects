@@ -49,6 +49,13 @@ export async function persistProjectJson(
                 startFrame: l.startFrame,
                 endFrame: l.endFrame,
                 visible: l.visible,
+                type: l.type,
+                // subtitleData is Json? with no @default — use Prisma.JsonNull for non-subtitle layers
+                // to avoid leaving the column in an undefined state after DELETE+INSERT.
+                subtitleData:
+                  l.type === "subtitle"
+                    ? (l.subtitle as unknown as Prisma.InputJsonValue)
+                    : Prisma.JsonNull,
                 keyframes: {
                   create: l.keyframes.map((k) => ({
                     id: k.id,
