@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Captions,
   GripVertical,
+  Loader2,
   Music,
   Scissors,
   Trash2,
@@ -15,6 +17,15 @@ import { toast } from "sonner";
 import type { AudioTrack } from "@open-effects/shared-types";
 import { AudioStrip } from "../AudioStrip";
 import { ConfirmDialog } from "../ConfirmDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/editor/store";
 import {
   probeAudioDuration,
@@ -48,11 +59,30 @@ export function AudioLaneRow({
   const trackLabel =
     track.assetPath ? track.assetPath.split("/").pop() : undefined;
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [captionsDialogOpen, setCaptionsDialogOpen] = useState(false);
   const selectAudioTrack = useEditorStore((s) => s.selectAudioTrack);
   const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
   const splitAudioTrack = useEditorStore((s) => s.splitAudioTrack);
   const toggleAudioTrackMute = useEditorStore((s) => s.toggleAudioTrackMute);
   const currentFrame = useEditorStore((s) => s.currentFrame);
+  const transcribeAudioTrack = useEditorStore((s) => s.transcribeAudioTrack);
+  const regenerateSubtitleLayer = useEditorStore(
+    (s) => s.regenerateSubtitleLayer,
+  );
+  const transcriptionJob = useEditorStore(
+    (s) => s.transcriptionStatus[track.id] ?? null,
+  );
+  const subtitleLayerForTrack = useEditorStore((s) => {
+    for (const scene of s.project.scenes) {
+      const found = scene.layers.find(
+        (l) =>
+          l.type === "subtitle" &&
+          l.subtitle.linkedAudioTrackId === track.id,
+      );
+      if (found) return found;
+    }
+    return null;
+  });
 
   const {
     attributes: sortableAttributes,
@@ -93,6 +123,18 @@ export function AudioLaneRow({
       cancelled = true;
     };
   }, [track.assetPath, fps]);
+
+  // Toast feedback when transcription status changes.
+  useEffect(() => {
+    if (!transcriptionJob) return;
+    if (transcriptionJob.status === "completed") {
+      toast.success("Subtitle layer created");
+    } else if (transcriptionJob.status === "error") {
+      toast.error(
+        `Transcription failed: ${transcriptionJob.error ?? "Unknown error"}`,
+      );
+    }
+  }, [transcriptionJob?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSplit() {
     const splitFrameLocal =
@@ -164,6 +206,85 @@ export function AudioLaneRow({
             <Volume2 className="size-3" />
           )}
         </button>
+        {/* Captions button — transcript / subtitle layer. Sits between Mute and Scissors. */}
+        {(() => {
+          const isPending =
+            transcriptionJob?.status === "queued" ||
+            transcriptionJob?.status === "model-loading" ||
+            transcriptionJob?.status === "transcribing";
+          const hasSubtitleLayer = subtitleLayerForTrack !== null;
+          const ariaLabel = hasSubtitleLayer
+            ? "Regenerate transcript"
+            : "Generate transcript";
+          return (
+            <>
+              <button
+                type="button"
+                data-testid="audio-lane-captions"
+                className="shrink-0 rounded p-0.5 text-[#aaa] hover:bg-[#3a3a3a] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label={ariaLabel}
+                title={ariaLabel}
+                disabled={isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (hasSubtitleLayer) {
+                    setCaptionsDialogOpen(true);
+                  } else {
+                    void transcribeAudioTrack(track.id);
+                  }
+                }}
+              >
+                {isPending ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Captions className="size-3" />
+                )}
+              </button>
+              <Dialog
+                open={captionsDialogOpen}
+                onOpenChange={setCaptionsDialogOpen}
+              >
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Subtitle layer already exists</DialogTitle>
+                    <DialogDescription>
+                      A subtitle layer is already linked to this audio track.
+                      Would you like to regenerate the existing layer or create a
+                      new one?
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCaptionsDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCaptionsDialogOpen(false);
+                        void transcribeAudioTrack(track.id);
+                      }}
+                    >
+                      Create new layer
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setCaptionsDialogOpen(false);
+                        if (subtitleLayerForTrack) {
+                          regenerateSubtitleLayer(subtitleLayerForTrack.id);
+                        }
+                      }}
+                    >
+                      Regenerate existing layer
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
+          );
+        })()}
         {/* Scissors button — split at playhead. Sits to the LEFT of trash. */}
         <button
           type="button"
