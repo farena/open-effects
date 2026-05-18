@@ -37,17 +37,19 @@ model Scene {
 }
 
 model Layer {
-  id         String     @id @default(cuid())
-  scene      Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  sceneId    String
-  order      Int
-  name       String
-  html       String     @db.Text
-  css        String     @db.Text
-  startFrame Int        @default(0)
-  endFrame   Int
-  visible    Boolean    @default(true)
-  keyframes  Keyframe[]
+  id           String     @id @default(cuid())
+  scene        Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  sceneId      String
+  order        Int
+  name         String
+  html         String     @db.Text
+  css          String     @db.Text
+  startFrame   Int        @default(0)
+  endFrame     Int
+  visible      Boolean    @default(true)
+  type         String     @default("html") @db.VarChar(20)
+  subtitleData Json?
+  keyframes    Keyframe[]
   @@index([sceneId])
 }
 
