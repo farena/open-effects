@@ -128,7 +128,7 @@ export function Inspector() {
   if (audioTrack) {
     return (
       <VerticalIconTabs
-        tabKey={audioTrack.id}
+        tabKey="audio"
         defaultValue="audio-fx"
         items={AUDIO_TABS}
         contents={{ "audio-fx": <AudioFxTab /> }}
@@ -139,7 +139,7 @@ export function Inspector() {
   if (layer) {
     return (
       <VerticalIconTabs
-        tabKey={layer.id}
+        tabKey="layer"
         defaultValue="props"
         items={LAYER_TABS}
         contents={{
@@ -156,7 +156,7 @@ export function Inspector() {
   if (scene) {
     return (
       <VerticalIconTabs
-        tabKey={scene.id}
+        tabKey="scene"
         defaultValue="scene"
         items={SCENE_TABS}
         contents={{
