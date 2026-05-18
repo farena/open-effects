@@ -13,6 +13,7 @@ import {
   resolveAnchor,
 } from "@/editor/presets/build-keyframes";
 import { getSubtitlePreset } from "@/editor/presets/subtitles/registry";
+import type { TranscriptJob } from "@/lib/transcript/types";
 
 type StoreState = EditorState & EditorActions;
 
@@ -55,7 +56,7 @@ function mutateAudioTrack(
 
 export const useEditorStore = create<StoreState>()(
   temporal(
-    immer((set) => ({
+    immer((set, get) => ({
       project: {
         id: "",
         name: "",
@@ -76,6 +77,7 @@ export const useEditorStore = create<StoreState>()(
       saveStatus: "idle",
       lastSavedAt: null,
       previewedAsset: null,
+      transcriptionStatus: {},
 
       setProject: (p) =>
         set((s) => {
@@ -884,6 +886,106 @@ export const useEditorStore = create<StoreState>()(
             l.keyframes.push(...newKfs);
           });
         }),
+
+      transcribeAudioTrack: async (trackId, opts) => {
+        const state = get();
+        const projectId = state.project.id;
+
+        // Find sceneId for this trackId (search across scenes)
+        let sceneId: string | null = null;
+        for (const scene of state.project.scenes) {
+          if (scene.audioTracks.some((t) => t.id === trackId)) {
+            sceneId = scene.id;
+            break;
+          }
+        }
+        if (!sceneId) return;
+
+        // Build query string
+        const params = new URLSearchParams();
+        if (opts?.model) params.set("model", opts.model);
+        if (opts?.language) params.set("lang", opts.language);
+        const qs = params.toString();
+
+        // POST start
+        const startUrl = `/api/projects/${projectId}/audioTracks/${trackId}/transcript${qs ? `?${qs}` : ""}`;
+        const startRes = await fetch(startUrl, { method: "POST" });
+        if (!startRes.ok) {
+          set((s) => {
+            s.transcriptionStatus[trackId] = {
+              id: "",
+              projectId,
+              trackId,
+              status: "error",
+              progress: 0,
+              error: `Start failed: ${startRes.status}`,
+              startedAt: Date.now(),
+              finishedAt: Date.now(),
+            } as TranscriptJob;
+          });
+          return;
+        }
+        const { jobId } = (await startRes.json()) as { jobId: string };
+
+        // Initial state
+        set((s) => {
+          s.transcriptionStatus[trackId] = {
+            id: jobId,
+            projectId,
+            trackId,
+            status: "queued",
+            progress: 0,
+            startedAt: Date.now(),
+          } as TranscriptJob;
+        });
+
+        // Consume SSE
+        const eventsRes = await fetch(
+          `/api/projects/${projectId}/audioTracks/${trackId}/transcript/events?jobId=${jobId}`,
+        );
+        if (!eventsRes.body) return;
+        const reader = eventsRes.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          // SSE: events separated by \n\n; each event has "data: <json>"
+          let idx: number;
+          while ((idx = buffer.indexOf("\n\n")) !== -1) {
+            const event = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 2);
+            const dataMatch = event.match(/^data:\s*(.+)$/m);
+            if (!dataMatch) continue;
+            let job: TranscriptJob;
+            try {
+              job = JSON.parse(dataMatch[1]!) as TranscriptJob;
+            } catch {
+              continue;
+            }
+
+            set((s) => {
+              s.transcriptionStatus[trackId] = job;
+            });
+
+            if (job.status === "completed" && job.transcript) {
+              // Default preset: subtitle-fade-segment
+              get().createSubtitleLayerFromTranscript(
+                sceneId!,
+                trackId,
+                job.transcript,
+                "subtitle-fade-segment",
+              );
+              return; // stop consuming
+            }
+            if (job.status === "error") {
+              return;
+            }
+          }
+        }
+      },
     })),
     {
       partialize: (state) =>

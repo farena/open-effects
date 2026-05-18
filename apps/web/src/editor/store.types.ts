@@ -5,6 +5,7 @@ import type {
   SavedComponentPayload,
 } from "@open-effects/shared-types";
 import type { AnimationPreset } from "./presets/types";
+import type { TranscriptJob } from "@/lib/transcript/types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -29,6 +30,7 @@ export interface EditorState {
   saveStatus: SaveStatus;
   lastSavedAt: number | null;
   previewedAsset: PreviewedAsset | null;
+  transcriptionStatus: Record<string, TranscriptJob | null>;
 }
 
 export interface EditorActions {
@@ -191,4 +193,8 @@ export interface EditorActions {
       replaceConflicts?: boolean;
     },
   ) => void;
+  transcribeAudioTrack: (
+    trackId: string,
+    opts?: { model?: string; language?: string },
+  ) => Promise<void>;
 }
