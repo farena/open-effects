@@ -19,7 +19,7 @@
  * segments animate in/out.
  */
 
-import type { Transcript } from "@open-effects/shared-types";
+import type { Keyframe, Transcript } from "@open-effects/shared-types";
 import type { SubtitlePreset, SubtitlePresetContext, SubtitlePresetOutput } from "./types";
 
 /** HTML-escape a string so it is safe to inject as text content inside an element. */
@@ -105,7 +105,7 @@ export const slideSegment: SubtitlePreset = {
 
     // Engine-level keyframes are intentionally empty.
     // See file header comment for the v1 rationale.
-    const keyframes = [];
+    const keyframes: Keyframe[] = [];
 
     return { html, css, keyframes };
   },

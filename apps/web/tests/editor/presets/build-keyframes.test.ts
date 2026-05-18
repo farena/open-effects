@@ -9,6 +9,7 @@ const LINEAR_EASING: Easing = { type: "linear" };
 /** A minimal stub layer for testing. */
 function makeLayer(startFrame: number, endFrame: number): Layer {
   return {
+    type: "html",
     id: "layer-1",
     order: 0,
     name: "Test Layer",

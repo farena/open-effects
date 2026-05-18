@@ -3,7 +3,7 @@ import { normalizePayload } from "@/lib/components/normalizePayload";
 import type { Layer } from "@open-effects/shared-types";
 
 function makeLayer(
-  overrides: Partial<Layer> & {
+  overrides: Omit<Partial<Layer>, "type"> & {
     id: string;
     order: number;
     startFrame: number;
@@ -11,6 +11,7 @@ function makeLayer(
   },
 ): Layer {
   return {
+    type: "html" as const,
     name: "layer",
     html: "",
     css: "",

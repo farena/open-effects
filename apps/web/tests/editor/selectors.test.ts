@@ -32,6 +32,7 @@ const makeState = (partial: Partial<EditorState> = {}): EditorState => ({
   saveStatus: "idle",
   lastSavedAt: null,
   previewedAsset: null,
+  transcriptionStatus: {},
   ...partial,
 });
 
@@ -52,6 +53,7 @@ const makeScene = (
 });
 
 const makeLayer = (id: string) => ({
+  type: "html" as const,
   id,
   order: 0,
   name: "Layer",

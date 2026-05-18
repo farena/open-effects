@@ -4,6 +4,7 @@ import { getSubtitlePreset } from "@/editor/presets/subtitles/registry";
 
 export const defaultLayer = (order: number, endFrame: number): Layer => ({
   id: newId(),
+  type: "html",
   order,
   name: `Layer ${order + 1}`,
   html: '<div class="content">New layer</div>',

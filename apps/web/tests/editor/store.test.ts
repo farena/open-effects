@@ -237,6 +237,7 @@ describe("useEditorStore", () => {
     const payload: SavedComponentPayload = {
       layers: [
         {
+          type: "html" as const,
           id: "orig-1",
           name: "Layer A",
           order: 0,
@@ -248,6 +249,7 @@ describe("useEditorStore", () => {
           keyframes: [],
         },
         {
+          type: "html" as const,
           id: "orig-2",
           name: "Layer B",
           order: 1,
@@ -301,6 +303,7 @@ describe("useEditorStore", () => {
     const payload: SavedComponentPayload = {
       layers: [
         {
+          type: "html" as const,
           id: "orig-1",
           name: "Layer A",
           order: 0,

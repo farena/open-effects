@@ -292,6 +292,7 @@ export const useEditorStore = create<StoreState>()(
               : `<img class="media" src="${media.path}" alt="${baseName}" />`;
           sc.layers.push({
             id: newId(),
+            type: "html",
             order,
             name: baseName || (media.kind === "video" ? "Video" : "Image"),
             html: tag,

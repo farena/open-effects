@@ -11,6 +11,7 @@ function makeLayer(
   keyframes: Keyframe[] = [],
 ): Layer {
   return {
+    type: "html",
     id: "layer-1",
     order: 0,
     name: "Test Layer",

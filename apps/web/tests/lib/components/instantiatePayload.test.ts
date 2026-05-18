@@ -15,6 +15,7 @@ function makePayload(
     layers: layers.map((l) => {
       const { keyframes: kfInput, ...rest } = l;
       return {
+        type: "html" as const,
         name: "layer",
         html: "",
         css: "",

@@ -36,6 +36,7 @@ const makeProject = (): Project => ({
       ],
       layers: [
         {
+          type: "html" as const,
           id: LAYER_ID,
           order: 0,
           name: "Layer 1",
