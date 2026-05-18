@@ -12,6 +12,7 @@ import {
   buildPresetKeyframes,
   resolveAnchor,
 } from "@/editor/presets/build-keyframes";
+import { getSubtitlePreset } from "@/editor/presets/subtitles/registry";
 
 type StoreState = EditorState & EditorActions;
 
@@ -322,6 +323,37 @@ export const useEditorStore = create<StoreState>()(
           s.selectedLayerId = layer.id;
           s.selectedAudioTrackId = null;
         }),
+
+      updateSubtitleTranscript: (layerId, transcript) =>
+        set((s) =>
+          mutateLayer(s, layerId, (l) => {
+            if (l.type === "subtitle") {
+              l.subtitle.transcript = transcript;
+            }
+          }),
+        ),
+
+      regenerateSubtitleLayer: (layerId) =>
+        set((s) =>
+          mutateLayer(s, layerId, (l) => {
+            if (l.type !== "subtitle") return;
+            const preset = getSubtitlePreset(l.subtitle.presetKey);
+            const fps = s.project.fps;
+            const { html, keyframes } = preset.generate(
+              l.subtitle.transcript,
+              { layerStartFrame: 0, fps },
+            );
+            l.html = html;
+            l.keyframes = keyframes;
+            l.endFrame =
+              l.subtitle.transcript.segments.length > 0
+                ? Math.max(
+                    ...l.subtitle.transcript.segments.map((seg) => seg.endFrame),
+                  )
+                : l.endFrame;
+            l.subtitle.manualOverride = false;
+          }),
+        ),
 
       deleteLayer: (layerId) =>
         set((s) => {
