@@ -219,4 +219,151 @@ describe("toProjectJson", () => {
     expect(scene1.durationFrames).toBe(60);
     expect(scene1.layers).toHaveLength(2);
   });
+
+  it("hydrates layer with type 'html' when type is explicitly set", async () => {
+    const created = await db.project.create({
+      data: {
+        name: "HTML Type Project",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: {
+          create: [
+            {
+              order: 0,
+              durationFrames: 60,
+              transitionIn: Prisma.JsonNull,
+              layers: {
+                create: [
+                  {
+                    order: 0,
+                    name: "HTML Layer",
+                    html: "<div>hello</div>",
+                    css: "",
+                    startFrame: 0,
+                    endFrame: 60,
+                    type: "html",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await toProjectJson(created.id);
+    const layer = result.scenes[0].layers[0];
+
+    expect(layer.type).toBe("html");
+    // subtitle field must not be present on an html layer
+    expect("subtitle" in layer).toBe(false);
+  });
+
+  it("hydrates layer with type 'html' fallback (legacy path: type omitted from mapped object)", async () => {
+    // The DB column is NOT NULL DEFAULT 'html', so we cannot inject NULL via SQL.
+    // Instead, we verify the z.preprocess behaviour at the schema level:
+    // passing an object without `type` through LayerSchema should produce type === "html".
+    // This mirrors what would happen when toProjectJson maps a legacy row that was
+    // stored before the `type` column existed.
+    const { LayerSchema } = await import("@open-effects/shared-types");
+
+    const legacyLayerInput = {
+      id: "layer-legacy-001",
+      order: 0,
+      name: "Legacy Layer",
+      html: "<div>legacy</div>",
+      css: "",
+      startFrame: 0,
+      endFrame: 60,
+      visible: true,
+      keyframes: [],
+      // deliberately omit `type`
+    };
+
+    const parsed = LayerSchema.parse(legacyLayerInput);
+
+    // z.preprocess coerces missing `type` to "html"
+    expect(parsed.type).toBe("html");
+    expect("subtitle" in parsed).toBe(false);
+  });
+
+  it("hydrates subtitle layer with type 'subtitle' and subtitle data", async () => {
+    const created = await db.project.create({
+      data: {
+        name: "Subtitle Layer Project",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: {
+          create: [
+            {
+              order: 0,
+              durationFrames: 300,
+              transitionIn: Prisma.JsonNull,
+              layers: {
+                create: [
+                  {
+                    order: 0,
+                    name: "Subtitle Layer",
+                    html: "<div class='subtitle-container'></div>",
+                    css: ".subtitle-container { color: white; }",
+                    startFrame: 0,
+                    endFrame: 300,
+                    type: "subtitle",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    const subtitleData = {
+      linkedAudioTrackId: "track-abc-123",
+      transcript: {
+        language: "en",
+        model: "small",
+        generatedAt: "2026-01-01T00:00:00.000Z",
+        segments: [
+          {
+            id: "seg-001",
+            text: "Hello world",
+            startFrame: 0,
+            endFrame: 90,
+            words: [
+              { text: "Hello", startFrame: 0, endFrame: 45 },
+              { text: "world", startFrame: 45, endFrame: 90 },
+            ],
+          },
+        ],
+      },
+      presetKey: "subtitle-fade-segment",
+      manualOverride: false,
+    };
+
+    // Update the layer with subtitleData
+    const scene = await db.scene.findFirstOrThrow({
+      where: { projectId: created.id },
+    });
+    await db.layer.updateMany({
+      where: { sceneId: scene.id },
+      data: { subtitleData: subtitleData as Prisma.InputJsonValue },
+    });
+
+    const result = await toProjectJson(created.id);
+    const layer = result.scenes[0].layers[0];
+
+    expect(layer.type).toBe("subtitle");
+    if (layer.type === "subtitle") {
+      expect(layer.subtitle.linkedAudioTrackId).toBe("track-abc-123");
+      expect(layer.subtitle.presetKey).toBe("subtitle-fade-segment");
+      expect(layer.subtitle.manualOverride).toBe(false);
+      expect(layer.subtitle.transcript.language).toBe("en");
+      expect(layer.subtitle.transcript.segments).toHaveLength(1);
+      expect(layer.subtitle.transcript.segments[0].text).toBe("Hello world");
+      expect(layer.subtitle.transcript.segments[0].words).toHaveLength(2);
+    }
+  });
 });

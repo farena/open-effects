@@ -41,24 +41,37 @@ export async function toProjectJson(projectId: string): Promise<Project> {
       keyframes: (s.keyframes as Project["scenes"][number]["keyframes"]) ?? [],
       transitionIn:
         (s.transitionIn as Project["scenes"][number]["transitionIn"]) ?? null,
-      layers: s.layers.map((l) => ({
-        id: l.id,
-        order: l.order,
-        name: l.name,
-        html: l.html,
-        css: l.css,
-        startFrame: l.startFrame,
-        endFrame: l.endFrame,
-        visible: (l as { visible?: boolean }).visible ?? true,
-        keyframes: l.keyframes.map((k) => ({
-          id: k.id,
-          frame: k.frame,
-          property: k.property,
-          value: k.value,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          easingOut: k.easingOut as any,
-        })),
-      })),
+      layers: s.layers.map((l) => {
+        const layerType =
+          (l as { type?: string | null }).type ?? "html";
+        const common = {
+          id: l.id,
+          order: l.order,
+          name: l.name,
+          html: l.html,
+          css: l.css,
+          startFrame: l.startFrame,
+          endFrame: l.endFrame,
+          visible: (l as { visible?: boolean }).visible ?? true,
+          keyframes: l.keyframes.map((k) => ({
+            id: k.id,
+            frame: k.frame,
+            property: k.property,
+            value: k.value,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            easingOut: k.easingOut as any,
+          })),
+        };
+        if (layerType === "subtitle") {
+          return {
+            ...common,
+            type: "subtitle" as const,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            subtitle: (l as { subtitleData?: unknown }).subtitleData as any,
+          };
+        }
+        return { ...common, type: "html" as const };
+      }),
       audioTracks: s.audioTracks.map((t) => ({
         id: t.id,
         assetId: t.assetId,
