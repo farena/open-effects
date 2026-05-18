@@ -80,9 +80,10 @@ export function AssetsPanel() {
     load();
   }, [load]);
 
+  const renamingId = renaming?.id;
   useEffect(() => {
-    if (renaming) renameInputRef.current?.select();
-  }, [renaming?.id]);
+    if (renamingId) renameInputRef.current?.select();
+  }, [renamingId]);
 
   function addAsset(asset: Asset) {
     setPhase((p) =>

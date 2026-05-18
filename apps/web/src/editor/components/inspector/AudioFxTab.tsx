@@ -190,11 +190,14 @@ export function AudioFxTab() {
 
   // Re-sync drafts when the track or its trim values change from outside
   // (e.g. drag handles on the timeline strip, undo/redo, track switch).
+  const trackId = track?.id;
+  const trackTrimStart = track?.trimStart;
+  const trackTrimEnd = track?.trimEnd;
   useEffect(() => {
-    if (!track) return;
-    setTrimStartDraft(String(track.trimStart));
-    setTrimEndDraft(String(track.trimEnd));
-  }, [track?.id, track?.trimStart, track?.trimEnd]);
+    if (trackTrimStart === undefined || trackTrimEnd === undefined) return;
+    setTrimStartDraft(String(trackTrimStart));
+    setTrimEndDraft(String(trackTrimEnd));
+  }, [trackId, trackTrimStart, trackTrimEnd]);
 
   if (!track) return null;
 

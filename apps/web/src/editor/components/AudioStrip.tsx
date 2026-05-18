@@ -241,7 +241,6 @@ export function AudioStrip({
       trimAudioTrack,
       track.id,
       track.trimStart,
-      track.trimEnd,
       probedDurationFrames,
     ],
   );

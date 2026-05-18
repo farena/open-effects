@@ -10,8 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  Eye,
-  EyeOff,
   Maximize,
   Pause,
   Play,
@@ -24,7 +22,6 @@ import {
   ChevronRight,
   ChevronsDownUp,
   ChevronsUpDown,
-  Trash2,
 } from "lucide-react";
 import { playerControl } from "@/editor/playerControl";
 import { useEditorStore } from "@/editor/store";
