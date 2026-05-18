@@ -87,6 +87,8 @@ tags:
     description: Save and retrieve reusable layer components.
   - name: Renders
     description: Trigger MP4 renders and follow progress via Server-Sent Events.
+  - name: Transcripts
+    description: Transcribe audio tracks via local Whisper and follow progress via Server-Sent Events.
 
 components:
   schemas:
@@ -260,14 +262,190 @@ components:
         easingOut:
           type: linear
 
-    # ── Layer ─────────────────────────────────────────────────────────────────
-    # Source: packages/shared-types/src/schemas/layer.ts
-    Layer:
+    # ── Transcript ────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/transcript.ts
+    TranscriptWord:
+      type: object
+      description: A single word with its start and end frame positions.
+      required: [text, startFrame, endFrame]
+      properties:
+        text:
+          type: string
+          description: The word text.
+        startFrame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame at which this word begins.
+        endFrame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame at which this word ends. Must be ≥ startFrame.
+      example:
+        text: "Hello"
+        startFrame: 0
+        endFrame: 15
+
+    TranscriptSegment:
+      type: object
+      description: A segment (sentence or phrase) of the transcript with word-level timing.
+      required: [id, text, startFrame, endFrame, words]
+      properties:
+        id:
+          type: string
+          description: Stable CUID2 identifier for the segment.
+        text:
+          type: string
+          description: Full text of the segment.
+        startFrame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame at which this segment begins.
+        endFrame:
+          type: integer
+          minimum: 0
+          description: Scene-local frame at which this segment ends. Must be ≥ startFrame.
+        words:
+          type: array
+          items:
+            $ref: '#/components/schemas/TranscriptWord'
+          default: []
+          description: Word-level timing within this segment.
+      example:
+        id: "seg_01"
+        text: "Hello World"
+        startFrame: 0
+        endFrame: 59
+        words:
+          - text: "Hello"
+            startFrame: 0
+            endFrame: 28
+          - text: "World"
+            startFrame: 30
+            endFrame: 59
+
+    Transcript:
       type: object
       description: |
-        A composited HTML/CSS layer within a scene.
-        `endFrame` must be ≥ `startFrame`.
-        Corresponds to `LayerSchema` in packages/shared-types/src/schemas/layer.ts.
+        A full transcript produced by the Whisper service for an audio track.
+        Segments and words are expressed in scene-local frames using the
+        project's `fps`.
+        Corresponds to `TranscriptSchema` in packages/shared-types/src/schemas/transcript.ts.
+      required: [segments]
+      properties:
+        language:
+          type: string
+          description: Detected language code (e.g. `en`, `es`). Optional.
+        model:
+          type: string
+          description: Whisper model used to generate this transcript (e.g. `small`). Optional.
+        generatedAt:
+          type: string
+          format: date-time
+          description: ISO-8601 timestamp of when the transcript was generated. Optional.
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TranscriptSegment'
+          description: Ordered list of transcript segments.
+      example:
+        language: "en"
+        model: "small"
+        generatedAt: "2026-05-18T12:00:00.000Z"
+        segments:
+          - id: "seg_01"
+            text: "Hello World"
+            startFrame: 0
+            endFrame: 59
+            words:
+              - text: "Hello"
+                startFrame: 0
+                endFrame: 28
+              - text: "World"
+                startFrame: 30
+                endFrame: 59
+
+    # ── TranscriptJob ─────────────────────────────────────────────────────────
+    # Source: apps/web/src/lib/transcript/types.ts
+    TranscriptJob:
+      type: object
+      description: |
+        Transcript job state emitted by the SSE stream.
+        Mirrors `TranscriptJob` in apps/web/src/lib/transcript/types.ts.
+        Status progression: queued → model-loading → transcribing → completed (or error).
+      required: [id, projectId, trackId, status, progress, startedAt]
+      properties:
+        id:
+          type: string
+          description: Unique transcript job identifier (CUID2).
+        projectId:
+          type: string
+          description: CUID2 identifier of the associated project.
+        trackId:
+          type: string
+          description: CUID2 identifier of the audio track being transcribed.
+        status:
+          type: string
+          enum: [queued, model-loading, transcribing, completed, error]
+          description: |
+            Current lifecycle phase.
+            - `queued`: job accepted, not yet started.
+            - `model-loading`: Whisper is loading the model (first run may take ~30s).
+            - `transcribing`: audio is being processed.
+            - `completed`: transcript is available in the `transcript` field.
+            - `error`: transcription failed; see the `error` field.
+        progress:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Progress as a 0..1 fraction. Updated at fixed checkpoints (model-loading=0.1, transcribing=0.5, completed=1).
+        transcript:
+          $ref: '#/components/schemas/Transcript'
+          description: The completed transcript. Present only when `status` is `completed`.
+        error:
+          type: string
+          description: Error message. Present only when `status` is `error`.
+        startedAt:
+          type: integer
+          format: int64
+          description: Unix epoch milliseconds when the job was created.
+        finishedAt:
+          type: integer
+          format: int64
+          description: Unix epoch milliseconds when the job reached `completed` or `error`. Absent while still in flight.
+      example:
+        id: "txjob_01"
+        projectId: "proj_01"
+        trackId: "track_01"
+        status: completed
+        progress: 1
+        transcript:
+          language: "en"
+          model: "small"
+          generatedAt: "2026-05-18T12:00:00.000Z"
+          segments:
+            - id: "seg_01"
+              text: "Hello World"
+              startFrame: 0
+              endFrame: 59
+              words:
+                - text: "Hello"
+                  startFrame: 0
+                  endFrame: 28
+                - text: "World"
+                  startFrame: 30
+                  endFrame: 59
+        startedAt: 1747569600000
+        finishedAt: 1747569635000
+
+    # ── Layer ─────────────────────────────────────────────────────────────────
+    # Source: packages/shared-types/src/schemas/layer.ts
+    # Layer is a discriminated union on `type` (html | subtitle).
+    # HtmlLayer is the legacy/default variant; SubtitleLayer holds an embedded transcript.
+    LayerCore:
+      type: object
+      description: |
+        Core properties shared by all layer variants (html and subtitle).
+        Not used directly — see HtmlLayer and SubtitleLayer.
       required: [id, order, name, html, css, startFrame, endFrame]
       properties:
         id:
@@ -303,8 +481,24 @@ components:
           items:
             $ref: '#/components/schemas/Keyframe'
           default: []
+
+    HtmlLayer:
+      allOf:
+        - $ref: '#/components/schemas/LayerCore'
+        - type: object
+          description: |
+            A plain HTML/CSS composited layer. This is the default layer type
+            (backwards-compatible with layers created before the `type` field existed).
+          required: [type]
+          properties:
+            type:
+              type: string
+              enum: [html]
+              default: html
+              description: Discriminator field. Always `"html"` for this variant.
       example:
         id: "layer_01"
+        type: html
         order: 0
         name: "Title"
         html: "<h1>Hello World</h1>"
@@ -325,6 +519,95 @@ components:
             value: "1"
             easingOut:
               type: linear
+
+    SubtitleLayer:
+      allOf:
+        - $ref: '#/components/schemas/LayerCore'
+        - type: object
+          description: |
+            A subtitle layer generated from an audio track transcript. Its
+            `html`, `css`, and `keyframes` are materialized from a subtitle preset
+            and the linked transcript. Editing those fields directly sets
+            `subtitle.manualOverride = true`.
+          required: [type, subtitle]
+          properties:
+            type:
+              type: string
+              enum: [subtitle]
+              description: Discriminator field. Always `"subtitle"` for this variant.
+            subtitle:
+              type: object
+              required: [linkedAudioTrackId, transcript, presetKey, manualOverride]
+              description: Subtitle-specific metadata.
+              properties:
+                linkedAudioTrackId:
+                  type: string
+                  description: CUID2 of the AudioTrack whose transcript drives this layer.
+                transcript:
+                  $ref: '#/components/schemas/Transcript'
+                  description: The transcript used to generate HTML/CSS/keyframes.
+                presetKey:
+                  type: string
+                  description: |
+                    Key of the subtitle preset last used to generate this layer
+                    (e.g. `subtitle-fade-segment`, `subtitle-karaoke-word`,
+                    `subtitle-slide-segment`).
+                manualOverride:
+                  type: boolean
+                  default: false
+                  description: |
+                    True when the user has manually edited `html`, `css`, or
+                    `keyframes` after the last preset generation. When true,
+                    "Regenerate" shows a confirmation dialog.
+      example:
+        id: "layer_02"
+        type: subtitle
+        order: 1
+        name: "Subtitles"
+        html: "<div class=\"subtitle-container\">…</div>"
+        css: ".subtitle-container { position: absolute; bottom: 40px; width: 100%; text-align: center; }"
+        startFrame: 0
+        endFrame: 179
+        visible: true
+        keyframes: []
+        subtitle:
+          linkedAudioTrackId: "track_01"
+          presetKey: "subtitle-fade-segment"
+          manualOverride: false
+          transcript:
+            language: "en"
+            model: "small"
+            generatedAt: "2026-05-18T12:00:00.000Z"
+            segments:
+              - id: "seg_01"
+                text: "Hello World"
+                startFrame: 0
+                endFrame: 59
+                words:
+                  - text: "Hello"
+                    startFrame: 0
+                    endFrame: 28
+                  - text: "World"
+                    startFrame: 30
+                    endFrame: 59
+
+    Layer:
+      description: |
+        A composited layer within a scene. Discriminated by the `type` field.
+        - `"html"` (default): plain HTML/CSS layer — backwards-compatible with
+          layers created before the `type` field existed.
+        - `"subtitle"`: auto-generated from an audio track transcript via a
+          subtitle preset; carries an embedded `Transcript`.
+        `endFrame` must be ≥ `startFrame`.
+        Corresponds to `LayerSchema` in packages/shared-types/src/schemas/layer.ts.
+      oneOf:
+        - $ref: '#/components/schemas/HtmlLayer'
+        - $ref: '#/components/schemas/SubtitleLayer'
+      discriminator:
+        propertyName: type
+        mapping:
+          html: '#/components/schemas/HtmlLayer'
+          subtitle: '#/components/schemas/SubtitleLayer'
 
     # ── Asset ─────────────────────────────────────────────────────────────────
     # Source: packages/shared-types/src/schemas/audio.ts
@@ -535,6 +818,7 @@ components:
         keyframes: []
         layers:
           - id: "layer_01"
+            type: html
             order: 0
             name: "Title"
             html: "<h1>Hello World</h1>"
@@ -712,6 +996,7 @@ components:
       example:
         layers:
           - id: "layer_01"
+            type: html
             order: 0
             name: "Badge"
             html: "<div class=\"badge\">NEW</div>"
@@ -751,6 +1036,7 @@ components:
         payload:
           layers:
             - id: "layer_01"
+              type: html
               order: 0
               name: "Badge"
               html: "<div class=\"badge\">NEW</div>"
@@ -1082,6 +1368,7 @@ paths:
                       keyframes: []
                       layers:
                         - id: "layer_01"
+                          type: html
                           order: 0
                           name: "Title"
                           html: "<h1>Hello</h1>"
@@ -1130,6 +1417,7 @@ paths:
                       keyframes: []
                       layers:
                         - id: "layer_02"
+                          type: html
                           order: 0
                           name: "Thanks"
                           html: "<p>Thanks for watching</p>"
@@ -1270,6 +1558,164 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  # ── Transcripts ──────────────────────────────────────────────────────────────
+  /api/projects/{id}/audioTracks/{trackId}/transcript:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project CUID2 identifier.
+      - name: trackId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: AudioTrack CUID2 identifier.
+
+    post:
+      tags: [Transcripts]
+      operationId: startTranscript
+      summary: Start a transcript job for an audio track
+      description: |
+        Submits the audio track's asset to the local Whisper service for
+        transcription. Returns a `jobId` immediately (HTTP 202); use
+        `GET /api/projects/{id}/audioTracks/{trackId}/transcript/events?jobId=...`
+        to follow progress via SSE.
+
+        Results are cached server-side by `SHA256(assetSha + model + lang)` so
+        repeated calls with the same model/lang on the same asset are instant
+        (the job will emit `completed` immediately from cache).
+
+        **Default model:** `small` (fast, ~74M parameters).
+        **Default language:** `auto` (Whisper auto-detects; pass an ISO-639-1 code
+        like `en` to skip detection).
+      parameters:
+        - name: model
+          in: query
+          required: false
+          schema:
+            type: string
+            default: small
+          description: |
+            Whisper model name (e.g. `tiny`, `base`, `small`, `medium`, `large-v3-turbo`).
+            Overrides the `WHISPER_DEFAULT_MODEL` env variable.
+        - name: lang
+          in: query
+          required: false
+          schema:
+            type: string
+            default: auto
+          description: |
+            ISO-639-1 language code (e.g. `en`, `es`, `fr`) or `auto` for
+            Whisper auto-detection. Overrides `WHISPER_DEFAULT_LANG`.
+      responses:
+        '202':
+          description: Transcript job accepted and started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobId]
+                properties:
+                  jobId:
+                    type: string
+                    description: Unique identifier of the transcript job.
+              example:
+                jobId: "txjob_xyz789"
+        '404':
+          description: Project or audio track not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                projectNotFound:
+                  value:
+                    error: project_not_found
+                trackNotFound:
+                  value:
+                    error: track_not_found
+
+  /api/projects/{id}/audioTracks/{trackId}/transcript/events:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project CUID2 identifier.
+      - name: trackId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: AudioTrack CUID2 identifier.
+
+    get:
+      tags: [Transcripts]
+      operationId: getTranscriptEvents
+      summary: Subscribe to transcript job progress (SSE)
+      description: |
+        Opens a Server-Sent Events (SSE) stream that emits `TranscriptJob` state
+        updates until the job completes or errors.
+
+        **Event format:** Each event is a bare `data:` line (no named event field):
+        ```
+        data: {"id":"txjob_xyz789","projectId":"proj_01","trackId":"track_01","status":"model-loading","progress":0.1,"startedAt":1747569600000}
+
+        data: {"id":"txjob_xyz789","projectId":"proj_01","trackId":"track_01","status":"transcribing","progress":0.5,"startedAt":1747569600000}
+
+        data: {"id":"txjob_xyz789","projectId":"proj_01","trackId":"track_01","status":"completed","progress":1,"transcript":{...},"startedAt":1747569600000,"finishedAt":1747569635000}
+
+        ```
+
+        The stream closes automatically when `status` is `completed` or `error`.
+
+        **Note:** OpenAPI 3.1 does not formally model SSE — the content type
+        `text/event-stream` is documented here by convention.
+      parameters:
+        - name: jobId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Transcript job identifier returned by `POST .../transcript`.
+      responses:
+        '200':
+          description: |
+            SSE stream of transcript job updates. Each event is a bare `data:` line
+            containing a JSON-encoded `TranscriptJob` object.
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/TranscriptJob'
+              example: |
+                data: {"id":"txjob_xyz789","projectId":"proj_01","trackId":"track_01","status":"queued","progress":0,"startedAt":1747569600000}
+
+                data: {"id":"txjob_xyz789","projectId":"proj_01","trackId":"track_01","status":"model-loading","progress":0.1,"startedAt":1747569600000}
+
+                data: {"id":"txjob_xyz789","projectId":"proj_01","trackId":"track_01","status":"transcribing","progress":0.5,"startedAt":1747569600000}
+
+                data: {"id":"txjob_xyz789","projectId":"proj_01","trackId":"track_01","status":"completed","progress":1,"transcript":{"language":"en","model":"small","generatedAt":"2026-05-18T12:00:00.000Z","segments":[]},"startedAt":1747569600000,"finishedAt":1747569635000}
+
+        '400':
+          description: Missing or empty `jobId` query parameter.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                error: missing_job_id
+        '404':
+          description: Unknown `jobId` — no transcript job with that identifier.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: not_found
 
   /renders/{projectId}/{filename}:
     parameters:
@@ -1549,6 +1995,7 @@ paths:
                   payload:
                     layers:
                       - id: "layer_01"
+                        type: html
                         order: 0
                         name: "Badge"
                         html: "<div class=\"badge\">NEW</div>"
@@ -1591,6 +2038,7 @@ paths:
               payload:
                 layers:
                   - id: "layer_01"
+                    type: html
                     order: 0
                     name: "Badge"
                     html: "<div class=\"badge\">NEW</div>"
@@ -1614,6 +2062,7 @@ paths:
                 payload:
                   layers:
                     - id: "layer_01"
+                      type: html
                       order: 0
                       name: "Badge"
                       html: "<div>NEW</div>"
