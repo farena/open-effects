@@ -1,6 +1,7 @@
 import type { SubtitlePreset } from "./types";
 import { fadeSegment } from "./fade-segment";
 import { karaokeWord } from "./karaoke-word";
+import { slideSegment } from "./slide-segment";
 
 /**
  * All built-in subtitle presets.
@@ -10,7 +11,7 @@ import { karaokeWord } from "./karaoke-word";
 export const SUBTITLE_PRESETS: SubtitlePreset[] = [
   fadeSegment,
   karaokeWord,
-  // Task 13: subtitle-slide-segment will be appended here
+  slideSegment,
 ];
 
 /**
