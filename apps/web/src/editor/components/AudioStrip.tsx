@@ -10,7 +10,6 @@ type StripDragMode = "move" | "trimLeft" | "trimRight" | null;
 
 interface AudioStripProps {
   track: AudioTrack;
-  trackName?: string;
   totalFrames: number;
   timelineWidthPx: number;
   pxPerFrame: number;
@@ -131,7 +130,6 @@ function VolumeKeyframeDot({
 
 export function AudioStrip({
   track,
-  trackName,
   totalFrames,
   timelineWidthPx,
   pxPerFrame,
@@ -145,11 +143,6 @@ export function AudioStrip({
   const currentFrame = useEditorStore((s) => s.currentFrame);
   const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
   const isSelected = selectedAudioTrackId === track.id;
-
-  const label =
-    trackName ??
-    (track.assetPath ? track.assetPath.split("/").pop() : undefined) ??
-    "Audio";
 
   const globalStart = sceneOffsetFrames + track.startFrame;
   const leftPx =
@@ -253,7 +246,8 @@ export function AudioStrip({
   }, []);
 
   const handleSplit = useCallback(() => {
-    const splitFrameLocal = currentFrame - (sceneOffsetFrames + track.startFrame);
+    const splitFrameLocal =
+      currentFrame - (sceneOffsetFrames + track.startFrame);
     const span = track.trimEnd - track.trimStart;
     if (splitFrameLocal <= 0 || splitFrameLocal >= span) {
       toast.warning("Move playhead inside the strip to split.");
@@ -305,13 +299,16 @@ export function AudioStrip({
       />
 
       <div
-        className="relative flex min-w-0 flex-1 cursor-grab select-none flex-col justify-center overflow-hidden px-1"
+        className="relative flex min-w-0 flex-1 cursor-grab select-none items-center overflow-hidden px-1"
         onPointerDown={(e) => onPointerDown(e, "move")}
       >
-        <span className="truncate text-[10px] font-medium leading-none text-white/90">
-          {label}
-        </span>
-        <Waveform src={track.assetPath} height={24} />
+        <Waveform
+          src={track.assetPath}
+          height={10}
+          trimStartFrames={track.trimStart}
+          trimEndFrames={track.trimEnd}
+          sourceDurationFrames={probedDurationFrames}
+        />
         {(track.volumeKeyframes ?? []).map((kf) => (
           <VolumeKeyframeDot
             key={kf.frame}
