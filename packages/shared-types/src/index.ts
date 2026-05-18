@@ -1,3 +1,4 @@
+export * from "./schemas/transcript";
 export * from "./schemas/easing";
 export * from "./schemas/keyframe";
 export * from "./schemas/layer";
