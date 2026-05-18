@@ -29,9 +29,16 @@ import { HtmlTab } from "./inspector/HtmlTab";
 import { CssTab } from "./inspector/CssTab";
 import { KeyframesTab } from "./inspector/KeyframesTab";
 import { PresetsTab } from "./inspector/PresetsTab";
+import { SubtitlePropsTab } from "./inspector/SubtitlePropsTab";
+import { SubtitlePresetsTab } from "./inspector/SubtitlePresetsTab";
 import { SceneTab } from "./inspector/SceneTab";
 import { TransitionTab } from "./inspector/TransitionTab";
 import { AudioFxTab } from "./inspector/AudioFxTab";
+import type { Layer, SubtitleLayer } from "@open-effects/shared-types";
+
+function isSubtitleLayer(l: Layer): l is SubtitleLayer {
+  return l.type === "subtitle";
+}
 
 interface TabItem {
   value: string;
@@ -137,17 +144,22 @@ export function Inspector() {
   }
 
   if (layer) {
+    const isSubtitle = isSubtitleLayer(layer);
     return (
       <VerticalIconTabs
         tabKey="layer"
         defaultValue="props"
         items={LAYER_TABS}
         contents={{
-          props: <PropsTab />,
+          props: isSubtitle ? <SubtitlePropsTab /> : <PropsTab />,
           html: <HtmlTab />,
           css: <CssTab />,
           keyframes: <KeyframesTab />,
-          presets: <PresetsTab layer={layer} />,
+          presets: isSubtitle ? (
+            <SubtitlePresetsTab layer={layer} />
+          ) : (
+            <PresetsTab layer={layer} />
+          ),
         }}
       />
     );
