@@ -1,23 +1,66 @@
 import { z } from "zod";
 import { KeyframeSchema } from "./keyframe";
+import { TranscriptSchema } from "./transcript";
+
+const LayerCoreObject = z.object({
+  id: z.string(),
+  order: z.number().int().min(0),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(100, "Name must be 100 characters or less"),
+  html: z.string(),
+  css: z.string(),
+  startFrame: z.number().int().min(0),
+  endFrame: z.number().int().min(0),
+  /** When false, the layer is not composited in the preview/render. */
+  visible: z.boolean().default(true),
+  keyframes: z.array(KeyframeSchema).default([]),
+});
+
+export const HtmlLayerSchema = LayerCoreObject.extend({
+  type: z.literal("html").default("html"),
+});
+
+export const SubtitleLayerSchema = LayerCoreObject.extend({
+  type: z.literal("subtitle"),
+  subtitle: z.object({
+    linkedAudioTrackId: z.string(),
+    transcript: TranscriptSchema,
+    presetKey: z.string(),
+    manualOverride: z.boolean().default(false),
+  }),
+});
+
+// IMPORTANT: discriminatedUnion + endFrame >= startFrame refine.
+// We can't .refine() before the discriminator, so refine after the union.
+// Backwards-compat: legacy layers without `type` are coerced to "html" via
+// z.preprocess so discriminatedUnion can route them correctly.
+const LayerUnion = z.discriminatedUnion("type", [
+  HtmlLayerSchema,
+  SubtitleLayerSchema,
+]);
 
 export const LayerSchema = z
-  .object({
-    id: z.string(),
-    order: z.number().int().min(0),
-    name: z
-      .string()
-      .min(1, "Name is required")
-      .max(100, "Name must be 100 characters or less"),
-    html: z.string(),
-    css: z.string(),
-    startFrame: z.number().int().min(0),
-    endFrame: z.number().int().min(0),
-    /** When false, the layer is not composited in the preview/render. */
-    visible: z.boolean().default(true),
-    keyframes: z.array(KeyframeSchema).default([]),
-  })
+  .preprocess(
+    (val) => {
+      if (
+        val !== null &&
+        typeof val === "object" &&
+        !Array.isArray(val) &&
+        !("type" in val)
+      ) {
+        return { ...(val as object), type: "html" };
+      }
+      return val;
+    },
+    LayerUnion,
+  )
   .refine((l) => l.endFrame >= l.startFrame, {
     message: "endFrame must be >= startFrame",
     path: ["endFrame"],
   });
+
+export type HtmlLayer = z.infer<typeof HtmlLayerSchema>;
+export type SubtitleLayer = z.infer<typeof SubtitleLayerSchema>;
+export type Layer = z.infer<typeof LayerSchema>;
