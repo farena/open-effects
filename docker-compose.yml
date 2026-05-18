@@ -1,0 +1,34 @@
+# docker-compose.yml — local development services for Open Effects
+#
+# Whisper ASR service (GPU build)
+# --------------------------------
+# This file uses the GPU-accelerated image. Requirements: NVIDIA driver on the
+# Windows host and NVIDIA Container Toolkit installed inside WSL2.
+#
+# CPU FALLBACK: if you don't have an NVIDIA GPU, make two changes:
+#   1. Replace the image tag `:latest-gpu` with `:latest`
+#   2. Remove (or comment out) the entire `deploy:` block below.
+
+services:
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    environment:
+      ASR_ENGINE: faster_whisper
+      ASR_MODEL: small
+      ASR_QUANTIZATION: float16
+      MODEL_IDLE_TIMEOUT: "300"
+      ASR_MODEL_PATH: /data/whisper
+    volumes:
+      - whisper-models:/data/whisper
+    ports:
+      - "9000:9000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  whisper-models:
