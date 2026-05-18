@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { temporal } from "zundo";
-import type { Layer, Scene } from "@open-effects/shared-types";
+import type { Layer, Scene, Transcript } from "@open-effects/shared-types";
 import { isCustomProperty } from "@open-effects/shared-types";
 import type { EditorState, EditorActions } from "./store.types";
-import { defaultScene, defaultLayer } from "./defaults";
+import { defaultScene, defaultLayer, defaultSubtitleLayer } from "./defaults";
 import { ANIMATABLE_KEYS } from "@open-effects/runtime";
 import { newId } from "@/lib/ids";
 import { instantiatePayload } from "@/lib/components/instantiatePayload";
@@ -298,6 +298,29 @@ export const useEditorStore = create<StoreState>()(
             visible: true,
             keyframes: [],
           });
+        }),
+
+      createSubtitleLayerFromTranscript: (
+        sceneId: string,
+        trackId: string,
+        transcript: Transcript,
+        presetKey: string,
+      ) =>
+        set((s) => {
+          const sc = s.project.scenes.find((x) => x.id === sceneId);
+          if (!sc) return;
+          const order = sc.layers.length;
+          const fps = s.project.fps;
+          const layer = defaultSubtitleLayer({
+            order,
+            audioTrackId: trackId,
+            transcript,
+            presetKey,
+            fps,
+          });
+          sc.layers.push(layer);
+          s.selectedLayerId = layer.id;
+          s.selectedAudioTrackId = null;
         }),
 
       deleteLayer: (layerId) =>

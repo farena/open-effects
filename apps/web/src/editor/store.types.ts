@@ -1,4 +1,4 @@
-import type { Project, Transition } from "@open-effects/shared-types";
+import type { Project, Transition, Transcript } from "@open-effects/shared-types";
 import type {
   Easing,
   Eq,
@@ -56,6 +56,12 @@ export interface EditorActions {
   addMediaLayer: (
     sceneId: string,
     media: { kind: "image" | "video"; path: string; filename: string },
+  ) => void;
+  createSubtitleLayerFromTranscript: (
+    sceneId: string,
+    trackId: string,
+    transcript: Transcript,
+    presetKey: string,
   ) => void;
   deleteLayer: (layerId: string) => void;
   duplicateLayer: (layerId: string) => void;
