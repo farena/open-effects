@@ -1,7 +1,7 @@
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
-export const metadata = { title: "open-effects" };
+export const metadata = { title: "Open Effects" };
 
 export default function RootLayout({
   children,
