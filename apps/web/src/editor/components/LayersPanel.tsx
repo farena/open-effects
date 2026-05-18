@@ -16,7 +16,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Layers } from "lucide-react";
+import { Copy, Layers } from "lucide-react";
 import type { Layer } from "@open-effects/shared-types";
 import { useEditorStore } from "@/editor/store";
 import { selectActiveScene } from "@/editor/selectors";
@@ -27,6 +27,7 @@ interface SortableLayerItemProps {
   layer: Layer;
   isSelected: boolean;
   onSelect: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }
 
@@ -34,6 +35,7 @@ function SortableLayerItem({
   layer,
   isSelected,
   onSelect,
+  onDuplicate,
   onDelete,
 }: SortableLayerItemProps) {
   const {
@@ -82,6 +84,19 @@ function SortableLayerItem({
         </span>
       </div>
 
+      {/* Duplicate button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDuplicate();
+        }}
+        className="invisible group-hover:visible ml-1 shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
+        aria-label="Duplicate layer"
+        title="Duplicate layer"
+      >
+        <Copy className="h-3.5 w-3.5" />
+      </button>
+
       {/* Delete button */}
       <button
         onClick={(e) => {
@@ -112,6 +127,7 @@ export function LayersPanel() {
   const selectedLayerId = useEditorStore((s) => s.selectedLayerId);
   const addLayer = useEditorStore((s) => s.addLayer);
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
+  const duplicateLayer = useEditorStore((s) => s.duplicateLayer);
   const selectLayer = useEditorStore((s) => s.selectLayer);
   const reorderLayers = useEditorStore((s) => s.reorderLayers);
 
@@ -180,6 +196,7 @@ export function LayersPanel() {
                   layer={layer}
                   isSelected={selectedLayerId === layer.id}
                   onSelect={() => selectLayer(layer.id)}
+                  onDuplicate={() => duplicateLayer(layer.id)}
                   onDelete={() => deleteLayer(layer.id)}
                 />
               ))}

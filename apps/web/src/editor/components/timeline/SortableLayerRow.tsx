@@ -3,7 +3,7 @@
 import { Fragment, type ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Eye, EyeOff, GripVertical, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, GripVertical, Trash2 } from "lucide-react";
 import type { Layer } from "@open-effects/shared-types";
 
 const ROW_H = 28;
@@ -15,6 +15,7 @@ interface SortableLayerRowProps {
   labelColor: string;
   onSelect: () => void;
   onToggleVisible: () => void;
+  onDuplicate: () => void;
   onRequestDelete: () => void;
   /** Optional row to render directly under (e.g. keyframe lanes block). */
   trailing?: ReactNode;
@@ -27,6 +28,7 @@ export function SortableLayerRow({
   labelColor,
   onSelect,
   onToggleVisible,
+  onDuplicate,
   onRequestDelete,
   trailing,
 }: SortableLayerRowProps) {
@@ -99,6 +101,18 @@ export function SortableLayerRow({
           title="Label"
         />
         <span className="min-w-0 flex-1 truncate">{layer.name}</span>
+        <button
+          type="button"
+          className="shrink-0 rounded p-0.5 text-[#aaa] hover:bg-[#3a3a3a] hover:text-white"
+          aria-label={`Duplicate layer ${layer.name}`}
+          title="Duplicate layer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate();
+          }}
+        >
+          <Copy className="size-3" />
+        </button>
         <button
           type="button"
           className="shrink-0 rounded p-0.5 text-[#aaa] hover:bg-[#5c2b2b] hover:text-white"

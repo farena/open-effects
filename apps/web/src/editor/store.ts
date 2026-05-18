@@ -313,6 +313,31 @@ export const useEditorStore = create<StoreState>()(
           }
         }),
 
+      duplicateLayer: (layerId) =>
+        set((s) => {
+          for (const sc of s.project.scenes) {
+            const src = sc.layers.find((l) => l.id === layerId);
+            if (!src) continue;
+            const snapshot = JSON.parse(JSON.stringify(src)) as Layer;
+            const copy: Layer = {
+              ...snapshot,
+              id: newId(),
+              name: `${src.name} copy`,
+              keyframes: snapshot.keyframes.map((kf) => ({
+                frame: kf.frame,
+                property: kf.property,
+                value: kf.value,
+                easingOut: kf.easingOut,
+              })),
+            };
+            const srcIndex = sc.layers.findIndex((l) => l.id === layerId);
+            sc.layers.splice(srcIndex + 1, 0, copy);
+            sc.layers = sc.layers.map((l, i) => ({ ...l, order: i }));
+            s.selectedLayerId = copy.id;
+            return;
+          }
+        }),
+
       reorderLayers: (sceneId, orderedIds) =>
         set((s) => {
           const sc = s.project.scenes.find((x) => x.id === sceneId);

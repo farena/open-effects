@@ -58,6 +58,7 @@ export interface EditorActions {
     media: { kind: "image" | "video"; path: string; filename: string },
   ) => void;
   deleteLayer: (layerId: string) => void;
+  duplicateLayer: (layerId: string) => void;
   reorderLayers: (sceneId: string, orderedIds: string[]) => void;
   updateLayerHtml: (layerId: string, html: string) => void;
   updateLayerCss: (layerId: string, css: string) => void;

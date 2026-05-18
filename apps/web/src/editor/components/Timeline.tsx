@@ -1091,6 +1091,7 @@ export function Timeline() {
   const addLayer = useEditorStore((s) => s.addLayer);
   const addMediaLayer = useEditorStore((s) => s.addMediaLayer);
   const deleteLayer = useEditorStore((s) => s.deleteLayer);
+  const duplicateLayer = useEditorStore((s) => s.duplicateLayer);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
   const removeAudioTrack = useEditorStore((s) => s.removeAudioTrack);
   const reorderLayers = useEditorStore((s) => s.reorderLayers);
@@ -1797,6 +1798,7 @@ export function Timeline() {
                                 onToggleVisible={() =>
                                   toggleLayerVisible(layer.id)
                                 }
+                                onDuplicate={() => duplicateLayer(layer.id)}
                                 onRequestDelete={() =>
                                   setLayerPendingDelete({
                                     id: layer.id,
