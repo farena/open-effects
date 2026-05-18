@@ -1,0 +1,10 @@
+{
+  "language": "es",
+  "model": "small",
+  "generatedAt": "2026-05-18T00:00:00.000Z",
+  "segments": [
+    { "id": "s0", "text": "Hola, este es un ejemplo.", "startFrame": 30, "endFrame": 90, "words": [{"text":"Hola","startFrame":30,"endFrame":40},{"text":"este","startFrame":42,"endFrame":50},{"text":"es","startFrame":52,"endFrame":58},{"text":"un","startFrame":60,"endFrame":66},{"text":"ejemplo","startFrame":68,"endFrame":88}] },
+    { "id": "s1", "text": "Hoy te muestro la nueva feature.", "startFrame": 120, "endFrame": 210, "words": [{"text":"Hoy","startFrame":120,"endFrame":128},{"text":"te","startFrame":130,"endFrame":135},{"text":"muestro","startFrame":138,"endFrame":160},{"text":"la","startFrame":162,"endFrame":168},{"text":"nueva","startFrame":170,"endFrame":182},{"text":"feature","startFrame":185,"endFrame":208}] },
+    { "id": "s2", "text": "Espero que te guste.", "startFrame": 240, "endFrame": 310, "words": [{"text":"Espero","startFrame":240,"endFrame":260},{"text":"que","startFrame":262,"endFrame":270},{"text":"te","startFrame":272,"endFrame":278},{"text":"guste","startFrame":280,"endFrame":308}] }
+  ]
+}
