@@ -175,6 +175,54 @@ describe("manualOverride dirty flag", () => {
     expect(getSubtitleLayer(subtitleLayerId).subtitle.manualOverride).toBe(true);
   });
 
+  it("moveKeyframe sets manualOverride=true on subtitle layer", () => {
+    useEditorStore.setState((s) => {
+      for (const sc of s.project.scenes) {
+        const l = sc.layers.find((x) => x.id === subtitleLayerId);
+        if (l) {
+          l.keyframes.push({
+            id: "kf-seed-move",
+            property: "opacity",
+            frame: 20,
+            value: "0.5",
+            easingOut: { type: "linear" },
+          });
+          if (l.type === "subtitle") l.subtitle.manualOverride = false;
+          break;
+        }
+      }
+    });
+
+    useEditorStore
+      .getState()
+      .moveKeyframe(subtitleLayerId, "opacity", 20, 25);
+    expect(getSubtitleLayer(subtitleLayerId).subtitle.manualOverride).toBe(true);
+  });
+
+  it("updateKeyframeEasing sets manualOverride=true on subtitle layer", () => {
+    useEditorStore.setState((s) => {
+      for (const sc of s.project.scenes) {
+        const l = sc.layers.find((x) => x.id === subtitleLayerId);
+        if (l) {
+          l.keyframes.push({
+            id: "kf-seed-easing",
+            property: "opacity",
+            frame: 30,
+            value: "1",
+            easingOut: { type: "linear" },
+          });
+          if (l.type === "subtitle") l.subtitle.manualOverride = false;
+          break;
+        }
+      }
+    });
+
+    useEditorStore
+      .getState()
+      .updateKeyframeEasing(subtitleLayerId, "opacity", 30, { type: "ease-in-out" });
+    expect(getSubtitleLayer(subtitleLayerId).subtitle.manualOverride).toBe(true);
+  });
+
   it("updateLayerHtml on html layer does NOT set manualOverride (layer has no subtitle)", () => {
     // updateLayerHtml on an html-type layer should not throw or add manualOverride
     expect(() => {
