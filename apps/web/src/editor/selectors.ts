@@ -55,6 +55,26 @@ export const selectLocalFrameInActiveLayer = (s: EditorState): number => {
 export const selectActiveScene = (s: EditorState) =>
   s.project.scenes.find((sc) => sc.id === s.selectedSceneId) ?? null;
 
+/**
+ * Returns the id of the scene that contains the current playhead frame. Walks
+ * scenes in order, subtracting transitionIn overlaps so the math matches the
+ * timeline layout. Falls back to the last scene if the playhead sits past the
+ * composition end, and returns null only when there are no scenes.
+ */
+export const selectSceneIdAtCurrentFrame = (s: EditorState): string | null => {
+  const sorted = sortedScenes(s);
+  if (sorted.length === 0) return null;
+  let acc = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    const sc = sorted[i]!;
+    acc -= sceneTransitionOverlap(sc, i);
+    const end = acc + sc.durationFrames;
+    if (s.currentFrame < end) return sc.id;
+    acc = end;
+  }
+  return sorted[sorted.length - 1]!.id;
+};
+
 export const selectAudioTracksForScene =
   (sceneId: string) => (s: EditorState) =>
     s.project.scenes.find((sc) => sc.id === sceneId)?.audioTracks ?? [];

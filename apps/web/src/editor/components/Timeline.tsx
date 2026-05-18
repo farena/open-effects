@@ -40,6 +40,7 @@ import {
   selectActiveAudioTrack,
   selectActiveAudioTrackSceneId,
   selectAudioAnimatedProperties,
+  selectSceneIdAtCurrentFrame,
 } from "@/editor/selectors";
 import { PROPERTIES } from "@open-effects/runtime";
 import type { AudioTrack, Layer, Scene } from "@open-effects/shared-types";
@@ -946,6 +947,7 @@ function SceneBar({
     (e: React.DragEvent<HTMLDivElement>) => {
       if (!onMediaDrop) return;
       e.preventDefault();
+      e.stopPropagation();
       setDragOver(false);
       const raw = e.dataTransfer.getData("application/x-asset");
       if (!raw) return;
@@ -1474,6 +1476,53 @@ export function Timeline() {
     [addMediaLayer],
   );
 
+  const [timelineDragOver, setTimelineDragOver] = useState(false);
+
+  const handleTimelineDragOver = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!e.dataTransfer.types.includes("application/x-asset")) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!timelineDragOver) setTimelineDragOver(true);
+    },
+    [timelineDragOver],
+  );
+
+  const handleTimelineDragLeave = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      // Only clear when the cursor leaves the container itself, not when it
+      // crosses into a child element (relatedTarget stays inside).
+      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+      if (timelineDragOver) setTimelineDragOver(false);
+    },
+    [timelineDragOver],
+  );
+
+  const handleTimelineDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setTimelineDragOver(false);
+      const raw = e.dataTransfer.getData("application/x-asset");
+      if (!raw) return;
+      let payload: { id: string; path: string; filename?: string; type?: string };
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        return;
+      }
+      if (payload.type !== "image" && payload.type !== "video") return;
+      const sceneId = selectSceneIdAtCurrentFrame(useEditorStore.getState());
+      if (!sceneId) return;
+      handleSceneMediaDrop(sceneId, {
+        id: payload.id,
+        path: payload.path,
+        filename: payload.filename ?? payload.path.split("/").pop() ?? "",
+        type: payload.type,
+      });
+    },
+    [handleSceneMediaDrop],
+  );
+
   return (
     <div className="flex h-full flex-col bg-[#232323] text-[#e8e8e8]">
       {/* Header: timecode + transport + zoom */}
@@ -1899,7 +1948,13 @@ export function Timeline() {
           <div
             ref={rightRef}
             onScroll={onRightScroll}
-            className="min-h-0 flex-1 overflow-auto bg-[#1b1b1b]"
+            onDragOver={handleTimelineDragOver}
+            onDragLeave={handleTimelineDragLeave}
+            onDrop={handleTimelineDrop}
+            className={[
+              "min-h-0 flex-1 overflow-auto bg-[#1b1b1b]",
+              timelineDragOver ? "ring-1 ring-inset ring-amber-300/60" : "",
+            ].join(" ")}
           >
             <div className="relative" style={{ width: timelineWidthPx }}>
               <div
