@@ -408,6 +408,7 @@ export const useEditorStore = create<StoreState>()(
         set((s) =>
           mutateLayer(s, layerId, (l) => {
             l.html = html;
+            if (l.type === "subtitle") l.subtitle.manualOverride = true;
           }),
         ),
 
@@ -415,6 +416,7 @@ export const useEditorStore = create<StoreState>()(
         set((s) =>
           mutateLayer(s, layerId, (l) => {
             l.css = css;
+            if (l.type === "subtitle") l.subtitle.manualOverride = true;
           }),
         ),
 
@@ -487,15 +489,16 @@ export const useEditorStore = create<StoreState>()(
             if (existing) {
               existing.value = value;
               if (easingOut) existing.easingOut = easingOut;
-              return;
+            } else {
+              l.keyframes.push({
+                id: newId(),
+                frame,
+                property,
+                value,
+                easingOut: easingOut ?? { type: "linear" },
+              });
             }
-            l.keyframes.push({
-              id: newId(),
-              frame,
-              property,
-              value,
-              easingOut: easingOut ?? { type: "linear" },
-            });
+            if (l.type === "subtitle") l.subtitle.manualOverride = true;
           });
         }),
 
@@ -505,6 +508,7 @@ export const useEditorStore = create<StoreState>()(
             l.keyframes = l.keyframes.filter(
               (k) => !(k.property === property && k.frame === frame),
             );
+            if (l.type === "subtitle") l.subtitle.manualOverride = true;
           }),
         ),
 
@@ -518,7 +522,10 @@ export const useEditorStore = create<StoreState>()(
             const kf = l.keyframes.find(
               (k) => k.property === property && k.frame === fromFrame,
             );
-            if (kf) kf.frame = toFrame;
+            if (kf) {
+              kf.frame = toFrame;
+              if (l.type === "subtitle") l.subtitle.manualOverride = true;
+            }
           }),
         ),
 
@@ -528,7 +535,10 @@ export const useEditorStore = create<StoreState>()(
             const kf = l.keyframes.find(
               (k) => k.property === property && k.frame === frame,
             );
-            if (kf) kf.value = value;
+            if (kf) {
+              kf.value = value;
+              if (l.type === "subtitle") l.subtitle.manualOverride = true;
+            }
           }),
         ),
 
@@ -538,7 +548,40 @@ export const useEditorStore = create<StoreState>()(
             const kf = l.keyframes.find(
               (k) => k.property === property && k.frame === frame,
             );
-            if (kf) kf.easingOut = easingOut;
+            if (kf) {
+              kf.easingOut = easingOut;
+              if (l.type === "subtitle") l.subtitle.manualOverride = true;
+            }
+          }),
+        ),
+
+      setSubtitleManualOverride: (layerId, value) =>
+        set((s) =>
+          mutateLayer(s, layerId, (l) => {
+            if (l.type === "subtitle") l.subtitle.manualOverride = value;
+          }),
+        ),
+
+      setSubtitlePreset: (layerId, presetKey) =>
+        set((s) =>
+          mutateLayer(s, layerId, (l) => {
+            if (l.type !== "subtitle") return;
+            l.subtitle.presetKey = presetKey;
+            const preset = getSubtitlePreset(presetKey);
+            const fps = s.project.fps;
+            const { html, keyframes } = preset.generate(l.subtitle.transcript, {
+              layerStartFrame: 0,
+              fps,
+            });
+            l.html = html;
+            l.keyframes = keyframes;
+            l.subtitle.manualOverride = false;
+            l.endFrame =
+              l.subtitle.transcript.segments.length > 0
+                ? Math.max(
+                    ...l.subtitle.transcript.segments.map((seg) => seg.endFrame),
+                  )
+                : l.endFrame;
           }),
         ),
 

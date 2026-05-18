@@ -65,6 +65,8 @@ export interface EditorActions {
   ) => void;
   updateSubtitleTranscript: (layerId: string, transcript: Transcript) => void;
   regenerateSubtitleLayer: (layerId: string) => void;
+  setSubtitleManualOverride: (layerId: string, value: boolean) => void;
+  setSubtitlePreset: (layerId: string, presetKey: string) => void;
   deleteLayer: (layerId: string) => void;
   duplicateLayer: (layerId: string) => void;
   reorderLayers: (sceneId: string, orderedIds: string[]) => void;
