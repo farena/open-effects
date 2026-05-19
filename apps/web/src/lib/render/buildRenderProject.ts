@@ -4,6 +4,21 @@ import { resolveAssetForRender } from "./assetResolver";
 import { processEq } from "@/lib/audio/processEq";
 import type { Project } from "@open-effects/shared-types";
 
+// Mirror of @open-effects/runtime totalDuration. We can't import from the
+// runtime barrel here because it re-exports React components that use hooks,
+// and Next compiles those as Server Components in this server-side path.
+function totalDuration(project: Project): number {
+  const durationSum = project.scenes.reduce(
+    (acc, s) => acc + s.durationFrames,
+    0,
+  );
+  const overlapSum = project.scenes.slice(1).reduce((acc, s) => {
+    const t = s.transitionIn;
+    return t && t.type !== "none" ? acc + t.durationFrames : acc;
+  }, 0);
+  return durationSum - overlapSum;
+}
+
 const RENDER_BASE_URL = process.env.RENDER_BASE_URL ?? "http://localhost:3000";
 
 // Remotion serves the render bundle from its own HTTP port (not Next.js).
@@ -49,10 +64,11 @@ export async function buildRenderProject(
     }
   }
 
-  const totalDurationFrames = project.scenes.reduce(
-    (acc, sc) => acc + sc.durationFrames,
-    0,
-  );
+  // Use the same accounting as the preview composition (Root.tsx): subtract
+  // transition overlaps from the raw scene sum, otherwise renderMedia gets a
+  // durationInFrames longer than the actual content and emits trailing black
+  // frames equal to the total transition duration.
+  const totalDurationFrames = totalDuration(project);
 
   return { project, totalDurationFrames };
 }
