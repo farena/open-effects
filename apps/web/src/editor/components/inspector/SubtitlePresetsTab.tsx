@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Captions, Mic, ArrowUpFromLine, type LucideIcon } from "lucide-react";
+import {
+  Captions,
+  ArrowUpFromLine,
+  Sparkle,
+  type LucideIcon,
+} from "lucide-react";
 import type { SubtitleLayer } from "@open-effects/shared-types";
 import { SUBTITLE_PRESETS } from "@/editor/presets/subtitles/registry";
 import { useEditorStore } from "@/editor/store";
@@ -13,8 +18,8 @@ import { ConfirmDialog } from "@/editor/components/ConfirmDialog";
 
 const iconLookup: Record<string, LucideIcon> = {
   Captions,
-  Mic,
   ArrowUpFromLine,
+  Sparkle,
 };
 
 // ---------------------------------------------------------------------------

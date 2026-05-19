@@ -309,18 +309,18 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 
 ### Phase 1 — Infrastructure
 
-#### Task 1: Whisper Docker service + docs + env
+#### Task 1: Whisper Docker service + docs + env ✅
 
 **Files:**
 - Create: `docker-compose.yml`
 - Create: `services/whisper/README.md`
 - Modify: `.env.example`
 
-- [ ] **Step 1: Write the `docker-compose.yml`** with one service `whisper` using `onerahmet/openai-whisper-asr-webservice:latest-gpu`, env (`ASR_ENGINE=faster_whisper`, `ASR_MODEL=small`, `ASR_QUANTIZATION=float16`, `MODEL_IDLE_TIMEOUT=300`, `ASR_MODEL_PATH=/data/whisper`), volume `whisper-models:/data/whisper`, ports `9000:9000`, and `deploy.resources.reservations.devices` for NVIDIA. Add a comment block explaining CPU fallback (swap image to `:latest` and delete the deploy block).
-- [ ] **Step 2: Write `services/whisper/README.md`** covering: prerequisites (NVIDIA driver on Windows host, NVIDIA Container Toolkit in WSL2 with the exact `apt install` command and `systemctl restart docker`), verification command (`docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi`), how to launch (`docker compose up -d whisper`), first-run note ("the model is downloaded the first time you POST to /asr; expect a delay of ~30s for `small`"), how to switch model (set `ASR_MODEL=large-v3-turbo` and `docker compose up -d --force-recreate whisper`), how to verify (`curl localhost:9000/docs` and the OpenAPI page renders), CPU fallback, troubleshooting (port 9000 already used → change to `9001:9000`; model download timing out → increase `MODEL_IDLE_TIMEOUT`).
-- [ ] **Step 3: Append `.env.example`** with three lines: `WHISPER_URL=http://localhost:9000`, `WHISPER_DEFAULT_MODEL=small`, `WHISPER_DEFAULT_LANG=auto`.
-- [ ] **Step 4: Validate**: `docker compose config` parses without errors; `cat services/whisper/README.md` reads cleanly.
-- [ ] **Step 5: Commit** — message: `feat(infra): add whisper docker service for local transcription`.
+- [x] **Step 1: Write the `docker-compose.yml`** with one service `whisper` using `onerahmet/openai-whisper-asr-webservice:latest-gpu`, env (`ASR_ENGINE=faster_whisper`, `ASR_MODEL=small`, `ASR_QUANTIZATION=float16`, `MODEL_IDLE_TIMEOUT=300`, `ASR_MODEL_PATH=/data/whisper`), volume `whisper-models:/data/whisper`, ports `9000:9000`, and `deploy.resources.reservations.devices` for NVIDIA. Add a comment block explaining CPU fallback (swap image to `:latest` and delete the deploy block).
+- [x] **Step 2: Write `services/whisper/README.md`** covering: prerequisites (NVIDIA driver on Windows host, NVIDIA Container Toolkit in WSL2 with the exact `apt install` command and `systemctl restart docker`), verification command (`docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi`), how to launch (`docker compose up -d whisper`), first-run note ("the model is downloaded the first time you POST to /asr; expect a delay of ~30s for `small`"), how to switch model (set `ASR_MODEL=large-v3-turbo` and `docker compose up -d --force-recreate whisper`), how to verify (`curl localhost:9000/docs` and the OpenAPI page renders), CPU fallback, troubleshooting (port 9000 already used → change to `9001:9000`; model download timing out → increase `MODEL_IDLE_TIMEOUT`).
+- [x] **Step 3: Append `.env.example`** with three lines: `WHISPER_URL=http://localhost:9000`, `WHISPER_DEFAULT_MODEL=small`, `WHISPER_DEFAULT_LANG=auto`.
+- [x] **Step 4: Validate**: `docker compose config` parses without errors; `cat services/whisper/README.md` reads cleanly.
+- [x] **Step 5: Commit** — message: `feat(infra): add whisper docker service for local transcription`.
 
 **Depends on:** none. Can run first or in parallel with Task 2.
 
@@ -328,18 +328,18 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 
 ### Phase 2 — Schemas (shared-types)
 
-#### Task 2: `TranscriptSchema` in shared-types
+#### Task 2: `TranscriptSchema` in shared-types ✅
 
 **Files:**
 - Create: `packages/shared-types/src/schemas/transcript.ts`
 - Create: `packages/shared-types/tests/transcript.test.ts`
 - Modify: `packages/shared-types/src/index.ts`
 
-- [ ] **Step 1: Write failing test** `transcript.test.ts` with cases: (a) a full transcript parses; (b) `words: []` default works when omitted; (c) negative frames rejected; (d) text fields preserved; (e) `language`/`model`/`generatedAt` all optional.
-- [ ] **Step 2: Run** `npm test -w packages/shared-types -- tests/transcript.test.ts` and confirm failure (module not found).
-- [ ] **Step 3: Implement `transcript.ts`** with the exact Zod shapes in "Authoritative type contracts" above; re-export from `index.ts`.
-- [ ] **Step 4: Run** the same test → all green; `npm run typecheck -w apps/web` → green (no breakage downstream because `Transcript` not yet referenced from `Layer`).
-- [ ] **Step 5: Commit** — `feat(shared-types): add TranscriptSchema for subtitle layers`.
+- [x] **Step 1: Write failing test** `transcript.test.ts` with cases: (a) a full transcript parses; (b) `words: []` default works when omitted; (c) negative frames rejected; (d) text fields preserved; (e) `language`/`model`/`generatedAt` all optional.
+- [x] **Step 2: Run** `npm test -w packages/shared-types -- tests/transcript.test.ts` and confirm failure (module not found).
+- [x] **Step 3: Implement `transcript.ts`** with the exact Zod shapes in "Authoritative type contracts" above; re-export from `index.ts`.
+- [x] **Step 4: Run** the same test → all green; `npm run typecheck -w apps/web` → green (no breakage downstream because `Transcript` not yet referenced from `Layer`).
+- [x] **Step 5: Commit** — `feat(shared-types): add TranscriptSchema for subtitle layers`.
 
 **Depends on:** none. Can run in parallel with Task 1.
 
@@ -352,11 +352,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Create: `packages/shared-types/tests/layer-discriminated.test.ts`
 - Modify: `packages/shared-types/src/index.ts`
 
-- [ ] **Step 1: Write failing test** `layer-discriminated.test.ts`: (a) legacy object with no `type` field but valid html fields parses → `parsed.type === "html"` (default); (b) explicit `type: "html"` parses; (c) `type: "subtitle"` with valid `subtitle` block parses and round-trips; (d) `type: "subtitle"` without `subtitle` block fails; (e) `endFrame < startFrame` fails for both variants.
-- [ ] **Step 2: Run** `npm test -w packages/shared-types -- tests/layer-discriminated.test.ts` → fail.
-- [ ] **Step 3: Implement** the new `layer.ts` as specified in "Authoritative type contracts". Re-export `HtmlLayerSchema`, `SubtitleLayerSchema`, `HtmlLayer`, `SubtitleLayer`, and the discriminated `LayerSchema`/`Layer` types from `index.ts`.
-- [ ] **Step 4: Run** `npm test -w packages/shared-types` (full suite). Then `npm run typecheck -w apps/web` — this WILL fail in `toProjectJson.ts`, `persistProjectJson.ts`, `defaults.ts`, store actions, and Inspector. **That is expected** — those are fixed in Tasks 5, 6, 14, 16, 21. Record the failure list as a checklist; don't fix here.
-- [ ] **Step 5: Commit** — `feat(shared-types): discriminated LayerSchema for subtitle support`. Note in commit body: "typecheck of apps/web will fail until Tasks 5,6,14,16,21 land."
+- [x] **Step 1: Write failing test** `layer-discriminated.test.ts`: (a) legacy object with no `type` field but valid html fields parses → `parsed.type === "html"` (default); (b) explicit `type: "html"` parses; (c) `type: "subtitle"` with valid `subtitle` block parses and round-trips; (d) `type: "subtitle"` without `subtitle` block fails; (e) `endFrame < startFrame` fails for both variants.
+- [x] **Step 2: Run** `npm test -w packages/shared-types -- tests/layer-discriminated.test.ts` → fail.
+- [x] **Step 3: Implement** the new `layer.ts` as specified in "Authoritative type contracts". Re-export `HtmlLayerSchema`, `SubtitleLayerSchema`, `HtmlLayer`, `SubtitleLayer`, and the discriminated `LayerSchema`/`Layer` types from `index.ts`. NOTE: implementor also removed duplicate `Layer` export from `packages/shared-types/src/types.ts` to avoid TS export ambiguity.
+- [x] **Step 4: Run** `npm test -w packages/shared-types` (full suite). Then `npm run typecheck -w apps/web` — this WILL fail in `toProjectJson.ts`, `persistProjectJson.ts`, `defaults.ts`, store actions, and Inspector. **That is expected** — those are fixed in Tasks 5, 6, 14, 16, 21. Record the failure list as a checklist; don't fix here.
+- [x] **Step 5: Commit** — `feat(shared-types): discriminated LayerSchema for subtitle support`. Note in commit body: "typecheck of apps/web will fail until Tasks 5,6,14,16,21 land."
 
 **Depends on:** Task 2 (subtitle variant references `TranscriptSchema`).
 
@@ -370,11 +370,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/prisma/schema.prisma`
 - Create: `apps/web/prisma/migrations/<timestamp>_layer_type_subtitle/migration.sql` (generated)
 
-- [ ] **Step 1: Edit `schema.prisma`** — add `type String @default("html") @db.VarChar(20)` and `subtitleData Json?` to `model Layer`.
-- [ ] **Step 2: Generate** `npm run db:migrate -w apps/web -- --name layer_type_subtitle`. Inspect the SQL it produced.
-- [ ] **Step 3: Run** the generated SQL on the test DB too: `DATABASE_URL=<.env.test value> npx prisma migrate deploy` from `apps/web/`. (Verify by `mysql -e "DESCRIBE Layer"` showing the two new columns.)
-- [ ] **Step 4: Regenerate client**: `npm run db:generate -w apps/web`. Confirm `Layer.type` and `Layer.subtitleData` appear in the generated types.
-- [ ] **Step 5: Commit** — `feat(db): add Layer.type and Layer.subtitleData columns`. Include the migration folder.
+- [x] **Step 1: Edit `schema.prisma`** — add `type String @default("html") @db.VarChar(20)` and `subtitleData Json?` to `model Layer`.
+- [x] **Step 2: Generate** `npm run db:migrate -w apps/web -- --name layer_type_subtitle`. Inspect the SQL it produced.
+- [x] **Step 3: Run** the generated SQL on the test DB too: `DATABASE_URL=<.env.test value> npx prisma migrate deploy` from `apps/web/`. (Verify by `mysql -e "DESCRIBE Layer"` showing the two new columns.)
+- [x] **Step 4: Regenerate client**: `npm run db:generate -w apps/web`. Confirm `Layer.type` and `Layer.subtitleData` appear in the generated types.
+- [x] **Step 5: Commit** — `feat(db): add Layer.type and Layer.subtitleData columns`. Include the migration folder.
 
 **Depends on:** none for SQL, but Task 3 must land before code uses these columns. Tasks 4 and 3 can run in parallel; their consumers (Task 5, 6) consume both.
 
@@ -386,11 +386,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/lib/persistence/persistProjectJson.ts`
 - Modify: `apps/web/tests/lib/persistence/persistProjectJson.test.ts` (if it exists; else create)
 
-- [ ] **Step 1: Write failing test** — persist a project containing one html layer + one subtitle layer; reload via raw Prisma query; assert `type` and `subtitleData` columns hold the right values, and that the html layer has `subtitleData: null`.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Modify the layer `create.map`** to include `type: l.type` and `subtitleData: l.type === "subtitle" ? (l.subtitle as Prisma.InputJsonValue) : Prisma.JsonNull`. Discriminated union narrowing means TS knows `l.subtitle` exists when `l.type === "subtitle"`.
-- [ ] **Step 4: Run** test → pass. Also run `npm test -w apps/web -- tests/lib/persistence/` (full file).
-- [ ] **Step 5: Commit** — `feat(persistence): persist Layer.type and subtitleData`.
+- [x] **Step 1: Write failing test** — persist a project containing one html layer + one subtitle layer; reload via raw Prisma query; assert `type` and `subtitleData` columns hold the right values, and that the html layer has `subtitleData: null`.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Modify the layer `create.map`** to include `type: l.type` and `subtitleData: l.type === "subtitle" ? (l.subtitle as Prisma.InputJsonValue) : Prisma.JsonNull`. Discriminated union narrowing means TS knows `l.subtitle` exists when `l.type === "subtitle"`.
+- [x] **Step 4: Run** test → pass. Also run `npm test -w apps/web -- tests/lib/persistence/` (full file).
+- [x] **Step 5: Commit** — `feat(persistence): persist Layer.type and subtitleData`.
 
 **Depends on:** Task 3, Task 4.
 
@@ -402,11 +402,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/lib/persistence/toProjectJson.ts`
 - Modify: `apps/web/tests/lib/persistence/toProjectJson.test.ts` (if exists; else create)
 
-- [ ] **Step 1: Write failing test** — (a) seed a Layer row with `type: NULL` simulated via direct SQL (or with the new column not yet set) → `toProjectJson` returns layer with `type: "html"`. (b) seed a Layer row with `type: "subtitle"` and a valid `subtitleData` JSON → `toProjectJson` returns the subtitle variant intact.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Modify the layer `.map`** to read `type` (defaulting `??` to `"html"`) and `subtitleData`; when `type === "subtitle"`, include `subtitle: subtitleData as ...`; otherwise omit the field. The trailing `ProjectSchema.parse(project)` runs the discriminated union validator.
-- [ ] **Step 4: Run** tests → pass.
-- [ ] **Step 5: Commit** — `feat(persistence): hydrate Layer.type with html fallback for legacy rows`.
+- [x] **Step 1: Write failing test** — (a) seed a Layer row with `type: NULL` simulated via direct SQL (or with the new column not yet set) → `toProjectJson` returns layer with `type: "html"`. (b) seed a Layer row with `type: "subtitle"` and a valid `subtitleData` JSON → `toProjectJson` returns the subtitle variant intact. NOTE: SQL NULL injection blocked by NOT NULL DB constraint; legacy fallback verified at the schema-level via `z.preprocess`.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Modify the layer `.map`** to read `type` (defaulting `??` to `"html"`) and `subtitleData`; when `type === "subtitle"`, include `subtitle: subtitleData as ...`; otherwise omit the field. The trailing `ProjectSchema.parse(project)` runs the discriminated union validator.
+- [x] **Step 4: Run** tests → pass.
+- [x] **Step 5: Commit** — `feat(persistence): hydrate Layer.type with html fallback for legacy rows`.
 
 **Depends on:** Task 3, Task 4. Independent of Task 5.
 
@@ -421,11 +421,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Create: `apps/web/src/lib/transcript/types.ts`
 - Create: `apps/web/tests/lib/transcript/transcriptRegistry.test.ts`
 
-- [ ] **Step 1: Write failing test** — `create()` returns a job with `status: "queued"`; `update()` mutates and notifies subscribers; `subscribe()` returns an unsub function; subscribing to a non-existent id returns a no-op unsub.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** the registry as a 1:1 clone of `renderRegistry.ts` (global singleton on `globalThis`, Map + Set), with `TranscriptJob` shape from "Authoritative type contracts".
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(transcript): job registry with SSE-style subscribe`.
+- [x] **Step 1: Write failing test** — `create()` returns a job with `status: "queued"`; `update()` mutates and notifies subscribers; `subscribe()` returns an unsub function; subscribing to a non-existent id returns a no-op unsub.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** the registry as a 1:1 clone of `renderRegistry.ts` (global singleton on `globalThis`, Map + Set), with `TranscriptJob` shape from "Authoritative type contracts".
+- [x] **Step 4: Run** test → pass.
+- [x] **Step 5: Commit** — `feat(transcript): job registry with SSE-style subscribe`.
 
 **Depends on:** none.
 
@@ -440,11 +440,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Create: `apps/web/tests/lib/transcript/mapWhisperResponse.test.ts`
 - Create: `apps/web/tests/lib/transcript/whisperClient.test.ts`
 
-- [ ] **Step 1: Write failing tests** — `mapWhisperResponse.test.ts` with a Whisper-shaped fixture (text+segments+words with `start`/`end`/`word`) → assert frames at 30fps and 60fps round correctly, empty words filtered, missing segment id replaced. `whisperClient.test.ts` with mocked `global.fetch` and mocked `fs/promises` → cache miss writes file; cache hit short-circuits without calling fetch; status callbacks fire (`"model-loading"` then `"transcribing"`).
-- [ ] **Step 2: Run** tests → fail.
-- [ ] **Step 3: Implement** the three files. `whisperClient` builds the multipart request via the `FormData` global (Node 20+ has it natively), reads the audio file via `fs.createReadStream`, posts to `${WHISPER_URL}/asr?...&output=json&word_timestamps=true`. Reads response as JSON, hands to `mapWhisperResponse`. Writes cache under `apps/web/.cache/transcripts/` (create dir if missing).
-- [ ] **Step 4: Run** tests → pass.
-- [ ] **Step 5: Commit** — `feat(transcript): whisper HTTP client with SHA256 disk cache`.
+- [x] **Step 1: Write failing tests** — `mapWhisperResponse.test.ts` with a Whisper-shaped fixture (text+segments+words with `start`/`end`/`word`) → assert frames at 30fps and 60fps round correctly, empty words filtered, missing segment id replaced. `whisperClient.test.ts` with mocked `global.fetch` and mocked `fs/promises` → cache miss writes file; cache hit short-circuits without calling fetch; status callbacks fire (`"model-loading"` then `"transcribing"`).
+- [x] **Step 2: Run** tests → fail.
+- [x] **Step 3: Implement** the three files. `whisperClient` builds the multipart request via the `FormData` global (Node 20+ has it natively), reads the audio file via `fs.createReadStream`, posts to `${WHISPER_URL}/asr?...&output=json&word_timestamps=true`. Reads response as JSON, hands to `mapWhisperResponse`. Writes cache under `apps/web/.cache/transcripts/` (create dir if missing).
+- [x] **Step 4: Run** tests → pass.
+- [x] **Step 5: Commit** — `feat(transcript): whisper HTTP client with SHA256 disk cache`.
 
 **Depends on:** Task 7 (uses `TranscriptJob` status enum), Task 2 (uses `Transcript` type).
 
@@ -457,11 +457,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Create: `apps/web/src/app/api/projects/[id]/audioTracks/[trackId]/transcript/route.ts`
 - Create: `apps/web/tests/api/transcript-post.test.ts`
 
-- [ ] **Step 1: Write failing test** — `transcript-post.test.ts`: POST with valid project+track returns 202 and `{ jobId: string }`; POST with unknown trackId returns 404; the registry has the job. Mock the whisper fetch via `vi.spyOn(globalThis, "fetch")` resolving with a 3-segment fixture.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** `runTranscriptJob(jobId)` (looks up audio asset by trackId via Prisma → resolves disk path with the same helper used by `processEq` in `apps/web/src/lib/audio/` — read that file to find the exact helper name; if no helper, derive `path.join(process.cwd(), "public", asset.path)` and document the assumption). Then implement the route handler: parse `id`/`trackId` from params, parse `model`/`lang` from query (defaults from env), `transcriptRegistry.create({ projectId, trackId })`, fire-and-forget `runTranscriptJob(job.id).catch(...)`, return `{ jobId: job.id }` 202.
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(api): POST /transcript starts whisper job`.
+- [x] **Step 1: Write failing test** — `transcript-post.test.ts`: POST with valid project+track returns 202 and `{ jobId: string }`; POST with unknown trackId returns 404; the registry has the job. Mock the whisper fetch via `vi.spyOn(globalThis, "fetch")` resolving with a 3-segment fixture.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** `runTranscriptJob(jobId)` (uses pattern from `assetResolver.ts` / `buildRenderProject.ts`: `path.join(process.cwd(), "public", publicRelative)`). Route handler validates project + track, creates job, fire-and-forget, returns `{ jobId }` 202.
+- [x] **Step 4: Run** test → pass.
+- [x] **Step 5: Commit** — `feat(api): POST /transcript starts whisper job`.
 
 **Depends on:** Task 7, Task 8.
 
@@ -473,11 +473,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Create: `apps/web/src/app/api/projects/[id]/audioTracks/[trackId]/transcript/events/route.ts`
 - Create: `apps/web/tests/api/transcript-events.test.ts`
 
-- [ ] **Step 1: Write failing test** — Start a job (via POST), then GET the SSE endpoint with `?jobId=...`; collect events until `status === "completed"`; assert the sequence includes `"model-loading"` → `"transcribing"` → `"completed"` and that the last event carries the full `transcript` object. Use `ReadableStream` reader API to consume the SSE stream synchronously in the test.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** the SSE route as a near-verbatim clone of `apps/web/src/app/api/render/[projectId]/[renderId]/events/route.ts` — same `text/event-stream` headers, same `controller.close()` on terminal states (`completed` | `error`), `transcriptRegistry.subscribe(...)` for live updates. Read `jobId` from `req.nextUrl.searchParams`.
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(api): SSE stream for transcript job progress`.
+- [x] **Step 1: Write failing test** — pre-create a job via the registry, GET the SSE endpoint with `?jobId=...`; collect events; assert initial + `"transcribing"` + `"completed"` arrive in order with full transcript payload.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** the SSE route as a near-verbatim clone of `apps/web/src/app/api/render/[projectId]/[renderId]/events/route.ts`. Reads `jobId` from `new URL(req.url).searchParams`. Drops the params context arg (route doesn't need id/trackId).
+- [x] **Step 4: Run** test → pass.
+- [x] **Step 5: Commit** — `feat(api): SSE stream for transcript job progress`.
 
 **Depends on:** Task 7, Task 9.
 
@@ -494,11 +494,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Create: `apps/web/tests/fixtures/transcript-3segments.json`
 - Create: `apps/web/tests/editor/presets/subtitles/fade-segment.test.ts`
 
-- [ ] **Step 1: Write failing test** — load fixture, run `fadeSegment.generate(transcript, { layerStartFrame: 0, fps: 30 })`. Assert: (a) HTML contains exactly 3 `<div class="subtitle-segment">`; (b) every keyframe's `property` ∈ `ANIMATABLE_KEYS`; (c) for each segment, there are 2 opacity keyframes at `segment.startFrame` (value `"1"`) and `segment.endFrame` (value `"0"`) plus a baseline `"0"` at the first frame to keep it hidden before the first segment; (d) no duplicate (`property`, `frame`) pairs.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** `types.ts` (the contracts above), `registry.ts` (an array + a `getSubtitlePreset(key)` lookup that throws on unknown), and `fade-segment.ts`. HTML: `<div class="subtitle-container">…</div>` with one `.subtitle-segment` per segment. CSS: container `position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); max-width: 80%; text-align: center; color: white; font-family: sans-serif; font-size: 32px; text-shadow: 0 2px 4px rgba(0,0,0,0.6);` and `.subtitle-segment { opacity: 0; }`. Keyframes use `property: "opacity"` with `easingOut: { type: "ease-in-out" }`.
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(presets): subtitle-fade-segment as default subtitle preset`.
+- [x] **Step 1: Write failing test** — load fixture, run `fadeSegment.generate(transcript, { layerStartFrame: 0, fps: 30 })`. Assert: HTML contains exactly 3 `.subtitle-segment` divs; HTML-escapes special chars; CSS contains `@keyframes subtitle-show-N` and `subtitle-hide-N` per segment; engine keyframes array is empty (v1 CSS-only approach).
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** `types.ts` (contracts), `registry.ts` (array + `getSubtitlePreset(key)`), and `fade-segment.ts`. **v1 simplification**: use pure CSS `@keyframes` animations per segment for show/hide instead of engine-level keyframes (which apply only to the layer root). Engine `keyframes` array is empty. Documented in source comment.
+- [x] **Step 4: Run** test → pass.
+- [x] **Step 5: Commit** — `feat(presets): subtitle-fade-segment as default subtitle preset`.
 
 **Depends on:** Task 2 (uses `Transcript` type).
 
@@ -511,11 +511,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/editor/presets/subtitles/registry.ts` (register)
 - Create: `apps/web/tests/editor/presets/subtitles/karaoke-word.test.ts`
 
-- [ ] **Step 1: Write failing test** — load fixture, run karaoke. Assert: (a) HTML has one `<span class="subtitle-word">` per word across all segments; (b) every word has a `color` keyframe pair (gray → white at `word.startFrame`); (c) segment container keyframes match fade-segment (segment-level opacity); (d) all keyframe properties ∈ `ANIMATABLE_KEYS`.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** the preset.
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(presets): subtitle-karaoke-word for per-word highlight`.
+- [x] **Step 1: Write failing test** — load fixture, run karaoke. Assert HTML has 3 `.subtitle-segment` + 15 `.subtitle-word` spans with `data-s`/`data-w`; CSS contains `subtitle-seg-show-N` and `subtitle-word-highlight-S-W` keyframes; engine keyframes empty.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** the preset using CSS-only animations (same v1 approach as fade-segment).
+- [x] **Step 4: Run** test → pass.
+- [x] **Step 5: Commit** — `feat(presets): subtitle-karaoke-word for per-word highlight`.
 
 **Depends on:** Task 11.
 
@@ -528,11 +528,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/editor/presets/subtitles/registry.ts` (register)
 - Create: `apps/web/tests/editor/presets/subtitles/slide-segment.test.ts`
 
-- [ ] **Step 1: Write failing test** — assert HTML mirrors fade-segment; for each segment, in addition to opacity keyframes, there are `transform.translateY` keyframes (`"20px"` → `"0px"` at start, `"0px"` → `"-20px"` at end).
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** the preset.
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(presets): subtitle-slide-segment with vertical slide-in/out`.
+- [x] **Step 1: Write failing test** — HTML mirrors fade-segment; CSS contains `subtitle-slide-show-N` / `subtitle-slide-hide-N` keyframes with translateY 20px→0px→-20px; engine keyframes empty.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** the preset.
+- [x] **Step 4: Run** test → pass.
+- [x] **Step 5: Commit** — `feat(presets): subtitle-slide-segment with vertical slide-in/out`.
 
 **Depends on:** Task 11. Independent of Task 12.
 
@@ -547,11 +547,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/editor/store.ts`
 - Create: `apps/web/tests/editor/store.subtitle-create.test.ts`
 
-- [ ] **Step 1: Write failing test** — bootstrap the store with a project that has one scene containing one audio track. Call `createSubtitleLayerFromTranscript(sceneId, trackId, fixtureTranscript, "subtitle-fade-segment")`. Assert: (a) the scene's `layers` array has one new layer with `type: "subtitle"`; (b) `subtitle.linkedAudioTrackId === trackId`; (c) `subtitle.presetKey === "subtitle-fade-segment"`; (d) `subtitle.manualOverride === false`; (e) `html` non-empty and matches preset output; (f) `keyframes.length > 0`; (g) `selectedLayerId` points to the new layer.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** `defaultSubtitleLayer({ order, audioTrackId, transcript, presetKey, fps })` in `defaults.ts` (uses `getSubtitlePreset(presetKey).generate(transcript, { layerStartFrame: 0, fps })`). In `store.ts`, add `createSubtitleLayerFromTranscript` that resolves the scene, pushes a `defaultSubtitleLayer(...)`, and sets `selectedLayerId`.
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(store): createSubtitleLayerFromTranscript action`.
+- [x] **Step 1: Write failing test** — bootstrap the store; call `createSubtitleLayerFromTranscript(sceneId, trackId, fixtureTranscript, "subtitle-fade-segment")`. Assert (a) layer with `type: "subtitle"`; (b) `subtitle.linkedAudioTrackId`; (c) `presetKey`; (d) `manualOverride: false`; (e) html non-empty; (f) `keyframes.length === 0` (v1 CSS-only); (g) `selectedLayerId` points to new layer.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** `defaultSubtitleLayer({ order, audioTrackId, transcript, presetKey, fps })` in `defaults.ts`. In `store.ts`, add `createSubtitleLayerFromTranscript`. Also added the action signature to `store.types.ts`.
+- [x] **Step 4: Run** test → pass.
+- [x] **Step 5: Commit** — `feat(store): createSubtitleLayerFromTranscript action`.
 
 **Depends on:** Task 3, Task 11.
 
@@ -563,11 +563,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/editor/store.ts`
 - Modify: `apps/web/tests/editor/store.subtitle-create.test.ts` (extend) or new `apps/web/tests/editor/store.subtitle-regen.test.ts`
 
-- [ ] **Step 1: Write failing tests** — (a) `updateSubtitleTranscript(layerId, nextTranscript)` updates `subtitle.transcript` but leaves `html`, `css`, `keyframes` UNCHANGED; (b) `regenerateSubtitleLayer(layerId)` produces new `html` and `keyframes` (CSS preserved as-is from previous state), resets `manualOverride` to `false`, and updates `endFrame` to the last segment's endFrame.
-- [ ] **Step 2: Run** tests → fail.
-- [ ] **Step 3: Implement** both actions. `regenerateSubtitleLayer` looks up the preset via `getSubtitlePreset(layer.subtitle.presetKey)`, runs `.generate(layer.subtitle.transcript, ...)`, overwrites `html` and `keyframes` (NOT `css`), recomputes `endFrame` from last segment, sets `manualOverride: false`.
-- [ ] **Step 4: Run** tests → pass.
-- [ ] **Step 5: Commit** — `feat(store): subtitle transcript edit (no auto-regen) and explicit regenerate`.
+- [x] **Step 1: Write failing tests** — (a) `updateSubtitleTranscript` updates transcript but html/css/keyframes UNCHANGED; (b) `regenerateSubtitleLayer` regenerates html+keyframes, preserves css, resets `manualOverride`, recomputes `endFrame`.
+- [x] **Step 2: Run** tests → fail.
+- [x] **Step 3: Implement** both actions in store.ts + signatures in store.types.ts. Regen discards regenerated css and preserves existing.
+- [x] **Step 4: Run** tests → pass (7 new + 20 combined subtitle tests green).
+- [x] **Step 5: Commit** — `feat(store): subtitle transcript edit (no auto-regen) and explicit regenerate`.
 
 **Depends on:** Task 14.
 
@@ -579,11 +579,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/editor/store.ts`
 - Create: `apps/web/tests/editor/store.subtitle-override.test.ts`
 
-- [ ] **Step 1: Write failing tests** — (a) calling `updateLayerHtml(subtitleLayerId, "<div>x</div>")` sets `subtitle.manualOverride = true`; (b) same for `updateLayerCss`; (c) same for `addKeyframe`/`updateKeyframeValue`/`deleteKeyframe`; (d) NONE of these set the flag on an `html` (non-subtitle) layer; (e) `setSubtitleManualOverride(layerId, false)` clears the flag; (f) `setSubtitlePreset(layerId, "subtitle-karaoke-word")` updates `subtitle.presetKey` AND regenerates (assert `html` matches new preset shape).
-- [ ] **Step 2: Run** tests → fail.
-- [ ] **Step 3: Implement** — in each of `updateLayerHtml`, `updateLayerCss`, `addKeyframe`, `updateKeyframeValue`, `updateKeyframeEasing`, `moveKeyframe`, `deleteKeyframe`, inside the `mutateLayer` callback, after the mutation, add `if (l.type === "subtitle") l.subtitle.manualOverride = true`. Implement `setSubtitleManualOverride` and `setSubtitlePreset` (the latter calls `regenerateSubtitleLayer` internally after setting the key).
-- [ ] **Step 4: Run** tests → pass. Verify no regressions in the existing html-layer keyframe tests.
-- [ ] **Step 5: Commit** — `feat(store): manualOverride dirty flag and setSubtitlePreset`.
+- [x] **Step 1: Write failing tests** — dirty-flag injection on all content mutators; setSubtitleManualOverride clears; setSubtitlePreset updates key + regenerates html.
+- [x] **Step 2: Run** tests → fail.
+- [x] **Step 3: Implement** dirty-flag in updateLayerHtml/Css/addKeyframe/updateKeyframeValue/updateKeyframeEasing/moveKeyframe/deleteKeyframe + new actions setSubtitleManualOverride and setSubtitlePreset. Restructured addKeyframe's `if (existing) return` to fall through to dirty-flag line.
+- [x] **Step 4: Run** tests → pass (15 new + 138 total store tests green).
+- [x] **Step 5: Commit** — `feat(store): manualOverride dirty flag and setSubtitlePreset`.
 
 **Depends on:** Task 14, Task 15.
 
@@ -595,11 +595,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/editor/store.ts`
 - Create: `apps/web/tests/editor/store.transcribe.test.ts`
 
-- [ ] **Step 1: Write failing test** — mock `fetch` (POST returns `{ jobId }`) and the SSE GET (uses a fake `EventSource` or manual `ReadableStream`/`response.body` consumer — pick the lighter one based on what the codebase already does for the render SSE). Call `transcribeAudioTrack(trackId)`. Assert: (a) UI-visible state goes `idle → "model-loading" → "transcribing" → "completed"`; (b) on `"completed"`, a subtitle layer is created via `createSubtitleLayerFromTranscript`; (c) on error event, no layer is created and a state field captures the error message.
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** the action. Use `fetch` to POST the start, then `fetch(eventsUrl).body!.getReader()` to consume SSE manually (text decoder split on `\n\n`, strip `data: ` prefix, JSON.parse). On terminal status, resolve. Track per-track transient state in the store under `transcriptionStatus: Record<trackId, TranscriptJob | null>` so the UI can read it.
-- [ ] **Step 4: Run** test → pass.
-- [ ] **Step 5: Commit** — `feat(store): transcribeAudioTrack drives SSE and creates subtitle layer`.
+- [x] **Step 1: Write failing test** — mock fetch (POST + SSE); cover happy path, SSE error, POST 500, unknown trackId.
+- [x] **Step 2: Run** test → fail.
+- [x] **Step 3: Implement** the action with `fetch` POST + manual SSE reader. Upgrade `immer((set) => ...)` to `immer((set, get) => ...)` to enable async `get()`.
+- [x] **Step 4: Run** test → pass (4 new + 39 combined subtitle tests green).
+- [x] **Step 5: Commit** — `feat(store): transcribeAudioTrack drives SSE and creates subtitle layer`.
 
 **Depends on:** Task 9, Task 10, Task 14.
 
@@ -613,11 +613,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Modify: `apps/web/src/editor/components/audio/AudioLaneRow.tsx`
 - Modify: `apps/web/src/editor/components/audio/AudioLaneRow.test.tsx` (if exists; else inline at first manual QA)
 
-- [ ] **Step 1: Write failing render test (or skip if the file doesn't exist — note in commit)** — render an `AudioLaneRow` with `side="left"` and a track having no linked subtitle layer; assert there is a button with `aria-label="Generate transcript"`. With a track that already has a linked subtitle layer in the scene, the button has `aria-label="Regenerate transcript"`. Clicking calls `transcribeAudioTrack(track.id)` (mock the store).
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** — import `Captions`, `Loader2`. Add the button between Mute and Scissors (it's a side="left" only concern). Wire to `transcribeAudioTrack`. While `transcriptionStatus[track.id]?.status` is in-progress, swap icon to spinning `Loader2`. On error, show a `toast.error(...)`. If a subtitle layer already linked exists (look it up via a selector from the store: `useEditorStore((s) => s.scenes.find(...).layers.some(l => l.type === "subtitle" && l.subtitle.linkedAudioTrackId === track.id))`), open a 3-button dialog before kicking off — for now use a fresh `Dialog` since `ConfirmDialog` is binary.
-- [ ] **Step 4: Run** test → pass. Also manually click in the dev server (`npm run dev`, drop audio asset onto timeline, click Captions, verify spinner → toast → layer appears in `LayersPanel`).
-- [ ] **Step 5: Commit** — `feat(audio): captions button on audio lane triggers transcript`.
+- [x] **Step 1: Write failing render test (or skip if the file doesn't exist — note in commit)** — TL not configured in repo; skipped per commit body.
+- [x] **Step 2: N/A** (no test).
+- [x] **Step 3: Implement** — Captions + Loader2 button between Mute and Scissors; loading state from `transcriptionStatus`; 3-button Dialog when subtitle layer already linked; toast feedback via `useEffect`.
+- [x] **Step 4: Manual QA pending in Task 24**.
+- [x] **Step 5: Commit** — `feat(audio): captions button on audio lane triggers transcript`.
 
 **Depends on:** Task 17.
 
@@ -631,11 +631,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 - Create: `apps/web/src/editor/components/inspector/SubtitlePropsTab.tsx`
 - Create: `apps/web/tests/editor/components/SubtitlePropsTab.test.tsx` (optional smoke)
 
-- [ ] **Step 1: Write failing test (optional)** — render with a subtitle layer; expect 3 rows (one per segment); typing in a text input calls `updateSubtitleTranscript`; clicking "Regenerate" calls `regenerateSubtitleLayer` (and shows confirm dialog if `manualOverride === true`).
-- [ ] **Step 2: Run** test → fail.
-- [ ] **Step 3: Implement** the panel. Header: layer name input + start/end frame inputs (reuse `DraggableNumberInput`) + Regenerate button + "Manual override" badge (red dot + label) when applicable. Body: list of `SegmentRow` components. Each `SegmentRow` has: chevron toggle (expand/collapse words), `startFrame` (`DraggableNumberInput`), `endFrame` (same), text `<input>` (max 2000), delete button. When expanded, words listed below with their own `startFrame` + text. "+ Add segment" button at the bottom. Throughout, on every edit, build a fresh `transcript` object and call `updateSubtitleTranscript`.
-- [ ] **Step 4: Run** test (if any) → pass. Manually verify in dev server.
-- [ ] **Step 5: Commit** — `feat(inspector): subtitle props tab with editable transcript`.
+- [x] **Step 1: Test skipped** — TL not configured in repo.
+- [x] **Step 2: N/A**.
+- [x] **Step 3: Implement** SubtitlePropsTab with header (name input, start/end DraggableNumberInput, Regenerate button, Manual override badge), scrollable list of `SegmentRow` (chevron, frame inputs, debounced text, delete), Add segment button. Mutations build immutable nextTranscript and call `updateSubtitleTranscript`.
+- [x] **Step 4: Manual QA pending in Task 24**.
+- [x] **Step 5: Commit** — `feat(inspector): subtitle props tab with editable transcript`.
 
 **Depends on:** Task 15, Task 16.
 
@@ -646,10 +646,10 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 **Files:**
 - Create: `apps/web/src/editor/components/inspector/SubtitlePresetsTab.tsx`
 
-- [ ] **Step 1: Smoke test (manual)** — open Inspector → Presets tab on a subtitle layer; should list the 3 subtitle presets with the current one highlighted.
-- [ ] **Step 2: Implement** — read `SUBTITLE_PRESETS` from the registry. Render a vertical list of preset cards (icon + name + description). Highlight the one whose `key` matches `layer.subtitle.presetKey`. Clicking a preset calls `setSubtitlePreset(layerId, key)` (with confirm if `manualOverride === true`, reusing `ConfirmDialog`).
-- [ ] **Step 3: Manually verify** in dev server.
-- [ ] **Step 4: Commit** — `feat(inspector): subtitle presets tab`.
+- [x] **Step 1: Pending in Task 24 manual QA**.
+- [x] **Step 2: Implement** SubtitlePresetsTab — vertical list of preset cards with iconLookup, active preset highlighted, ConfirmDialog gate when manualOverride is true.
+- [x] **Step 3: Pending in Task 24**.
+- [x] **Step 4: Commit** — `feat(inspector): subtitle presets tab`.
 
 **Depends on:** Task 16.
 
@@ -660,11 +660,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 **Files:**
 - Modify: `apps/web/src/editor/components/Inspector.tsx`
 
-- [ ] **Step 1: Read the existing tab-rendering section** (around `LAYER_TABS`, lines 105–150) and identify the spot where `LAYER_TABS` is passed to the tabs component.
-- [ ] **Step 2: Implement** — derive `tabs` via `activeLayer?.type === "subtitle" ? SUBTITLE_LAYER_TABS : LAYER_TABS`. Define `SUBTITLE_LAYER_TABS` adjacent to `LAYER_TABS`: same 5 tabs (Props / HTML / CSS / Keyframes / Presets) but the `Props` and `Presets` tab content imports `SubtitlePropsTab` and `SubtitlePresetsTab` respectively. HTML/CSS/Keyframes tabs reuse existing components — they edit the layer same as before, and the store auto-sets `manualOverride`.
-- [ ] **Step 3: Run** `npm run typecheck -w apps/web` → green (all remaining TS errors from Task 3's grace period should now be resolved).
-- [ ] **Step 4: Manually verify** that selecting an html layer shows the old tabs and selecting a subtitle layer shows the new ones.
-- [ ] **Step 5: Commit** — `feat(inspector): branch tabs by layer.type`.
+- [x] **Step 1: Read existing tab-rendering section** in `Inspector.tsx`.
+- [x] **Step 2: Implement** — inline branching with `isSubtitleLayer` type guard; subtitle layer swaps Props (→SubtitlePropsTab) and Presets (→SubtitlePresetsTab). HTML/CSS/Keyframes reuse existing components.
+- [x] **Step 3: Run** typecheck — closed yellow window in follow-up commit `2eb6ccc` (fix(types)).
+- [x] **Step 4: Manual QA pending in Task 24**.
+- [x] **Step 5: Commit** — `feat(inspector): branch tabs by layer.type`.
 
 **Depends on:** Task 19, Task 20.
 
@@ -677,11 +677,11 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 **Files:**
 - Modify: `apps/web/openapi.yaml`
 
-- [ ] **Step 1: Add new schemas** — `TranscriptWord`, `TranscriptSegment`, `Transcript`, `TranscriptJob`. Update existing `Layer` to be a `oneOf` of `HtmlLayer` and `SubtitleLayer` with a discriminator on `type` (matching the Zod union). Default `type` to `"html"` to mirror the schema default.
-- [ ] **Step 2: Add two paths** — `POST /api/projects/{id}/audioTracks/{trackId}/transcript` with query params (`model`, `lang`) and `202 → { jobId }`; `GET /.../transcript/events?jobId=...` documented as `text/event-stream` with `TranscriptJob` as the per-event payload.
-- [ ] **Step 3: Validate** — `npm run docs:lint -w apps/web` (redocly lint) must pass.
-- [ ] **Step 4: Build docs** — `npm run docs:build -w apps/web` and open `docs/api/redoc.html` to eyeball the new sections.
-- [ ] **Step 5: Commit** — `docs(api): document transcript endpoints and discriminated Layer`.
+- [x] **Step 1: Add new schemas** — TranscriptWord, TranscriptSegment, Transcript, TranscriptJob; refactor Layer to `oneOf [HtmlLayer, SubtitleLayer]` with discriminator on `type` plus shared `LayerCore` via allOf.
+- [x] **Step 2: Add two paths** — POST and SSE GET documented with query params and response shapes.
+- [x] **Step 3: Validate** — redocly lint: 9 warnings (pre-existing or SSE-inherent), 0 errors.
+- [x] **Step 4: Build docs** — redoc.html (1338 KiB) built successfully.
+- [x] **Step 5: Commit** — `docs(api): document transcript endpoints and discriminated Layer`.
 
 **Depends on:** Tasks 9 and 10 to be done (endpoints exist).
 
@@ -694,9 +694,9 @@ Tasks are grouped into phases. Within a phase, tasks may have dependencies — s
 **Files:**
 - Create: `apps/web/tests/integration/transcript-e2e.test.ts`
 
-- [ ] **Step 1: Write the integration test** — Spin up the store with a project + audio track + a `vi.spyOn(globalThis, "fetch")` that handles both the POST (returns `{ jobId }`) and the GET (returns a `ReadableStream` emitting 3 SSE events ending in `completed`). Call `transcribeAudioTrack(trackId)`. Await completion. Assert the resulting project state has one subtitle layer with the expected segments mirroring the fixture. Then call `regenerateSubtitleLayer(layerId)` and assert that html/keyframes were rebuilt.
-- [ ] **Step 2: Run** the test → pass.
-- [ ] **Step 3: Commit** — `test(transcript): end-to-end subtitle creation and regeneration`.
+- [x] **Step 1: Write the integration test** — mocked fetch routes POST → 202 jobId and SSE GET → ReadableStream with queued/transcribing/completed events; covers transcribe → subtitle layer creation → updateTranscript (no regen) → regenerate (rebuilt html).
+- [x] **Step 2: Run** the test → PASS immediately (no wiring issues across earlier tasks).
+- [x] **Step 3: Commit** — `test(transcript): end-to-end subtitle creation and regeneration`.
 
 **Depends on:** Tasks 8, 9, 10, 14–17.
 

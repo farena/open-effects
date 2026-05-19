@@ -264,31 +264,10 @@ components:
 
     # ── Transcript ────────────────────────────────────────────────────────────
     # Source: packages/shared-types/src/schemas/transcript.ts
-    TranscriptWord:
-      type: object
-      description: A single word with its start and end frame positions.
-      required: [text, startFrame, endFrame]
-      properties:
-        text:
-          type: string
-          description: The word text.
-        startFrame:
-          type: integer
-          minimum: 0
-          description: Scene-local frame at which this word begins.
-        endFrame:
-          type: integer
-          minimum: 0
-          description: Scene-local frame at which this word ends. Must be ≥ startFrame.
-      example:
-        text: "Hello"
-        startFrame: 0
-        endFrame: 15
-
     TranscriptSegment:
       type: object
-      description: A segment (sentence or phrase) of the transcript with word-level timing.
-      required: [id, text, startFrame, endFrame, words]
+      description: A segment (sentence or phrase) of the transcript.
+      required: [id, text, startFrame, endFrame]
       properties:
         id:
           type: string
@@ -304,31 +283,19 @@ components:
           type: integer
           minimum: 0
           description: Scene-local frame at which this segment ends. Must be ≥ startFrame.
-        words:
-          type: array
-          items:
-            $ref: '#/components/schemas/TranscriptWord'
-          default: []
-          description: Word-level timing within this segment.
       example:
         id: "seg_01"
         text: "Hello World"
         startFrame: 0
         endFrame: 59
-        words:
-          - text: "Hello"
-            startFrame: 0
-            endFrame: 28
-          - text: "World"
-            startFrame: 30
-            endFrame: 59
 
     Transcript:
       type: object
       description: |
         A full transcript produced by the Whisper service for an audio track.
-        Segments and words are expressed in scene-local frames using the
-        project's `fps`.
+        Segments are expressed in scene-local frames using the project's `fps`.
+        For finer granularity (e.g. word-by-word effects), split into smaller
+        segments — every subtitle preset is segment-level.
         Corresponds to `TranscriptSchema` in packages/shared-types/src/schemas/transcript.ts.
       required: [segments]
       properties:
@@ -356,13 +323,6 @@ components:
             text: "Hello World"
             startFrame: 0
             endFrame: 59
-            words:
-              - text: "Hello"
-                startFrame: 0
-                endFrame: 28
-              - text: "World"
-                startFrame: 30
-                endFrame: 59
 
     # ── TranscriptJob ─────────────────────────────────────────────────────────
     # Source: apps/web/src/lib/transcript/types.ts
@@ -427,13 +387,6 @@ components:
               text: "Hello World"
               startFrame: 0
               endFrame: 59
-              words:
-                - text: "Hello"
-                  startFrame: 0
-                  endFrame: 28
-                - text: "World"
-                  startFrame: 30
-                  endFrame: 59
         startedAt: 1747569600000
         finishedAt: 1747569635000
 
@@ -550,8 +503,7 @@ components:
                   type: string
                   description: |
                     Key of the subtitle preset last used to generate this layer
-                    (e.g. `subtitle-fade-segment`, `subtitle-karaoke-word`,
-                    `subtitle-slide-segment`).
+                    (e.g. `subtitle-fade`, `subtitle-slide`, `subtitle-pop-up`).
                 manualOverride:
                   type: boolean
                   default: false
@@ -572,7 +524,7 @@ components:
         keyframes: []
         subtitle:
           linkedAudioTrackId: "track_01"
-          presetKey: "subtitle-fade-segment"
+          presetKey: "subtitle-fade"
           manualOverride: false
           transcript:
             language: "en"
@@ -583,13 +535,6 @@ components:
                 text: "Hello World"
                 startFrame: 0
                 endFrame: 59
-                words:
-                  - text: "Hello"
-                    startFrame: 0
-                    endFrame: 28
-                  - text: "World"
-                    startFrame: 30
-                    endFrame: 59
 
     Layer:
       description: |

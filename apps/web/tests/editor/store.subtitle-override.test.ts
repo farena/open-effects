@@ -96,7 +96,7 @@ describe("manualOverride dirty flag", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
     const state = useEditorStore.getState();
     const scene = state.project.scenes.find((s) => s.id === SCENE_ID)!;
@@ -112,8 +112,17 @@ describe("manualOverride dirty flag", () => {
     expect(getSubtitleLayer(subtitleLayerId).subtitle.manualOverride).toBe(true);
   });
 
-  it("updateLayerCss sets manualOverride=true on subtitle layer", () => {
+  it("updateLayerCss does NOT set manualOverride on subtitle layer (user CSS survives regeneration)", () => {
     useEditorStore.getState().updateLayerCss(subtitleLayerId, ".x{}");
+    // l.css is the user's own style override and is preserved across preset
+    // regeneration, so editing it must NOT flip manualOverride.
+    expect(getSubtitleLayer(subtitleLayerId).subtitle.manualOverride).toBe(false);
+  });
+
+  it("updateSubtitlePresetCss sets manualOverride=true on subtitle layer", () => {
+    useEditorStore
+      .getState()
+      .updateSubtitlePresetCss(subtitleLayerId, ".x{}");
     expect(getSubtitleLayer(subtitleLayerId).subtitle.manualOverride).toBe(true);
   });
 
@@ -290,7 +299,7 @@ describe("setSubtitleManualOverride", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
     const state = useEditorStore.getState();
     const scene = state.project.scenes.find((s) => s.id === SCENE_ID)!;
@@ -325,7 +334,7 @@ describe("setSubtitlePreset", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
     const state = useEditorStore.getState();
     const scene = state.project.scenes.find((s) => s.id === SCENE_ID)!;
@@ -336,21 +345,59 @@ describe("setSubtitlePreset", () => {
   it("setSubtitlePreset updates subtitle.presetKey", () => {
     useEditorStore
       .getState()
-      .setSubtitlePreset(subtitleLayerId, "subtitle-karaoke-word");
+      .setSubtitlePreset(subtitleLayerId, "subtitle-pop-up");
     expect(getSubtitleLayer(subtitleLayerId).subtitle.presetKey).toBe(
-      "subtitle-karaoke-word",
+      "subtitle-pop-up",
     );
   });
 
-  it("setSubtitlePreset regenerates html (karaoke has .subtitle-word spans)", () => {
+  it("setSubtitlePreset rebuilds html (still well-formed subtitle markup)", () => {
     useEditorStore
       .getState()
-      .setSubtitlePreset(subtitleLayerId, "subtitle-karaoke-word");
+      .setSubtitlePreset(subtitleLayerId, "subtitle-pop-up");
     const layer = getSubtitleLayer(subtitleLayerId);
-    // Karaoke preset emits word spans
-    expect(layer.html).toContain("subtitle-word");
-    // Different from the fade-segment original
-    expect(layer.html).not.toBe(initialHtml);
+    expect(layer.html).toContain("subtitle-container");
+    expect(layer.html).toContain("subtitle-segment");
+    // All presets are segment-level and share the same HTML structure now —
+    // what changes between presets is the preset CSS, not the markup. So
+    // the html doesn't have to differ; the contract is just "still valid".
+  });
+
+  it("setSubtitlePreset regenerates presetCss (each preset has its own @keyframes — without this the animation stays on the previous preset)", () => {
+    const fadeCss = getSubtitleLayer(subtitleLayerId).subtitle.presetCss;
+    // Fade preset emits subtitle-show-*, not subtitle-slide-show-*
+    expect(fadeCss).toContain("@keyframes subtitle-show-0");
+    expect(fadeCss).not.toContain("@keyframes subtitle-slide-show-0");
+
+    useEditorStore
+      .getState()
+      .setSubtitlePreset(subtitleLayerId, "subtitle-slide");
+    const slideCss = getSubtitleLayer(subtitleLayerId).subtitle.presetCss;
+    expect(slideCss).toContain("@keyframes subtitle-slide-show-0");
+    expect(slideCss).not.toContain("@keyframes subtitle-show-0");
+
+    useEditorStore
+      .getState()
+      .setSubtitlePreset(subtitleLayerId, "subtitle-pop-up");
+    const popUpCss = getSubtitleLayer(subtitleLayerId).subtitle.presetCss;
+    // Pop-up emits per-segment pop-in/out keyframes — not the slide ones
+    expect(popUpCss).toContain("@keyframes subtitle-pop-in-0");
+    expect(popUpCss).toContain("@keyframes subtitle-pop-out-0");
+    expect(popUpCss).not.toContain("@keyframes subtitle-slide-show-0");
+  });
+
+  it("setSubtitlePreset preserves user css (layer.css) across preset changes", () => {
+    useEditorStore
+      .getState()
+      .updateLayerCss(subtitleLayerId, ".subtitle-container { color: red; }");
+
+    useEditorStore
+      .getState()
+      .setSubtitlePreset(subtitleLayerId, "subtitle-slide");
+
+    expect(getSubtitleLayer(subtitleLayerId).css).toBe(
+      ".subtitle-container { color: red; }",
+    );
   });
 
   it("setSubtitlePreset resets manualOverride to false", () => {
@@ -360,14 +407,14 @@ describe("setSubtitlePreset", () => {
 
     useEditorStore
       .getState()
-      .setSubtitlePreset(subtitleLayerId, "subtitle-karaoke-word");
+      .setSubtitlePreset(subtitleLayerId, "subtitle-pop-up");
     expect(getSubtitleLayer(subtitleLayerId).subtitle.manualOverride).toBe(false);
   });
 
   it("setSubtitlePreset recomputes endFrame from transcript", () => {
     useEditorStore
       .getState()
-      .setSubtitlePreset(subtitleLayerId, "subtitle-karaoke-word");
+      .setSubtitlePreset(subtitleLayerId, "subtitle-pop-up");
     const layer = getSubtitleLayer(subtitleLayerId);
     // Last segment endFrame in fixture is 310
     expect(layer.endFrame).toBe(310);
@@ -377,7 +424,7 @@ describe("setSubtitlePreset", () => {
     expect(() => {
       useEditorStore
         .getState()
-        .setSubtitlePreset(HTML_LAYER_ID, "subtitle-karaoke-word");
+        .setSubtitlePreset(HTML_LAYER_ID, "subtitle-pop-up");
     }).not.toThrow();
 
     const layer = getLayer(HTML_LAYER_ID);

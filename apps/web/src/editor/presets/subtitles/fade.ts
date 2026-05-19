@@ -1,14 +1,14 @@
 /**
- * subtitle-fade-segment preset
+ * subtitle-fade preset
  *
- * v1 simplification: use pure CSS `@keyframes` animations per segment for
- * show/hide. Engine-level keyframes are empty. Future iterations may move to
- * per-element animation when the runtime supports it.
- *
- * Each segment gets its own @keyframes pair (subtitle-show-N / subtitle-hide-N)
- * and an `animation` property on `.subtitle-segment[data-i="N"]` with delays
- * computed in seconds from segment.startFrame / fps. The layer container
- * (subtitle-container) is always visible; only individual segments fade in/out.
+ * Animations are driven by the Remotion frame (via the `--re-time` CSS variable
+ * injected by the Layer runtime), not by the browser wall clock. We declare
+ * standard `@keyframes` animations and then:
+ *   - pin them with `animation-play-state: paused`
+ *   - override `animation-delay` to `calc(<originalDelay> - var(--re-time))`
+ * That way each frame Remotion samples, the paused animation is positioned at
+ * `re-time - originalDelay` seconds into its duration, so play/pause/seek all
+ * stay in lockstep with the rest of the timeline.
  */
 
 import type { Keyframe, Transcript } from "@open-effects/shared-types";
@@ -31,9 +31,9 @@ function fmtSeconds(frames: number, fps: number): string {
   return `${parseFloat(secs.toFixed(4))}s`;
 }
 
-export const fadeSegment: SubtitlePreset = {
-  key: "subtitle-fade-segment",
-  name: "Fade per segment",
+export const fade: SubtitlePreset = {
+  key: "subtitle-fade",
+  name: "Fade",
   description: "Each segment fades in at its startFrame and out at its endFrame.",
   iconKey: "Captions",
 
@@ -56,13 +56,15 @@ export const fadeSegment: SubtitlePreset = {
       "  left: 50%;",
       "  transform: translateX(-50%);",
       "  width: 80%;",
-      "  text-align: center;",
-      "  color: white;",
+      "  display: grid;",
+      "  place-items: center;",
+      "  color: black;",
       "  font-family: sans-serif;",
       "  font-size: 32px;",
-      "  text-shadow: 0 2px 4px rgba(0,0,0,0.6);",
       "}",
       ".subtitle-segment {",
+      "  grid-area: 1 / 1;",
+      "  text-align: center;",
       "  opacity: 0;",
       "}",
     ].join("\n");
@@ -87,6 +89,9 @@ export const fadeSegment: SubtitlePreset = {
           `.subtitle-segment[data-i="${i}"] {`,
           `  animation: subtitle-show-${i} ${fadeDuration} linear ${showDelay} 1 forwards,`,
           `             subtitle-hide-${i} ${fadeDuration} linear ${hideDelay} 1 forwards;`,
+          "  animation-play-state: paused;",
+          `  animation-delay: calc(${showDelay} - var(--re-time, 0s)),`,
+          `                   calc(${hideDelay} - var(--re-time, 0s));`,
           "}",
         ].join("\n");
       })

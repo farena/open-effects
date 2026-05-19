@@ -173,7 +173,7 @@ describe("transcript end-to-end: transcribeAudioTrack → subtitle layer → reg
     expect(layer.subtitle.transcript).toEqual(fixture);
 
     // subtitle.presetKey must be the default
-    expect(layer.subtitle.presetKey).toBe("subtitle-fade-segment");
+    expect(layer.subtitle.presetKey).toBe("subtitle-fade");
 
     // html must contain exactly 3 subtitle-segment divs (one per fixture segment)
     const segmentMatches = layer.html.match(/<div class="subtitle-segment"/g);

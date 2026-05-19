@@ -16,10 +16,6 @@ const FIXTURE_TRANSCRIPT: Transcript = {
       text: "Hello world.",
       startFrame: 0,
       endFrame: 30,
-      words: [
-        { text: "Hello", startFrame: 0, endFrame: 12 },
-        { text: "world.", startFrame: 12, endFrame: 30 },
-      ],
     },
   ],
 };

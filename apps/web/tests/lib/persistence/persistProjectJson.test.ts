@@ -37,15 +37,12 @@ describe("persistProjectJson — Layer.type and subtitleData", () => {
             text: "Hello world",
             startFrame: 0,
             endFrame: 30,
-            words: [
-              { text: "Hello", startFrame: 0, endFrame: 15 },
-              { text: "world", startFrame: 15, endFrame: 30 },
-            ],
           },
         ],
       },
-      presetKey: "subtitle-fade-segment",
+      presetKey: "subtitle-fade",
       manualOverride: false,
+      presetCss: "",
     };
 
     const project: Project = {

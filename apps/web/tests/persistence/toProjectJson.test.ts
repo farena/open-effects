@@ -358,12 +358,75 @@ describe("toProjectJson", () => {
     expect(layer.type).toBe("subtitle");
     if (layer.type === "subtitle") {
       expect(layer.subtitle.linkedAudioTrackId).toBe("track-abc-123");
-      expect(layer.subtitle.presetKey).toBe("subtitle-fade-segment");
+      // Legacy preset key was migrated to the new short-form key on read.
+      expect(layer.subtitle.presetKey).toBe("subtitle-fade");
       expect(layer.subtitle.manualOverride).toBe(false);
       expect(layer.subtitle.transcript.language).toBe("en");
       expect(layer.subtitle.transcript.segments).toHaveLength(1);
       expect(layer.subtitle.transcript.segments[0].text).toBe("Hello world");
-      expect(layer.subtitle.transcript.segments[0].words).toHaveLength(2);
+      // Legacy `words` field is silently dropped by the schema strip policy.
+      expect(
+        (layer.subtitle.transcript.segments[0] as Record<string, unknown>)
+          .words,
+      ).toBeUndefined();
+    }
+  });
+
+  it("migrates legacy subtitle rows: moves preset-shaped CSS from layer.css into subtitle.presetCss", async () => {
+    // Simulate a row written before the user/preset CSS split: the auto-
+    // generated preset stylesheet (with @keyframes subtitle-*) lived in
+    // layer.css and subtitleData had no presetCss field.
+    const legacyPresetCss =
+      ".subtitle-container { position: absolute; }\n" +
+      "@keyframes subtitle-show-0 { from { opacity: 0; } to { opacity: 1; } }";
+
+    const created = await db.project.create({
+      data: {
+        name: "Legacy Subtitle Project",
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        scenes: {
+          create: [
+            {
+              order: 0,
+              durationFrames: 300,
+              transitionIn: Prisma.JsonNull,
+              layers: {
+                create: [
+                  {
+                    order: 0,
+                    name: "Legacy Subtitle",
+                    html: "<div class='subtitle-container'></div>",
+                    css: legacyPresetCss,
+                    startFrame: 0,
+                    endFrame: 300,
+                    type: "subtitle",
+                    subtitleData: {
+                      linkedAudioTrackId: "track-legacy",
+                      transcript: { segments: [] },
+                      presetKey: "subtitle-fade-segment",
+                      manualOverride: false,
+                      // NOTE: no presetCss field — this is the legacy shape
+                    } as Prisma.InputJsonValue,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await toProjectJson(created.id);
+    const layer = result.scenes[0].layers[0];
+
+    expect(layer.type).toBe("subtitle");
+    if (layer.type === "subtitle") {
+      // The preset-shaped CSS moved into subtitle.presetCss...
+      expect(layer.subtitle.presetCss).toBe(legacyPresetCss);
+      // ...and layer.css is now empty so the user can start their own overrides
+      expect(layer.css).toBe("");
     }
   });
 });

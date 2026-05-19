@@ -73,7 +73,7 @@ describe("updateSubtitleTranscript and regenerateSubtitleLayer", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
     const state = useEditorStore.getState();
     const scene = state.project.scenes.find((s) => s.id === SCENE_ID)!;
@@ -125,14 +125,15 @@ describe("updateSubtitleTranscript and regenerateSubtitleLayer", () => {
     expect(layer.endFrame).toBe(initialEndFrame);
   });
 
-  it("regenerateSubtitleLayer regenerates html + keyframes but preserves css", () => {
-    // First, manually override html and css to simulate manual edits
+  it("regenerateSubtitleLayer regenerates html, presetCss and keyframes; preserves user css", () => {
+    // Simulate: user has tweaked html, presetCss, and their own user CSS
     useEditorStore.setState((s) => {
       for (const sc of s.project.scenes) {
         const l = sc.layers.find((x) => x.id === layerId);
         if (l && l.type === "subtitle") {
           l.html = "<div>manual</div>";
           l.css = ".custom { color: red; }";
+          l.subtitle.presetCss = ".manual-preset { content: 'edited'; }";
           l.subtitle.manualOverride = true;
           break;
         }
@@ -142,12 +143,19 @@ describe("updateSubtitleTranscript and regenerateSubtitleLayer", () => {
     useEditorStore.getState().regenerateSubtitleLayer(layerId);
 
     const layer = getSubtitleLayer(layerId);
-    // html should be regenerated (not the manual override)
+    // html regenerated from the preset (manual edit discarded)
     expect(layer.html).not.toBe("<div>manual</div>");
-    // html should contain expected subtitle structure
     expect(layer.html).toContain("subtitle-container");
     expect(layer.html).toMatch(/subtitle-segment/);
-    // css MUST be preserved
+    // presetCss regenerated — it encodes the per-segment timing and would
+    // otherwise leave the layer visually out of sync with the transcript.
+    expect(layer.subtitle.presetCss).not.toBe(
+      ".manual-preset { content: 'edited'; }",
+    );
+    expect(layer.subtitle.presetCss).toContain(".subtitle-container");
+    expect(layer.subtitle.presetCss).toContain("@keyframes subtitle-show-0");
+    // User CSS is preserved across regenerate — that's the whole point of the
+    // User/Preset split.
     expect(layer.css).toBe(".custom { color: red; }");
     // manualOverride reset
     expect(layer.subtitle.manualOverride).toBe(false);

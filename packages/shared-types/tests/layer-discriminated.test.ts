@@ -21,11 +21,10 @@ const validSubtitle = {
         text: "Hello world",
         startFrame: 0,
         endFrame: 30,
-        words: [],
       },
     ],
   },
-  presetKey: "subtitle-fade-segment",
+  presetKey: "subtitle-fade",
   manualOverride: false,
 };
 
@@ -124,7 +123,7 @@ describe("SubtitleLayerSchema", () => {
       subtitle: {
         linkedAudioTrackId: "track-1",
         transcript: { segments: [] },
-        presetKey: "subtitle-fade-segment",
+        presetKey: "subtitle-fade",
       },
     });
     expect(result.success).toBe(true);

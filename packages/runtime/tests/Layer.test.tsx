@@ -130,6 +130,58 @@ describe("<Layer>", () => {
     expect(style?.textContent).toContain("translateX(50px)");
   });
 
+  it("exposes the layer-local time as the --re-time CSS variable in seconds", () => {
+    // Mock frame is 15, fps is 30, layer.startFrame is 0 → re-time = 0.5s
+    const { container } = render(<Layer layer={baseLayer} />);
+    const wrapper = container.querySelector(
+      '[data-layer-id="L1"]',
+    ) as HTMLElement;
+    expect(wrapper.style.getPropertyValue("--re-time")).toBe("0.5s");
+  });
+
+  it("concatenates subtitle.presetCss BEFORE layer.css so user rules win by cascade", () => {
+    const subtitleLayer: LayerT = {
+      id: "L1",
+      type: "subtitle",
+      order: 0,
+      name: "Subs",
+      html: '<div class="subtitle-container"><div class="subtitle-segment">hi</div></div>',
+      css: ".subtitle-container { color: blue; }",
+      startFrame: 0,
+      endFrame: 30,
+      visible: true,
+      keyframes: [],
+      subtitle: {
+        linkedAudioTrackId: "t1",
+        transcript: { segments: [] },
+        presetKey: "subtitle-fade",
+        manualOverride: false,
+        presetCss: ".subtitle-container { color: black; font-size: 32px; }",
+      },
+    };
+    const { container } = render(<Layer layer={subtitleLayer} />);
+    const styleText = container.querySelector("style")?.textContent ?? "";
+    // Both the preset and the user rules made it into the scoped stylesheet
+    expect(styleText).toContain("font-size: 32px");
+    expect(styleText).toContain("color: blue");
+    // Preset declaration appears before user CSS so user's color wins by order
+    const presetIdx = styleText.indexOf("color: black");
+    const userIdx = styleText.indexOf("color: blue");
+    expect(presetIdx).toBeGreaterThanOrEqual(0);
+    expect(userIdx).toBeGreaterThan(presetIdx);
+  });
+
+  it("subtracts layer.startFrame from the frame for --re-time", () => {
+    // Mock frame is 15, layer.startFrame is 5, fps is 30 → re-time = (15-5)/30 = 0.3333...s
+    const layer = { ...baseLayer, startFrame: 5, endFrame: 30 };
+    const { container } = render(<Layer layer={layer} />);
+    const wrapper = container.querySelector(
+      '[data-layer-id="L1"]',
+    ) as HTMLElement;
+    const value = wrapper.style.getPropertyValue("--re-time");
+    expect(value).toMatch(/^0\.3333/);
+  });
+
   it("leaves $KEY unsubstituted when no matching custom keyframe exists", () => {
     const layer: LayerT = {
       ...baseLayer,

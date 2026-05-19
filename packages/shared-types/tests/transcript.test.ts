@@ -1,91 +1,26 @@
 import { describe, it, expect } from "vitest";
 import {
-  TranscriptWordSchema,
   TranscriptSegmentSchema,
   TranscriptSchema,
 } from "@/schemas/transcript";
-import type { TranscriptWord, TranscriptSegment, Transcript } from "@/schemas/transcript";
-
-describe("TranscriptWordSchema", () => {
-  it("(a) accepts a valid word", () => {
-    const result = TranscriptWordSchema.safeParse({
-      text: "hello",
-      startFrame: 0,
-      endFrame: 10,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      const word: TranscriptWord = result.data;
-      expect(word.text).toBe("hello");
-    }
-  });
-
-  it("(c) rejects negative startFrame", () => {
-    expect(
-      TranscriptWordSchema.safeParse({
-        text: "hello",
-        startFrame: -1,
-        endFrame: 10,
-      }).success,
-    ).toBe(false);
-  });
-
-  it("(c) rejects negative endFrame", () => {
-    expect(
-      TranscriptWordSchema.safeParse({
-        text: "hello",
-        startFrame: 0,
-        endFrame: -5,
-      }).success,
-    ).toBe(false);
-  });
-
-  it("(d) preserves text field", () => {
-    const result = TranscriptWordSchema.safeParse({
-      text: "world",
-      startFrame: 5,
-      endFrame: 15,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.text).toBe("world");
-    }
-  });
-});
+import type { TranscriptSegment, Transcript } from "@/schemas/transcript";
 
 describe("TranscriptSegmentSchema", () => {
-  it("(a) accepts a full segment with words", () => {
+  it("(a) accepts a valid segment", () => {
     const result = TranscriptSegmentSchema.safeParse({
       id: "seg1",
       text: "Hello world",
       startFrame: 0,
       endFrame: 30,
-      words: [
-        { text: "Hello", startFrame: 0, endFrame: 15 },
-        { text: "world", startFrame: 15, endFrame: 30 },
-      ],
     });
     expect(result.success).toBe(true);
     if (result.success) {
       const seg: TranscriptSegment = result.data;
-      expect(seg.words).toHaveLength(2);
+      expect(seg.text).toBe("Hello world");
     }
   });
 
-  it("(b) words defaults to [] when omitted", () => {
-    const result = TranscriptSegmentSchema.safeParse({
-      id: "seg1",
-      text: "Hello world",
-      startFrame: 0,
-      endFrame: 30,
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.words).toEqual([]);
-    }
-  });
-
-  it("(c) rejects negative startFrame", () => {
+  it("(b) rejects negative startFrame", () => {
     expect(
       TranscriptSegmentSchema.safeParse({
         id: "seg1",
@@ -96,16 +31,21 @@ describe("TranscriptSegmentSchema", () => {
     ).toBe(false);
   });
 
-  it("(d) preserves text field", () => {
+  it("(c) ignores legacy `words` field — segments are word-frame-free now", () => {
+    // Pre-refactor transcripts persisted a `words` array per segment. They
+    // still round-trip cleanly because Zod's default `.strip()` policy drops
+    // unknown keys silently.
     const result = TranscriptSegmentSchema.safeParse({
       id: "seg1",
-      text: "Test segment",
+      text: "Hello world",
       startFrame: 0,
       endFrame: 30,
+      words: [{ text: "Hello", startFrame: 0, endFrame: 15 }],
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.text).toBe("Test segment");
+      // No `words` property on the parsed output type
+      expect((result.data as Record<string, unknown>).words).toBeUndefined();
     }
   });
 });
@@ -122,7 +62,6 @@ describe("TranscriptSchema", () => {
           text: "Hello world",
           startFrame: 0,
           endFrame: 30,
-          words: [{ text: "Hello", startFrame: 0, endFrame: 15 }],
         },
       ],
     });
@@ -136,11 +75,7 @@ describe("TranscriptSchema", () => {
   });
 
   it("(e) language is optional", () => {
-    expect(
-      TranscriptSchema.safeParse({
-        segments: [],
-      }).success,
-    ).toBe(true);
+    expect(TranscriptSchema.safeParse({ segments: [] }).success).toBe(true);
   });
 
   it("(e) model is optional", () => {
@@ -174,8 +109,6 @@ describe("TranscriptSchema", () => {
   });
 
   it("accepts empty segments array", () => {
-    expect(
-      TranscriptSchema.safeParse({ segments: [] }).success,
-    ).toBe(true);
+    expect(TranscriptSchema.safeParse({ segments: [] }).success).toBe(true);
   });
 });

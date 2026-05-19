@@ -74,6 +74,7 @@ export interface EditorActions {
   reorderLayers: (sceneId: string, orderedIds: string[]) => void;
   updateLayerHtml: (layerId: string, html: string) => void;
   updateLayerCss: (layerId: string, css: string) => void;
+  updateSubtitlePresetCss: (layerId: string, css: string) => void;
   updateLayerName: (layerId: string, name: string) => void;
   updateLayerFrames: (
     layerId: string,

@@ -64,7 +64,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -80,7 +80,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -97,7 +97,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -117,7 +117,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -125,7 +125,7 @@ describe("createSubtitleLayerFromTranscript", () => {
       .project.scenes.find((s) => s.id === SCENE_ID)!;
     const layer = scene.layers[0]!;
     if (layer.type === "subtitle") {
-      expect(layer.subtitle.presetKey).toBe("subtitle-fade-segment");
+      expect(layer.subtitle.presetKey).toBe("subtitle-fade");
     }
   });
 
@@ -136,7 +136,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -155,7 +155,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -174,7 +174,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -184,21 +184,25 @@ describe("createSubtitleLayerFromTranscript", () => {
     expect(layer.html.length).toBeGreaterThan(0);
   });
 
-  it("layer css is non-empty", () => {
+  it("layer.css starts empty (user CSS) and subtitle.presetCss is generated", () => {
     useEditorStore
       .getState()
       .createSubtitleLayerFromTranscript(
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
       .getState()
       .project.scenes.find((s) => s.id === SCENE_ID)!;
     const layer = scene.layers[0]!;
-    expect(layer.css.length).toBeGreaterThan(0);
+    expect(layer.css).toBe("");
+    if (layer.type === "subtitle") {
+      expect(layer.subtitle.presetCss.length).toBeGreaterThan(0);
+      expect(layer.subtitle.presetCss).toContain(".subtitle-container");
+    }
   });
 
   it("layer keyframes is empty (v1 CSS-only)", () => {
@@ -208,7 +212,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -225,7 +229,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -242,7 +246,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         SCENE_ID,
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore
@@ -260,7 +264,7 @@ describe("createSubtitleLayerFromTranscript", () => {
         "nonexistent-scene",
         TRACK_ID,
         transcriptFixture,
-        "subtitle-fade-segment",
+        "subtitle-fade",
       );
 
     const scene = useEditorStore

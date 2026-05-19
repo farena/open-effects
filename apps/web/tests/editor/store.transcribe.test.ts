@@ -112,7 +112,7 @@ describe("transcribeAudioTrack", () => {
     expect(layer.type).toBe("subtitle");
 
     if (layer.type === "subtitle") {
-      expect(layer.subtitle.presetKey).toBe("subtitle-fade-segment");
+      expect(layer.subtitle.presetKey).toBe("subtitle-fade");
     }
 
     expect(state.selectedLayerId).toBe(layer.id);

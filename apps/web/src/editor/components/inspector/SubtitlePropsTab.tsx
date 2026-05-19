@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { ChevronRight, ChevronDown, Plus, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Trash2, RefreshCw } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { selectActiveLayer } from "@/editor/selectors";
 import { newId } from "@/lib/ids";
@@ -23,7 +23,6 @@ type SegmentRowProps = {
 };
 
 function SegmentRow({ segment, index, onUpdate, onDelete }: SegmentRowProps) {
-  const [expanded, setExpanded] = useState(false);
   const textTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleStartFrameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -49,19 +48,6 @@ function SegmentRow({ segment, index, onUpdate, onDelete }: SegmentRowProps) {
   return (
     <li className="rounded border border-[#2d2d2d] bg-[#1d1f23] overflow-hidden">
       <div className="flex items-center gap-1.5 px-2 py-1.5">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 text-[#666] hover:text-[#aaa] transition-colors"
-          aria-label={expanded ? "Collapse words" : "Expand words"}
-        >
-          {expanded ? (
-            <ChevronDown className="size-3.5" />
-          ) : (
-            <ChevronRight className="size-3.5" />
-          )}
-        </button>
-
         <span className="shrink-0 text-[10px] text-[#555] font-mono w-4">
           {index + 1}
         </span>
@@ -102,27 +88,6 @@ function SegmentRow({ segment, index, onUpdate, onDelete }: SegmentRowProps) {
           <Trash2 className="size-3" />
         </button>
       </div>
-
-      {expanded && segment.words.length > 0 && (
-        <div className="border-t border-[#2d2d2d] px-3 py-2 space-y-1">
-          {segment.words.map((word, wi) => (
-            <div
-              key={wi}
-              className="flex items-center gap-2 text-[11px] text-[#888]"
-            >
-              <span className="flex-1 font-mono truncate">{word.text}</span>
-              <span className="text-[#555]">S:{word.startFrame}</span>
-              <span className="text-[#555]">E:{word.endFrame}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {expanded && segment.words.length === 0 && (
-        <div className="border-t border-[#2d2d2d] px-3 py-1.5 text-[11px] text-[#555] italic">
-          No word-level data
-        </div>
-      )}
     </li>
   );
 }
@@ -175,7 +140,6 @@ export function SubtitlePropsTab() {
       text: "New segment",
       startFrame,
       endFrame,
-      words: [],
     };
     const nextTranscript: Transcript = {
       ...transcript,

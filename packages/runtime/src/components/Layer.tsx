@@ -15,9 +15,19 @@ export const Layer: React.FC<{ layer: LayerT }> = ({ layer }) => {
     layer.visible && frame >= layer.startFrame && frame < layer.endFrame;
 
   const cleanHtml = useMemo(() => sanitizeHtml(layer.html), [layer.html]);
+  // Subtitle layers split their CSS in two: subtitle.presetCss is the auto-
+  // generated, regenerable per-preset stylesheet (@keyframes, animation-delay
+  // bound to --re-time); layer.css holds the user's own overrides. Concatenate
+  // preset first so user rules win by cascade order.
+  const subtitlePresetCss =
+    layer.type === "subtitle" ? layer.subtitle.presetCss : "";
+  const rawCss = useMemo(() => {
+    if (!subtitlePresetCss) return layer.css;
+    return layer.css ? `${subtitlePresetCss}\n${layer.css}` : subtitlePresetCss;
+  }, [subtitlePresetCss, layer.css]);
   const scopedCss = useMemo(
-    () => scopeCss(layer.css, `[data-layer-id="${layer.id}"]`),
-    [layer.css, layer.id],
+    () => scopeCss(rawCss, `[data-layer-id="${layer.id}"]`),
+    [rawCss, layer.id],
   );
 
   const localFrame = frame - layer.startFrame;
@@ -46,6 +56,13 @@ export const Layer: React.FC<{ layer: LayerT }> = ({ layer }) => {
     return null;
   }
 
+  // Expose the layer-local time as a CSS custom property so subtitle presets
+  // (and any future time-driven CSS) can drive `animation-delay` from the
+  // Remotion frame instead of the browser's wall clock — combined with
+  // `animation-play-state: paused`, this keeps CSS animations in lockstep with
+  // play/pause/seek.
+  const reTime = `${localFrame / fps}s`;
+
   return (
     <>
       {renderedCss && <style dangerouslySetInnerHTML={{ __html: renderedCss }} />}
@@ -55,6 +72,7 @@ export const Layer: React.FC<{ layer: LayerT }> = ({ layer }) => {
           position: "absolute",
           inset: 0,
           contain: "strict",
+          ["--re-time" as never]: reTime,
           ...animatedStyle,
         }}
         dangerouslySetInnerHTML={{ __html: renderedHtml }}

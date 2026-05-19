@@ -12,7 +12,7 @@ export type SubtitlePresetOutput = {
 };
 
 export type SubtitlePreset = {
-  key: string; // "subtitle-fade-segment"
+  key: string; // e.g. "subtitle-fade"
   name: string; // "Fade per segment"
   description: string;
   iconKey: string; // lucide name

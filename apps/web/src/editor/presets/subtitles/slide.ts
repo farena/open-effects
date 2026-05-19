@@ -1,19 +1,18 @@
 /**
- * subtitle-slide-segment preset
+ * subtitle-slide preset
  *
- * v1 simplification: use pure CSS `@keyframes` animations per segment for
- * show/hide with vertical slide motion. Engine-level keyframes are empty.
- * Future iterations may move to per-element animation when the runtime
- * supports it.
- *
- * Each segment gets its own @keyframes pair:
+ * Animations are driven by the Remotion frame (via the `--re-time` CSS variable
+ * injected by the Layer runtime). Each segment gets its own @keyframes pair:
  *   - subtitle-slide-show-N: slides up from translateY(20px) to translateY(0px)
- *     while fading in, starting at segment.startFrame / fps.
+ *     while fading in, at segment.startFrame / fps.
  *   - subtitle-slide-hide-N: slides down to translateY(-20px) while fading out,
- *     starting at (segment.endFrame - 8) / fps.
+ *     at (segment.endFrame - 8) / fps.
  *
- * Both animations use 8-frame duration (≈0.27s at 30fps) and ease-out easing
- * with `animation-fill-mode: forwards`.
+ * Both animations are paused (`animation-play-state: paused`) and their
+ * `animation-delay` is rewritten to `calc(<originalDelay> - var(--re-time))`
+ * so they stay in lockstep with play/pause/seek instead of running on the
+ * browser wall clock. Duration is 8 frames (≈0.27s at 30fps), easing is
+ * ease-out, fill mode is forwards.
  *
  * The layer container (subtitle-container) is always visible; only individual
  * segments animate in/out.
@@ -39,9 +38,9 @@ function fmtSeconds(frames: number, fps: number): string {
   return `${parseFloat(secs.toFixed(4))}s`;
 }
 
-export const slideSegment: SubtitlePreset = {
-  key: "subtitle-slide-segment",
-  name: "Slide per segment",
+export const slide: SubtitlePreset = {
+  key: "subtitle-slide",
+  name: "Slide",
   description: "Each segment slides up into place and out below.",
   iconKey: "ArrowUpFromLine",
 
@@ -64,13 +63,15 @@ export const slideSegment: SubtitlePreset = {
       "  left: 50%;",
       "  transform: translateX(-50%);",
       "  width: 80%;",
-      "  text-align: center;",
-      "  color: white;",
+      "  display: grid;",
+      "  place-items: center;",
+      "  color: black;",
       "  font-family: sans-serif;",
       "  font-size: 32px;",
-      "  text-shadow: 0 2px 4px rgba(0,0,0,0.6);",
       "}",
       ".subtitle-segment {",
+      "  grid-area: 1 / 1;",
+      "  text-align: center;",
       "  opacity: 0;",
       "  transform: translateY(20px);",
       "}",
@@ -96,6 +97,9 @@ export const slideSegment: SubtitlePreset = {
           `.subtitle-segment[data-i="${i}"] {`,
           `  animation: subtitle-slide-show-${i} ${slideDuration} ease-out ${showDelay} 1 forwards,`,
           `             subtitle-slide-hide-${i} ${slideDuration} ease-out ${hideDelay} 1 forwards;`,
+          "  animation-play-state: paused;",
+          `  animation-delay: calc(${showDelay} - var(--re-time, 0s)),`,
+          `                   calc(${hideDelay} - var(--re-time, 0s));`,
           "}",
         ].join("\n");
       })

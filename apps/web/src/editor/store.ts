@@ -342,11 +342,17 @@ export const useEditorStore = create<StoreState>()(
             if (l.type !== "subtitle") return;
             const preset = getSubtitlePreset(l.subtitle.presetKey);
             const fps = s.project.fps;
-            const { html, keyframes } = preset.generate(
+            const { html, css, keyframes } = preset.generate(
               l.subtitle.transcript,
               { layerStartFrame: 0, fps },
             );
+            // Regenerate the preset-derived fields. The CSS encodes per-segment
+            // timing (animation-delay / @keyframes IDs), so it must be refreshed
+            // when the transcript changes — but it lives in subtitle.presetCss,
+            // NOT in l.css, so the user's own CSS overrides are preserved.
+            // manualOverride is reset because the html itself is overwritten.
             l.html = html;
+            l.subtitle.presetCss = css;
             l.keyframes = keyframes;
             l.endFrame =
               l.subtitle.transcript.segments.length > 0
@@ -419,7 +425,20 @@ export const useEditorStore = create<StoreState>()(
         set((s) =>
           mutateLayer(s, layerId, (l) => {
             l.css = css;
-            if (l.type === "subtitle") l.subtitle.manualOverride = true;
+            // l.css on subtitle layers is the user's own style override and
+            // survives preset regeneration — editing it does NOT mark the
+            // layer as manually overridden (that flag guards html/presetCss).
+          }),
+        ),
+
+      updateSubtitlePresetCss: (layerId, css) =>
+        set((s) =>
+          mutateLayer(s, layerId, (l) => {
+            if (l.type !== "subtitle") return;
+            l.subtitle.presetCss = css;
+            // The preset CSS is auto-generated; manual edits flag the layer
+            // so that switching presets warns the user before overwriting.
+            l.subtitle.manualOverride = true;
           }),
         ),
 
@@ -572,11 +591,15 @@ export const useEditorStore = create<StoreState>()(
             l.subtitle.presetKey = presetKey;
             const preset = getSubtitlePreset(presetKey);
             const fps = s.project.fps;
-            const { html, keyframes } = preset.generate(l.subtitle.transcript, {
-              layerStartFrame: 0,
-              fps,
-            });
+            const { html, css, keyframes } = preset.generate(
+              l.subtitle.transcript,
+              { layerStartFrame: 0, fps },
+            );
+            // Preset CSS holds the per-preset @keyframes and animation
+            // declarations — it MUST be refreshed when switching presets.
+            // User CSS (`l.css`) is preserved across preset changes by design.
             l.html = html;
+            l.subtitle.presetCss = css;
             l.keyframes = keyframes;
             l.subtitle.manualOverride = false;
             l.endFrame =
@@ -972,12 +995,12 @@ export const useEditorStore = create<StoreState>()(
             });
 
             if (job.status === "completed" && job.transcript) {
-              // Default preset: subtitle-fade-segment
+              // Default preset on auto-create: subtitle-fade
               get().createSubtitleLayerFromTranscript(
                 sceneId!,
                 trackId,
                 job.transcript,
-                "subtitle-fade-segment",
+                "subtitle-fade",
               );
               return; // stop consuming
             }

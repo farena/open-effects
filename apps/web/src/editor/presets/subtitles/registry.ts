@@ -1,18 +1,14 @@
 import type { SubtitlePreset } from "./types";
-import { fadeSegment } from "./fade-segment";
-import { karaokeWord } from "./karaoke-word";
-import { slideSegment } from "./slide-segment";
+import { fade } from "./fade";
+import { popUp } from "./pop-up";
+import { slide } from "./slide";
 
 /**
- * All built-in subtitle presets.
- * To add a new preset, import it and append to this array — order determines
- * the display order in the UI. Tasks 12 and 13 append their presets here.
+ * All built-in subtitle presets. Order determines display order in the UI.
+ * All presets are segment-level — for finer granularity (e.g. word-by-word
+ * pops), the user should split the transcript into smaller segments.
  */
-export const SUBTITLE_PRESETS: SubtitlePreset[] = [
-  fadeSegment,
-  karaokeWord,
-  slideSegment,
-];
+export const SUBTITLE_PRESETS: SubtitlePreset[] = [fade, slide, popUp];
 
 /**
  * Look up a subtitle preset by its key.

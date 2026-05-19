@@ -63,11 +63,36 @@ export async function toProjectJson(projectId: string): Promise<Project> {
           })),
         };
         if (layerType === "subtitle") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const subtitle = (l as { subtitleData?: any }).subtitleData ?? {};
+          // Legacy migration #1: prior to the User/Preset CSS split, the
+          // preset's CSS was stored in layer.css. If a row predates the
+          // split, move that generated CSS into subtitle.presetCss and clear
+          // layer.css so the new architecture takes over transparently.
+          const hasPresetMarkers =
+            common.css.includes("@keyframes subtitle-") ||
+            common.css.includes(".subtitle-container");
+          if (!subtitle.presetCss && hasPresetMarkers) {
+            subtitle.presetCss = common.css;
+            common.css = "";
+          }
+          // Legacy migration #2: preset key renames. Karaoke was removed and
+          // the remaining presets dropped the "per segment" / "per word"
+          // suffixes — all presets are segment-level now. Map any stale key
+          // to its current equivalent (karaoke falls back to fade).
+          const PRESET_KEY_RENAMES: Record<string, string> = {
+            "subtitle-fade-segment": "subtitle-fade",
+            "subtitle-slide-segment": "subtitle-slide",
+            "subtitle-word-pop-up": "subtitle-pop-up",
+            "subtitle-karaoke-word": "subtitle-fade",
+          };
+          if (subtitle.presetKey && PRESET_KEY_RENAMES[subtitle.presetKey]) {
+            subtitle.presetKey = PRESET_KEY_RENAMES[subtitle.presetKey];
+          }
           return {
             ...common,
             type: "subtitle" as const,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            subtitle: (l as { subtitleData?: unknown }).subtitleData as any,
+            subtitle,
           };
         }
         return { ...common, type: "html" as const };

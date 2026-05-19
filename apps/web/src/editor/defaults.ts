@@ -43,7 +43,10 @@ export const defaultSubtitleLayer = ({
     order,
     name: `Subtitle ${order + 1}`,
     html,
-    css,
+    // l.css is reserved for the user's own customizations (font, color, position
+    // overrides...). The preset's @keyframes / animation-delay CSS lives in
+    // subtitle.presetCss so it can be regenerated without clobbering user edits.
+    css: "",
     keyframes,
     startFrame: 0,
     endFrame,
@@ -53,6 +56,7 @@ export const defaultSubtitleLayer = ({
       transcript,
       presetKey,
       manualOverride: false,
+      presetCss: css,
     },
   };
 };
