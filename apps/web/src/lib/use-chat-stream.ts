@@ -98,8 +98,11 @@ export function useChatStream(opts: UseChatStreamOptions = {}): {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const persisted = loadSessionId(sessionKey);
-    if (persisted) sessionIdRef.current = persisted;
+    // Always sync the ref to whatever is in storage for the current key —
+    // including null. Otherwise a previous project's sessionId leaks into a
+    // freshly-opened project (e.g. after Duplicate) and the chat resumes the
+    // wrong session, causing edits to land on the original project.
+    sessionIdRef.current = loadSessionId(sessionKey);
     setMessages(loadMessages(storageKey));
   }, [storageKey, sessionKey]);
 

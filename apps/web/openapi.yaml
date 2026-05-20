@@ -1411,6 +1411,46 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/projects/{id}/duplicate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Source project CUID2 identifier.
+
+    post:
+      tags: [Projects]
+      operationId: duplicateProject
+      summary: Duplicate a project
+      description: |
+        Creates a deep copy of the source project. Scenes, layers, keyframes,
+        audio tracks, and volume keyframes are cloned with fresh IDs. Assets
+        are shared (deduplicated by SHA-256) — only the `assetId` references
+        are copied, not the underlying files. Project-level `css` and
+        `videoScript` are copied verbatim. The duplicate's name is the source
+        name with `" (duplicated)"` appended.
+
+        Returns the new project's id, suitable for navigating to
+        `/projects/{id}`.
+      responses:
+        '201':
+          description: Duplicate created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id:
+                    type: string
+                    description: CUID2 id of the new project.
+              example:
+                id: "qx2k9zl4mv3p7nr8t1bd5h6c"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/projects/{id}/script:
     parameters:
       - name: id

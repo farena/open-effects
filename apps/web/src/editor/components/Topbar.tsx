@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Undo2, Redo2, Film, ArrowLeft, Sparkles, Pencil, Save } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Undo2, Redo2, Film, ArrowLeft, Sparkles, Pencil, Save, Copy } from "lucide-react";
 import { useEditorStore } from "@/editor/store";
 import { saveProjectNow } from "@/editor/useAutosave";
 import { Button } from "@/components/ui/button";
@@ -201,6 +202,34 @@ export function Topbar() {
   const updateProjectName = useEditorStore((s) => s.updateProjectName);
   const [chatOpen, setChatOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const router = useRouter();
+
+  async function handleDuplicate() {
+    if (!project.id || duplicating) return;
+    setDuplicating(true);
+    try {
+      // Flush any pending edits so the duplicate is created from the most
+      // recent saved state — autosave is debounced 5s, this avoids the case
+      // where the user makes a change and clicks Duplicate before the
+      // autosave fires.
+      await saveProjectNow();
+      const res = await fetch(`/api/projects/${project.id}/duplicate`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error("POST /duplicate failed", res.status, body);
+        setDuplicating(false);
+        return;
+      }
+      const { id } = (await res.json()) as { id: string };
+      router.push(`/projects/${id}`);
+    } catch (err) {
+      console.error("POST /duplicate error", err);
+      setDuplicating(false);
+    }
+  }
 
   return (
     <div className="flex h-12 items-center justify-between border-b bg-background px-4">
@@ -292,6 +321,19 @@ export function Topbar() {
           >
             <Save className="h-4 w-4" />
             {saveStatus === "saving" ? "Saving…" : "Save"}
+          </Button>
+        )}
+        {project.id && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleDuplicate()}
+            disabled={duplicating}
+            className="flex items-center gap-1.5"
+            aria-label="Duplicate project"
+          >
+            <Copy className="h-4 w-4" />
+            {duplicating ? "Duplicating…" : "Duplicate"}
           </Button>
         )}
         <RenderModal
